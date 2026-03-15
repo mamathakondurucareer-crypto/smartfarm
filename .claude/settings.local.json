@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import json,sys; p=json.load\\(sys.stdin\\); print\\(json.dumps\\(p.get\\(''''exports'''', {}\\), indent=2\\)\\)\")",
+      "Bash(python3 -c \"import json,sys; p=json.load\\(sys.stdin\\); print\\(''''main:'''', p.get\\(''''main''''\\)\\); print\\(''''react-native:'''', p.get\\(''''react-native''''\\)\\); print\\(''''browser:'''', p.get\\(''''browser''''\\)\\)\")",
+      "Bash(python3 -c \":*)",
+      "Bash(ls /Users/usangaraju/Downloads/smartfarm/mobile/node_modules/react-native-svg/src/*.web.*)",
+      "Bash(python3 -c \"import json,sys; p=json.load\\(sys.stdin\\); print\\(''''version:'''', p.get\\(''''version''''\\)\\); print\\(''''peerDeps:'''', p.get\\(''''peerDependencies''''\\)\\)\")",
+      "Bash(ls /Users/usangaraju/Downloads/smartfarm/mobile/node_modules/react-native-safe-area-context/src/NativeSafe*)",
+      "Bash(curl -s \"http://localhost:8081/App.bundle?platform=web&dev=true&hot=false&lazy=true&transform.engine=hermes&transform.routerRoot=app&unstable_transformProfile=hermes-stable\" -o /tmp/exact_bundle.js)",
+      "Read(//tmp/**)",
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(kill 56738)",
+      "Bash(npx expo:*)",
+      "Bash(curl -s http://localhost:8000/api/auth/roles)",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/login -d \"username=admin&password=admin123\")",
+      "Bash(kill -HUP 55843)",
+      "Bash(python -c \":*)",
+      "Bash(python3 -c \"import sqlalchemy; print\\(sqlalchemy.__version__\\)\")",
+      "Bash(source venv/bin/activate)"
+    ]
+  }
+}

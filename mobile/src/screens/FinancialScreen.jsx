@@ -10,7 +10,7 @@ import useFarmStore  from "../store/useFarmStore";
 
 export default function FinancialScreen() {
   const f = useFarmStore((s) => s.farm.financial);
-  const margin = ((f.ytdProfit / f.ytdRevenue) * 100).toFixed(1);
+  const margin = f.ytdRevenue > 0 ? ((f.ytdProfit / f.ytdRevenue) * 100).toFixed(1) : "0.0";
 
   const kpiStats = [
     { Icon: TrendingUp, label: "YTD Revenue",  value: `₹${f.ytdRevenue}L`, color: colors.primary },

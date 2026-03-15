@@ -4,7 +4,7 @@ import { colors } from "../../config/theme";
 
 /** Thin horizontal progress bar. */
 export default function ProgressBar({ value, max, color = colors.primary, height = 6 }) {
-  const pct = Math.min((value / max) * 100, 100);
+  const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
 
   return (
     <View style={[styles.track, { height, borderRadius: height }]}>

@@ -5,21 +5,43 @@
  */
 import {
   Home, Fish, Leaf, Sprout, Egg,
-  Droplets, Sun, Zap, Truck, DollarSign, Brain,
+  Droplets, Sun, Zap, Truck, DollarSign, Brain, Users,
+  Store, ShoppingCart, ScanLine, Package, Truck2,
+  BarChart3, ClipboardList, Wrench, Activity, Box,
 } from "lucide-react-native";
 import { colors } from "./theme";
 
 export const SCREENS = [
-  { name: "Dashboard",    label: "Dashboard",      Icon: Home,       color: colors.primary },
-  { name: "Aquaculture",  label: "Aquaculture",    Icon: Fish,       color: colors.fish },
-  { name: "Greenhouse",   label: "Greenhouse",     Icon: Leaf,       color: colors.crop },
-  { name: "VerticalFarm", label: "Vertical Farm",  Icon: Sprout,     color: colors.verticalFarm },
-  { name: "Poultry",      label: "Poultry & Duck", Icon: Egg,        color: colors.poultry },
-  { name: "Water",        label: "Water System",   Icon: Droplets,   color: colors.water },
-  { name: "Energy",       label: "Solar Energy",   Icon: Sun,        color: colors.solar },
-  { name: "Automation",   label: "Automation",     Icon: Zap,        color: colors.danger },
-  { name: "Market",       label: "Markets",        Icon: Truck,      color: colors.market },
-  { name: "Financial",    label: "Financials",     Icon: DollarSign, color: colors.accent },
-  { name: "Nursery",      label: "Nursery & Bees", Icon: Sprout,     color: colors.primary },
-  { name: "AI",           label: "AI Analysis",    Icon: Brain,      color: colors.ai },
+  // ── Farm Operations ───────────────────────────────────────────
+  { name: "Dashboard",        label: "Dashboard",        Icon: Home,          color: colors.primary },
+  { name: "Aquaculture",      label: "Aquaculture",      Icon: Fish,          color: colors.fish },
+  { name: "Greenhouse",       label: "Greenhouse",       Icon: Leaf,          color: colors.crop },
+  { name: "VerticalFarm",     label: "Vertical Farm",    Icon: Sprout,        color: colors.verticalFarm },
+  { name: "Poultry",          label: "Poultry & Duck",   Icon: Egg,           color: colors.poultry },
+  { name: "Water",            label: "Water System",     Icon: Droplets,      color: colors.water },
+  { name: "Energy",           label: "Solar Energy",     Icon: Sun,           color: colors.solar },
+  { name: "Automation",       label: "Automation",       Icon: Zap,           color: colors.danger },
+  { name: "Nursery",          label: "Nursery & Bees",   Icon: Sprout,        color: colors.primary },
+
+  // ── Stock & Supply Chain ──────────────────────────────────────
+  { name: "StockProduced",    label: "Stock Produced",   Icon: Box,           color: colors.crop },
+  { name: "StockSales",       label: "Stock Sales",      Icon: BarChart3,     color: colors.market },
+  { name: "Packing",          label: "Packing",          Icon: Package,       color: colors.packing },
+  { name: "Scanner",          label: "Scan Barcode",     Icon: ScanLine,      color: colors.scanner },
+
+  // ── Store & Retail ────────────────────────────────────────────
+  { name: "Store",            label: "Store",            Icon: Store,         color: colors.store },
+  { name: "POS",              label: "Point of Sale",    Icon: ShoppingCart,  color: colors.pos },
+  { name: "Logistics",        label: "Logistics",        Icon: Truck2,        color: colors.logistics },
+
+  // ── Finance & Markets ─────────────────────────────────────────
+  { name: "Market",           label: "Markets",          Icon: Truck,         color: colors.market },
+  { name: "Financial",        label: "Financials",       Icon: DollarSign,    color: colors.accent },
+  { name: "Reports",          label: "Reports",          Icon: ClipboardList, color: colors.reports },
+
+  // ── Admin & AI ────────────────────────────────────────────────
+  { name: "AI",               label: "AI Analysis",      Icon: Brain,         color: colors.ai },
+  { name: "ServiceRequests",  label: "Service Requests", Icon: Wrench,        color: colors.service },
+  { name: "ActivityLog",      label: "Activity Log",     Icon: Activity,      color: colors.textDim },
+  { name: "Users",            label: "User Management",  Icon: Users,         color: colors.info },
 ];

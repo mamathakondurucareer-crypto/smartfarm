@@ -29,6 +29,12 @@ def seed():
         Role(id=3, name="supervisor", description="Department supervisor"),
         Role(id=4, name="worker", description="Field worker"),
         Role(id=5, name="viewer", description="Read-only access"),
+        # New store roles
+        Role(id=6,  name="store_manager", description="Store operations management"),
+        Role(id=7,  name="cashier",       description="POS checkout operations"),
+        Role(id=8,  name="packer",        description="Packaging and labeling"),
+        Role(id=9,  name="driver",        description="Delivery and logistics"),
+        Role(id=10, name="scanner",       description="Barcode scanning and stock intake"),
     ]
     db.add_all(roles)
     db.flush()
@@ -39,6 +45,15 @@ def seed():
     manager = User(username="manager", email="manager@smartfarm.in", hashed_password=hash_password("manager123"),
                    full_name="Ravi Kumar", phone="9876543211", role_id=2)
     db.add_all([admin, manager])
+    db.flush()
+
+    store_mgr = User(username="store_mgr", email="store@smartfarm.in",
+                     hashed_password=hash_password("store123"),
+                     full_name="Priya Store Manager", phone="9876543220", role_id=6)
+    cashier1 = User(username="cashier1", email="cashier1@smartfarm.in",
+                    hashed_password=hash_password("cashier123"),
+                    full_name="Ramu Cashier", phone="9876543221", role_id=7)
+    db.add_all([store_mgr, cashier1])
     db.flush()
 
     # ── Employees ──
@@ -262,15 +277,134 @@ def seed():
     ]
     db.add_all(maint)
 
+    # ── Store Config ──
+    store_config = StoreConfig(
+        store_name="SmartFarm Direct Store",
+        store_code="SFN-001",
+        address="SmartFarm, Nellore District, Andhra Pradesh - 524001",
+        phone="9876543200",
+        gstin="37AABCS1234A1Z5",
+        currency="INR",
+        tax_inclusive=False,
+        receipt_header="SmartFarm — Farm Fresh, Direct to You",
+        receipt_footer="Thank you for supporting sustainable farming!",
+        default_payment_mode="cash",
+        low_stock_threshold=10,
+    )
+    db.add(store_config)
+    db.flush()
+
+    # ── Product Catalog ──
+    products = [
+        ProductCatalog(product_code="PC-MURREL-KG", name="Murrel Fish (Live)", category="fish",
+                       source_type="farm_produced", unit="kg", selling_price=350, mrp=380,
+                       cost_price=220, gst_rate=5, hsn_code="0301", is_weighable=True, track_expiry=True,
+                       description="Fresh live murrel from our aquaculture ponds"),
+        ProductCatalog(product_code="PC-ROHU-KG", name="Rohu Fish (Fresh)", category="fish",
+                       source_type="farm_produced", unit="kg", selling_price=180, mrp=200,
+                       cost_price=100, gst_rate=5, hsn_code="0302", is_weighable=True, track_expiry=True,
+                       description="Fresh rohu from IMC polyculture ponds"),
+        ProductCatalog(product_code="PC-CATLA-KG", name="Catla Fish (Fresh)", category="fish",
+                       source_type="farm_produced", unit="kg", selling_price=200, mrp=220,
+                       cost_price=110, gst_rate=5, hsn_code="0302", is_weighable=True, track_expiry=True,
+                       description="Fresh catla from IMC polyculture ponds"),
+        ProductCatalog(product_code="PC-CHILLI-KG", name="Green Chilli (Teja)", category="vegetables",
+                       source_type="farm_produced", unit="kg", selling_price=80, mrp=90,
+                       cost_price=40, gst_rate=0, hsn_code="0904", is_weighable=True, track_expiry=True,
+                       description="Teja variety green chilli from greenhouse GH1"),
+        ProductCatalog(product_code="PC-TOMATO-KG", name="Tomato (Arka Rakshak)", category="vegetables",
+                       source_type="farm_produced", unit="kg", selling_price=50, mrp=60,
+                       cost_price=20, gst_rate=0, hsn_code="0702", is_weighable=True, track_expiry=True,
+                       description="Hybrid tomato from greenhouse GH1"),
+        ProductCatalog(product_code="PC-CUCUMBER-KG", name="Cucumber (Malini F1)", category="vegetables",
+                       source_type="farm_produced", unit="kg", selling_price=40, mrp=50,
+                       cost_price=18, gst_rate=0, hsn_code="0707", is_weighable=True, track_expiry=True,
+                       description="Cucumber from greenhouse GH1"),
+        ProductCatalog(product_code="PC-SPINACH-BU", name="Spinach (Vertical Farm)", category="vegetables",
+                       source_type="farm_produced", unit="bunch", selling_price=30, mrp=35,
+                       cost_price=12, gst_rate=0, hsn_code="0709", is_weighable=False, track_expiry=True,
+                       description="Hydroponically grown spinach — pesticide free"),
+        ProductCatalog(product_code="PC-CORIANDER-BU", name="Coriander (Vertical Farm)", category="vegetables",
+                       source_type="farm_produced", unit="bunch", selling_price=20, mrp=25,
+                       cost_price=8, gst_rate=0, hsn_code="0709", is_weighable=False, track_expiry=True,
+                       description="Fresh coriander from vertical farm"),
+        ProductCatalog(product_code="PC-EGGS-TRAY", name="Eggs (BV-300 Layer)", category="eggs",
+                       source_type="farm_produced", unit="tray", selling_price=180, mrp=200,
+                       cost_price=120, gst_rate=5, hsn_code="0407", is_weighable=False, track_expiry=True,
+                       description="30-count tray of fresh eggs from our BV-300 layer flock"),
+        ProductCatalog(product_code="PC-DUCK-EGG-6", name="Duck Eggs (pack of 6)", category="eggs",
+                       source_type="farm_produced", unit="pack", selling_price=90, mrp=100,
+                       cost_price=55, gst_rate=5, hsn_code="0407", is_weighable=False, track_expiry=True,
+                       description="Duck eggs from Khaki Campbell flock — rich & nutritious"),
+        ProductCatalog(product_code="PC-HONEY-500G", name="Farm Honey (500g jar)", category="honey",
+                       source_type="farm_produced", unit="jar", selling_price=350, mrp=380,
+                       cost_price=200, gst_rate=5, hsn_code="0409", is_weighable=False, track_expiry=True,
+                       description="Pure raw honey from our 20 bee hives"),
+        ProductCatalog(product_code="PC-TURMERIC-100G", name="Turmeric Powder (100g)", category="spices",
+                       source_type="farm_produced", unit="pack", selling_price=60, mrp=70,
+                       cost_price=25, gst_rate=5, hsn_code="0910", is_weighable=False, track_expiry=True,
+                       description="Salem variety turmeric — sun-dried and ground"),
+        ProductCatalog(product_code="PC-GINGER-KG", name="Fresh Ginger", category="spices",
+                       source_type="farm_produced", unit="kg", selling_price=120, mrp=140,
+                       cost_price=60, gst_rate=5, hsn_code="0910", is_weighable=True, track_expiry=True,
+                       description="Maran variety fresh ginger from field crops"),
+        ProductCatalog(product_code="PC-COMPOST-5KG", name="Farm Compost (5 kg bag)", category="inputs",
+                       source_type="farm_produced", unit="bag", selling_price=100, mrp=120,
+                       cost_price=30, gst_rate=5, hsn_code="3101", is_weighable=False, track_expiry=False,
+                       description="Organic compost from our vermicompost unit"),
+        ProductCatalog(product_code="PC-SEEDLING-TRAY", name="Vegetable Seedling Tray", category="nursery",
+                       source_type="farm_produced", unit="tray", selling_price=150, mrp=175,
+                       cost_price=60, gst_rate=5, hsn_code="0601", is_weighable=False, track_expiry=True,
+                       description="Mixed vegetable seedlings — 50 per tray"),
+    ]
+    db.add_all(products)
+    db.flush()
+
+    # ── Store Stock (initial levels) ──
+    initial_stocks = [
+        (products[0],  25.0,   "cold_room"),   # Murrel 25 kg
+        (products[1],  40.0,   "cold_room"),   # Rohu   40 kg
+        (products[2],  30.0,   "cold_room"),   # Catla  30 kg
+        (products[3],  15.0,   "floor"),       # Green chilli
+        (products[4],  50.0,   "floor"),       # Tomato
+        (products[5],  60.0,   "floor"),       # Cucumber
+        (products[6],  80.0,   "floor"),       # Spinach (bunches)
+        (products[7], 100.0,   "floor"),       # Coriander (bunches)
+        (products[8],  20.0,   "floor"),       # Eggs trays
+        (products[9],  30.0,   "floor"),       # Duck eggs packs
+        (products[10], 15.0,   "floor"),       # Honey jars
+        (products[11], 50.0,   "backstore"),   # Turmeric packs
+        (products[12], 10.0,   "floor"),       # Ginger kg
+        (products[13], 40.0,   "backstore"),   # Compost bags
+        (products[14],  8.0,   "floor"),       # Seedling trays
+    ]
+    now_utc = datetime.now(timezone.utc)
+    store_stocks = []
+    for prod, qty, loc in initial_stocks:
+        store_stocks.append(
+            StoreStock(
+                product_id=prod.id,
+                current_qty=qty,
+                reserved_qty=0,
+                unit=prod.unit,
+                avg_cost_per_unit=prod.cost_price,
+                last_received_at=now_utc,
+                location=loc,
+                updated_at=now_utc,
+            )
+        )
+    db.add_all(store_stocks)
+
     db.commit()
     db.close()
     print("✅ Database seeded successfully with:")
-    print("   • 5 roles, 2 users, 5 employees")
+    print("   • 10 roles (5 original + 5 store), 4 users (admin, manager, store_mgr, cashier1), 5 employees")
     print("   • 6 ponds, 5 fish batches")
     print("   • 5 greenhouse crops, 4 VF batches, 2 field crops")
     print("   • 1 poultry flock (800 hens), 1 duck flock (400), 20 bee hives")
     print("   • 10 inventory categories, 6 items, 5 suppliers, 5 customers")
     print("   • 10 sensor devices, 5 automation rules, 3 maintenance schedules")
+    print("   • 1 store config, 15 product catalog entries, 15 store stock records")
 
 
 if __name__ == "__main__":

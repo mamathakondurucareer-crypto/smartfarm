@@ -19,6 +19,11 @@ class RoleEnum(str, enum.Enum):
     SUPERVISOR = "supervisor"
     WORKER = "worker"
     VIEWER = "viewer"
+    STORE_MANAGER = "store_manager"
+    CASHIER       = "cashier"
+    PACKER        = "packer"
+    DRIVER        = "driver"
+    SCANNER       = "scanner"
 
 
 class Role(Base, TimestampMixin):
@@ -58,6 +63,8 @@ class DepartmentEnum(str, enum.Enum):
     MAINTENANCE = "maintenance"
     MANAGEMENT = "management"
     TECHNOLOGY = "technology"
+    STORE      = "store"
+    LOGISTICS  = "logistics"
 
 
 class Employee(Base, TimestampMixin, SoftDeleteMixin):

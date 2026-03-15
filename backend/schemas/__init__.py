@@ -635,3 +635,488 @@ class AIQueryResponse(BaseModel):
     response: str
     modules_analyzed: List[str]
     timestamp: datetime
+
+
+# ═══════════════════════════════════════════════════════════════
+# STORE CONFIG
+# ═══════════════════════════════════════════════════════════════
+class StoreConfigOut(OrmBase):
+    id: int
+    store_name: str
+    store_code: str
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    gstin: Optional[str] = None
+    currency: str
+    tax_inclusive: bool
+    receipt_header: Optional[str] = None
+    receipt_footer: Optional[str] = None
+    default_payment_mode: str
+    low_stock_threshold: int
+    created_at: datetime
+    updated_at: datetime
+
+class StoreConfigUpdate(BaseModel):
+    store_name: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    gstin: Optional[str] = None
+    currency: Optional[str] = None
+    tax_inclusive: Optional[bool] = None
+    receipt_header: Optional[str] = None
+    receipt_footer: Optional[str] = None
+    default_payment_mode: Optional[str] = None
+    low_stock_threshold: Optional[int] = None
+
+
+# ═══════════════════════════════════════════════════════════════
+# PRODUCT CATALOG
+# ═══════════════════════════════════════════════════════════════
+class ProductCatalogCreate(BaseModel):
+    product_code: str
+    name: str
+    category: str
+    source_type: str = "farm_produced"
+    unit: str
+    selling_price: float = 0
+    mrp: float = 0
+    cost_price: float = 0
+    gst_rate: float = 0
+    hsn_code: Optional[str] = None
+    barcode: Optional[str] = None
+    is_weighable: bool = False
+    track_expiry: bool = False
+    description: Optional[str] = None
+
+class ProductCatalogOut(OrmBase):
+    id: int
+    product_code: str
+    name: str
+    category: str
+    source_type: str
+    unit: str
+    selling_price: float
+    mrp: float
+    cost_price: float
+    gst_rate: float
+    hsn_code: Optional[str] = None
+    barcode: Optional[str] = None
+    is_weighable: bool
+    track_expiry: bool
+    description: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+class ProductCatalogUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    source_type: Optional[str] = None
+    unit: Optional[str] = None
+    selling_price: Optional[float] = None
+    mrp: Optional[float] = None
+    cost_price: Optional[float] = None
+    gst_rate: Optional[float] = None
+    hsn_code: Optional[str] = None
+    barcode: Optional[str] = None
+    is_weighable: Optional[bool] = None
+    track_expiry: Optional[bool] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+# ═══════════════════════════════════════════════════════════════
+# PRICE RULES
+# ═══════════════════════════════════════════════════════════════
+class PriceRuleCreate(BaseModel):
+    product_id: int
+    rule_type: str
+    customer_type: Optional[str] = None
+    min_quantity: float = 0
+    discount_pct: float = 0
+    fixed_price: Optional[float] = None
+    valid_from: Optional[datetime] = None
+    valid_to: Optional[datetime] = None
+    is_active: bool = True
+
+class PriceRuleOut(OrmBase):
+    id: int
+    product_id: int
+    rule_type: str
+    customer_type: Optional[str] = None
+    min_quantity: float
+    discount_pct: float
+    fixed_price: Optional[float] = None
+    valid_from: Optional[datetime] = None
+    valid_to: Optional[datetime] = None
+    is_active: bool
+    created_at: datetime
+
+
+# ═══════════════════════════════════════════════════════════════
+# STORE STOCK
+# ═══════════════════════════════════════════════════════════════
+class StoreStockOut(OrmBase):
+    id: int
+    product_id: int
+    current_qty: float
+    reserved_qty: float
+    unit: str
+    avg_cost_per_unit: float
+    last_received_at: Optional[datetime] = None
+    expiry_date: Optional[datetime] = None
+    location: str
+    updated_at: Optional[datetime] = None
+
+class StoreStockAdjust(BaseModel):
+    product_id: int
+    adjustment_qty: float   # positive = add, negative = remove
+    reason: str
+    location: Optional[str] = None
+
+
+# ═══════════════════════════════════════════════════════════════
+# FARM SUPPLY TRANSFER
+# ═══════════════════════════════════════════════════════════════
+class FarmSupplyTransferCreate(BaseModel):
+    transfer_date: datetime
+    source_type: str
+    source_id: Optional[int] = None
+    product_id: int
+    product_name: str
+    quantity_transferred: float
+    unit: str
+    quality_grade: str = "A"
+    cost_per_unit: float = 0
+    notes: Optional[str] = None
+
+class FarmSupplyTransferOut(OrmBase):
+    id: int
+    transfer_code: str
+    transfer_date: datetime
+    source_type: str
+    source_id: Optional[int] = None
+    product_id: int
+    product_name: str
+    quantity_transferred: float
+    unit: str
+    quality_grade: str
+    cost_per_unit: float
+    total_cost: float
+    transferred_by: int
+    received_by: Optional[int] = None
+    received_at: Optional[datetime] = None
+    status: str
+    rejection_reason: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class TransferReceive(BaseModel):
+    received_qty: Optional[float] = None  # if None, uses quantity_transferred
+    notes: Optional[str] = None
+
+class TransferReject(BaseModel):
+    rejection_reason: str
+
+
+# ═══════════════════════════════════════════════════════════════
+# POS SESSION
+# ═══════════════════════════════════════════════════════════════
+class POSSessionCreate(BaseModel):
+    opening_cash: float = 0
+    notes: Optional[str] = None
+
+class POSSessionOut(OrmBase):
+    id: int
+    session_code: str
+    cashier_id: int
+    opened_at: datetime
+    closed_at: Optional[datetime] = None
+    opening_cash: float
+    closing_cash: Optional[float] = None
+    total_sales: float
+    total_transactions: int
+    status: str
+    notes: Optional[str] = None
+    created_at: datetime
+
+class POSSessionClose(BaseModel):
+    closing_cash: float
+    notes: Optional[str] = None
+
+
+# ═══════════════════════════════════════════════════════════════
+# POS CHECKOUT / TRANSACTION
+# ═══════════════════════════════════════════════════════════════
+class POSItemIn(BaseModel):
+    product_id: int
+    quantity: float
+    unit_price: Optional[float] = None   # override if None, uses catalog price
+    discount_pct: float = 0
+
+class POSCheckoutIn(BaseModel):
+    session_id: int
+    items: List[POSItemIn]
+    customer_id: Optional[int] = None
+    payment_mode: str = "cash"
+    payment_reference: Optional[str] = None
+    amount_tendered: float = 0
+    notes: Optional[str] = None
+
+class POSTransactionItemOut(OrmBase):
+    id: int
+    product_id: int
+    product_name: str
+    barcode: Optional[str] = None
+    quantity: float
+    unit: str
+    unit_price: float
+    discount_pct: float
+    tax_rate: float
+    total: float
+
+class POSTransactionOut(OrmBase):
+    id: int
+    transaction_code: str
+    session_id: int
+    customer_id: Optional[int] = None
+    cashier_id: int
+    transaction_time: datetime
+    subtotal: float
+    discount_amount: float
+    tax_amount: float
+    total_amount: float
+    amount_tendered: float
+    change_given: float
+    payment_mode: str
+    payment_reference: Optional[str] = None
+    status: str
+    invoice_id: Optional[int] = None
+    notes: Optional[str] = None
+    items: List[POSTransactionItemOut] = []
+    created_at: datetime
+
+
+# ═══════════════════════════════════════════════════════════════
+# PACKING ORDERS
+# ═══════════════════════════════════════════════════════════════
+class PackingItemCreate(BaseModel):
+    product_id: int
+    product_name: str
+    quantity_required: float
+    packaging_type: Optional[str] = None
+    expiry_date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+class PackingOrderCreate(BaseModel):
+    order_ref_type: str
+    order_ref_id: Optional[int] = None
+    assigned_to: Optional[int] = None
+    scheduled_date: Optional[datetime] = None
+    notes: Optional[str] = None
+    items: List[PackingItemCreate]
+
+class PackingItemOut(OrmBase):
+    id: int
+    product_id: int
+    product_name: str
+    quantity_required: float
+    quantity_packed: float
+    packaging_type: Optional[str] = None
+    label_printed: bool
+    barcode_generated: bool
+    expiry_date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+class PackingOrderOut(OrmBase):
+    id: int
+    packing_order_code: str
+    order_ref_type: str
+    order_ref_id: Optional[int] = None
+    assigned_to: Optional[int] = None
+    scheduled_date: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    status: str
+    total_items: int
+    notes: Optional[str] = None
+    items: List[PackingItemOut] = []
+    created_at: datetime
+
+class PackItemRequest(BaseModel):
+    quantity_packed: float
+    label_printed: bool = False
+    barcode_generated: bool = False
+
+
+# ═══════════════════════════════════════════════════════════════
+# BARCODE
+# ═══════════════════════════════════════════════════════════════
+class BarcodeOut(OrmBase):
+    id: int
+    barcode: str
+    entity_type: str
+    entity_id: int
+    product_id: Optional[int] = None
+    generated_at: datetime
+    generated_by: int
+    is_active: bool
+    last_scanned_at: Optional[datetime] = None
+    scan_count: int
+
+class BarcodeScanResult(BaseModel):
+    barcode: str
+    found: bool
+    result: Optional[dict] = None
+    message: Optional[str] = None
+
+class BarcodeGenerateRequest(BaseModel):
+    product_id: int
+    entity_type: str = "product"
+    entity_id: Optional[int] = None  # defaults to product_id
+    prefix: str = "SFN"
+
+
+# ═══════════════════════════════════════════════════════════════
+# DELIVERY ROUTES & TRIPS
+# ═══════════════════════════════════════════════════════════════
+class DeliveryRouteCreate(BaseModel):
+    route_code: str
+    route_name: str
+    origin: str
+    destination: str
+    waypoints: Optional[str] = None  # JSON string
+    distance_km: float = 0
+    estimated_duration_min: int = 0
+
+class DeliveryRouteOut(OrmBase):
+    id: int
+    route_code: str
+    route_name: str
+    origin: str
+    destination: str
+    waypoints: Optional[str] = None
+    distance_km: float
+    estimated_duration_min: int
+    is_active: bool
+    created_at: datetime
+
+class DeliveryTripCreate(BaseModel):
+    route_id: Optional[int] = None
+    driver_id: int
+    vehicle_number: str
+    vehicle_type: str = "tempo"
+    planned_departure: Optional[datetime] = None
+    notes: Optional[str] = None
+
+class DeliveryTripOut(OrmBase):
+    id: int
+    trip_code: str
+    route_id: Optional[int] = None
+    driver_id: int
+    vehicle_number: str
+    vehicle_type: str
+    planned_departure: Optional[datetime] = None
+    actual_departure: Optional[datetime] = None
+    actual_arrival: Optional[datetime] = None
+    total_distance_km: float
+    fuel_used_litres: float
+    fuel_cost: float
+    status: str
+    notes: Optional[str] = None
+    created_at: datetime
+
+class TripStatusUpdate(BaseModel):
+    status: str
+    actual_departure: Optional[datetime] = None
+    actual_arrival: Optional[datetime] = None
+    total_distance_km: Optional[float] = None
+    fuel_used_litres: Optional[float] = None
+    fuel_cost: Optional[float] = None
+    notes: Optional[str] = None
+
+class DeliveryConfirm(BaseModel):
+    recipient_name: Optional[str] = None
+    notes: Optional[str] = None
+
+class TripOrderAdd(BaseModel):
+    order_id: int
+    sequence_no: int = 1
+    delivery_address: Optional[str] = None
+
+
+# ═══════════════════════════════════════════════════════════════
+# SERVICE REQUESTS
+# ═══════════════════════════════════════════════════════════════
+class ServiceRequestCreate(BaseModel):
+    title: str
+    description: str
+    department: str
+    location: Optional[str] = None
+    priority: str = "medium"
+    category: str
+    affected_equipment: Optional[str] = None
+    estimated_cost: float = 0
+    scheduled_date: Optional[datetime] = None
+
+class ServiceRequestOut(OrmBase):
+    id: int
+    request_code: str
+    title: str
+    description: str
+    requested_by: int
+    assigned_to: Optional[int] = None
+    department: str
+    location: Optional[str] = None
+    priority: str
+    category: str
+    affected_equipment: Optional[str] = None
+    estimated_cost: float
+    actual_cost: float
+    scheduled_date: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    status: str
+    resolution_notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+class ServiceRequestUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    department: Optional[str] = None
+    location: Optional[str] = None
+    priority: Optional[str] = None
+    category: Optional[str] = None
+    affected_equipment: Optional[str] = None
+    estimated_cost: Optional[float] = None
+    actual_cost: Optional[float] = None
+    scheduled_date: Optional[datetime] = None
+    status: Optional[str] = None
+    resolution_notes: Optional[str] = None
+
+class ServiceRequestAssign(BaseModel):
+    assigned_to: int
+    scheduled_date: Optional[datetime] = None
+
+class ServiceRequestResolve(BaseModel):
+    resolution_notes: str
+    actual_cost: float = 0
+
+
+# ═══════════════════════════════════════════════════════════════
+# ACTIVITY LOG
+# ═══════════════════════════════════════════════════════════════
+class ActivityLogOut(OrmBase):
+    id: int
+    timestamp: datetime
+    user_id: Optional[int] = None
+    username: str
+    action: str
+    module: str
+    entity_type: Optional[str] = None
+    entity_id: Optional[int] = None
+    description: str
+    ip_address: Optional[str] = None
+    status: str
+    error_message: Optional[str] = None

@@ -14,6 +14,7 @@ import ScreenWrapper from "../components/layout/ScreenWrapper";
 import Badge         from "../components/ui/Badge";
 import { colors, spacing, radius, fontSize } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import { CLAUDE_API_KEY } from "../config/apiConfig";
 
 // ─── Quick analysis prompts ───────────────────────────────────────
 const QUICK_PROMPTS = [
@@ -93,11 +94,17 @@ export default function AIScreen() {
     setIsLoading(true);
 
     try {
+      if (!CLAUDE_API_KEY) throw new Error("Claude API key not configured. Set CLAUDE_API_KEY in src/config/apiConfig.js");
+
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type":    "application/json",
+          "x-api-key":       CLAUDE_API_KEY,
+          "anthropic-version": "2023-06-01",
+        },
         body: JSON.stringify({
-          model:      "claude-sonnet-4-20250514",
+          model:      "claude-sonnet-4-6",
           max_tokens: 1000,
           system: `You are the AI Farm Analyst for an Integrated Smart Regenerative Farm in Nellore, Andhra Pradesh, India. You have access to live sensor data. Provide expert agricultural analysis with specific, actionable recommendations. Use ₹ for currency. Reference specific sensor readings and thresholds.
 
@@ -110,6 +117,7 @@ ${buildFarmContext(farm)}`,
       });
 
       const data   = await response.json();
+      if (data.error) throw new Error(data.error.message || `API error (${response.status})`);
       const aiText = data.content?.filter((b) => b.type === "text").map((b) => b.text).join("\n")
         ?? "Analysis complete. No specific issues detected at this time.";
 

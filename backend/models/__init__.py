@@ -30,6 +30,13 @@ from backend.models.production import (
     ProductionBatch, ProcessingLog, PackagingLog, QualityCheck,
     StockLedger, StockMovement,
 )
+from backend.models.store import StoreConfig, ProductCatalog, PriceRule
+from backend.models.supply_chain import FarmSupplyTransfer, StoreStock
+from backend.models.retail import POSSession, POSTransaction, POSTransactionItem
+from backend.models.packing import PackingOrder, PackingOrderItem, BarcodeRegistry
+from backend.models.logistics import DeliveryRoute, DeliveryTrip, DeliveryTripOrder
+from backend.models.service_request import ServiceRequest
+from backend.models.activity_log import ActivityLog
 
 __all__ = [
     "User", "Role", "Employee", "Attendance", "LeaveRequest",
@@ -48,4 +55,11 @@ __all__ = [
     "Incident", "IncidentAction", "MaintenanceSchedule",
     "ProductionBatch", "ProcessingLog", "PackagingLog", "QualityCheck",
     "StockLedger", "StockMovement",
+    "StoreConfig", "ProductCatalog", "PriceRule",
+    "FarmSupplyTransfer", "StoreStock",
+    "POSSession", "POSTransaction", "POSTransactionItem",
+    "PackingOrder", "PackingOrderItem", "BarcodeRegistry",
+    "DeliveryRoute", "DeliveryTrip", "DeliveryTripOrder",
+    "ServiceRequest",
+    "ActivityLog",
 ]

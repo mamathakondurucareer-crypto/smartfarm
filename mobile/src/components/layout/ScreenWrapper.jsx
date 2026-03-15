@@ -10,15 +10,17 @@ import {
   StyleSheet, StatusBar, Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Bell } from "lucide-react-native";
+import { Bell, Menu } from "lucide-react-native";
 import { colors, spacing, fontSize, radius } from "../../config/theme";
 import { useResponsive } from "../../hooks/useResponsive";
 import useFarmStore from "../../store/useFarmStore";
 import AlertDot from "../ui/AlertDot";
+import { useNavigation } from "../../context/NavigationContext";
 
 export default function ScreenWrapper({ title, children }) {
   const [alertsOpen, setAlertsOpen] = useState(false);
-  const { screenPadding } = useResponsive();
+  const { screenPadding, showPermanentDrawer } = useResponsive();
+  const { toggleDrawer } = useNavigation();
   const farm = useFarmStore((s) => s.farm);
   const hasCritical = farm.alerts.some((a) => a.type === "danger");
   const updatedAt   = new Date(farm.lastUpdated).toLocaleTimeString();
@@ -29,9 +31,16 @@ export default function ScreenWrapper({ title, children }) {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.pageTitle}>{title}</Text>
-          <Text style={styles.subtitle}>Nellore District, AP • {updatedAt}</Text>
+        <View style={styles.headerLeft}>
+          {!showPermanentDrawer && (
+            <TouchableOpacity onPress={toggleDrawer} style={styles.menuBtn} activeOpacity={0.7}>
+              <Menu size={22} color={colors.textDim} />
+            </TouchableOpacity>
+          )}
+          <View>
+            <Text style={styles.pageTitle}>{title}</Text>
+            <Text style={styles.subtitle}>Nellore District, AP • {updatedAt}</Text>
+          </View>
         </View>
 
         <TouchableOpacity onPress={() => setAlertsOpen((o) => !o)} style={styles.bellBtn} activeOpacity={0.7}>
@@ -83,6 +92,15 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  menuBtn: {
+    padding: spacing.xs,
+    marginRight: spacing.xs,
   },
   pageTitle: {
     fontSize: fontSize.xl,

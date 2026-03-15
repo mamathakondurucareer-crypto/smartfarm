@@ -52,6 +52,16 @@ from backend.routers.market import router as market_router
 from backend.routers.incidents_production import incidents_router, production_router
 from backend.routers.sensors_automation import sensors_router, automation_router
 from backend.routers.ai_analysis import router as ai_router
+# ── Retail / Store modules ──
+from backend.routers.store_config import router as store_config_router
+from backend.routers.store_stock import router as store_stock_router
+from backend.routers.supply_chain import router as supply_chain_router
+from backend.routers.pos import router as pos_router
+from backend.routers.packing import router as packing_router
+from backend.routers.logistics import router as logistics_router
+from backend.routers.service_requests import router as service_requests_router
+from backend.routers.activity_log import router as activity_log_router
+from backend.routers.reports import router as reports_router
 
 app.include_router(auth_router)
 app.include_router(dashboard_router)
@@ -66,6 +76,16 @@ app.include_router(production_router)
 app.include_router(sensors_router)
 app.include_router(automation_router)
 app.include_router(ai_router)
+# ── Retail / Store modules ──
+app.include_router(store_config_router)
+app.include_router(store_stock_router)
+app.include_router(supply_chain_router)
+app.include_router(pos_router)
+app.include_router(packing_router)
+app.include_router(logistics_router)
+app.include_router(service_requests_router)
+app.include_router(activity_log_router)
+app.include_router(reports_router)
 
 
 # ── Health Check ──
@@ -95,6 +115,8 @@ def info():
             "auth", "dashboard", "aquaculture", "crops", "poultry",
             "inventory", "financial", "market", "incidents", "production",
             "sensors", "automation", "ai_analysis",
+            "store", "supply_chain", "pos", "packing", "logistics",
+            "service_requests", "activity_logs", "reports",
         ],
         "api_docs": "/docs",
     }

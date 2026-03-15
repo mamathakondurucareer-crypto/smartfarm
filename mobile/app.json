@@ -20,11 +20,10 @@
       "package": "in.smartfarm.os"
     },
     "web": {
-      "bundler": "webpack",
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/favicon.png",
       "backgroundColor": "#0B1A14"
     },
-    "plugins": ["react-native-reanimated"]
+    "plugins": []
   }
 }

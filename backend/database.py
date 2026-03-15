@@ -53,5 +53,6 @@ def init_db():
     from backend.models import (  # noqa: F401 — import to register models
         user, aquaculture, crop, poultry, inventory,
         sensor, automation, financial, market, incident, production,
+        store, supply_chain, retail, packing, logistics, service_request, activity_log,
     )
     Base.metadata.create_all(bind=engine)

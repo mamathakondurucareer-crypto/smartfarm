@@ -35,6 +35,15 @@ export const colors = {
   market:      "#9B59B6",
   verticalFarm:"#8E44AD",
   ai:          "#00BCD4",
+
+  // Store / retail
+  store:       "#E91E63",
+  pos:         "#FF5722",
+  logistics:   "#607D8B",
+  packing:     "#FF9800",
+  scanner:     "#00BFA5",
+  reports:     "#7C4DFF",
+  service:     "#FF6D00",
 };
 
 export const spacing = {
