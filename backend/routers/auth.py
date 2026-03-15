@@ -20,7 +20,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
-    user = db.query(User).filter(User.id == payload.get("sub")).first()
+    user = db.query(User).filter(User.id == int(payload.get("sub"))).first()
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or inactive")
     return user
@@ -55,7 +55,7 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
         raise HTTPException(403, "Account disabled")
     user.last_login = datetime.now(timezone.utc)
     db.commit()
-    token = create_access_token({"sub": user.id, "role": user.role.name})
+    token = create_access_token({"sub": str(user.id), "role": user.role.name})
     return TokenResponse(
         access_token=token, user_id=user.id,
         username=user.username, role=user.role.name,
