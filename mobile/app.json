@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "SmartFarm OS",
+    "slug": "smartfarm-os",
+    "version": "1.0.0",
+    "orientation": "default",
+    "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "backgroundColor": "#0B1A14"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "in.smartfarm.os"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B1A14"
+      },
+      "package": "in.smartfarm.os"
+    },
+    "web": {
+      "bundler": "webpack",
+      "output": "static",
+      "favicon": "./assets/favicon.png",
+      "backgroundColor": "#0B1A14"
+    },
+    "plugins": ["react-native-reanimated"]
+  }
+}
