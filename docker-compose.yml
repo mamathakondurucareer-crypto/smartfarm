@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: smartfarm
+      POSTGRES_USER: smartfarm
+      POSTGRES_PASSWORD: smartfarm_pass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartfarm"]
+      interval: 5s
+      retries: 5
+
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://smartfarm:smartfarm_pass@db:5432/smartfarm
+      SECRET_KEY: change-this-in-production-to-random-64-chars
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      DEBUG: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+    command: >
+      sh -c "python -m backend.seeds.seed_data && uvicorn backend.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  pgdata:
