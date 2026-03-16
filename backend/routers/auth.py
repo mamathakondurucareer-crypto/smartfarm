@@ -1,22 +1,64 @@
 """Authentication and user management endpoints."""
 
+import time
+from collections import defaultdict
 from datetime import datetime, timezone
+from threading import Lock
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, status
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
+from backend.config import get_settings
 from backend.database import get_db
 from backend.models.user import User, Role
 from backend.schemas import UserCreate, UserOut, TokenResponse, RoleOut
-from backend.services.auth_service import hash_password, verify_password, create_access_token, decode_token
+from backend.services.auth_service import (
+    hash_password,
+    verify_password,
+    validate_password_strength,
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+)
 
+settings = get_settings()
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
+# ── Brute-force protection (in-memory, per IP) ─────────────────────────────
+_failed: dict[str, list[float]] = defaultdict(list)
+_failed_lock = Lock()
 
-# ─── Extra schemas (inline to avoid touching shared schemas file) ──
+
+def _check_lockout(ip: str) -> None:
+    now = time.time()
+    window = settings.login_lockout_seconds
+    with _failed_lock:
+        attempts = [t for t in _failed[ip] if now - t < window]
+        _failed[ip] = attempts
+        if len(attempts) >= settings.login_max_attempts:
+            wait = int(window - (now - attempts[0]))
+            raise HTTPException(
+                status_code=429,
+                detail=f"Too many failed login attempts. Try again in {wait}s.",
+                headers={"Retry-After": str(wait)},
+            )
+
+
+def _record_failure(ip: str) -> None:
+    with _failed_lock:
+        _failed[ip].append(time.time())
+
+
+def _clear_failures(ip: str) -> None:
+    with _failed_lock:
+        _failed.pop(ip, None)
+
+
+# ── Inline schemas ──────────────────────────────────────────────────────────
 class UserAdminOut(BaseModel):
     id: int
     username: str
@@ -32,9 +74,9 @@ class UserAdminOut(BaseModel):
 
 
 class UserUpdateAdmin(BaseModel):
-    full_name: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
+    full_name: Optional[str] = Field(None, max_length=100)
+    email: Optional[str] = Field(None, max_length=255)
+    phone: Optional[str] = Field(None, max_length=20)
     role_id: Optional[int] = None
 
 
@@ -42,41 +84,61 @@ class UserStatusUpdate(BaseModel):
     is_active: bool
 
 
-# ─── Role guard helper ────────────────────────────────────────────
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class TokenPair(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    user_id: int
+    username: str
+    role: str
+
+
+# ── Auth helpers ────────────────────────────────────────────────────────────
+def _get_user(token: str, db: Session) -> User:
+    if not token:
+        raise HTTPException(401, "Not authenticated")
+    payload = decode_token(token, expected_type="access")
+    if not payload:
+        raise HTTPException(401, "Invalid or expired token")
+    user = db.query(User).filter(User.id == int(payload["sub"])).first()
+    if not user or not user.is_active:
+        raise HTTPException(401, "User not found or inactive")
+    return user
+
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+    return _get_user(token, db)
+
+
 def require_roles(*role_names: str):
-    def _dep(current_user: User = Depends(lambda token=Depends(oauth2_scheme), db=Depends(get_db): _get_user(token, db))):
+    def _dep(current_user: User = Depends(get_current_user)):
         if current_user.role.name not in role_names:
             raise HTTPException(403, f"Requires one of: {', '.join(role_names)}")
         return current_user
     return _dep
 
 
-def _get_user(token: str, db: Session) -> User:
-    if not token:
-        raise HTTPException(401, "Not authenticated")
-    payload = decode_token(token)
-    if not payload:
-        raise HTTPException(401, "Invalid token")
-    user = db.query(User).filter(User.id == int(payload.get("sub"))).first()
-    if not user or not user.is_active:
-        raise HTTPException(401, "User not found or inactive")
-    return user
+def _user_to_admin_out(u: User) -> dict:
+    return {
+        "id": u.id, "username": u.username, "email": u.email,
+        "full_name": u.full_name, "phone": u.phone,
+        "role_id": u.role_id, "role_name": u.role.name if u.role else None,
+        "is_active": u.is_active, "created_at": u.created_at,
+    }
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:  # noqa: E302
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    payload = decode_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    user = db.query(User).filter(User.id == int(payload.get("sub"))).first()
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="User not found or inactive")
-    return user
-
+# ── Endpoints ───────────────────────────────────────────────────────────────
 
 @router.post("/register", response_model=UserOut, status_code=201)
 def register(data: UserCreate, db: Session = Depends(get_db)):
+    try:
+        validate_password_strength(data.password)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
     if db.query(User).filter(User.username == data.username).first():
         raise HTTPException(400, "Username already exists")
     if db.query(User).filter(User.email == data.email).first():
@@ -95,19 +157,48 @@ def register(data: UserCreate, db: Session = Depends(get_db)):
     return user
 
 
-@router.post("/login", response_model=TokenResponse)
-def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@router.post("/login", response_model=TokenPair)
+def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    client_ip = request.client.host if request.client else "unknown"
+    _check_lockout(client_ip)
+
     user = db.query(User).filter(User.username == form.username).first()
     if not user or not verify_password(form.password, user.hashed_password):
+        _record_failure(client_ip)
+        # Uniform error for both "not found" and "wrong password"
         raise HTTPException(401, "Invalid credentials")
     if not user.is_active:
         raise HTTPException(403, "Account disabled")
+
+    _clear_failures(client_ip)
     user.last_login = datetime.now(timezone.utc)
     db.commit()
-    token = create_access_token({"sub": str(user.id), "role": user.role.name})
-    return TokenResponse(
-        access_token=token, user_id=user.id,
-        username=user.username, role=user.role.name,
+
+    payload = {"sub": str(user.id), "role": user.role.name}
+    return TokenPair(
+        access_token=create_access_token(payload),
+        refresh_token=create_refresh_token(payload),
+        user_id=user.id,
+        username=user.username,
+        role=user.role.name,
+    )
+
+
+@router.post("/refresh", response_model=TokenPair)
+def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
+    payload = decode_token(body.refresh_token, expected_type="refresh")
+    if not payload:
+        raise HTTPException(401, "Invalid or expired refresh token")
+    user = db.query(User).filter(User.id == int(payload["sub"])).first()
+    if not user or not user.is_active:
+        raise HTTPException(401, "User not found or inactive")
+    new_payload = {"sub": str(user.id), "role": user.role.name}
+    return TokenPair(
+        access_token=create_access_token(new_payload),
+        refresh_token=create_refresh_token(new_payload),
+        user_id=user.id,
+        username=user.username,
+        role=user.role.name,
     )
 
 
@@ -117,20 +208,11 @@ def me(user: User = Depends(get_current_user)):
 
 
 @router.get("/roles", response_model=list[RoleOut])
-def list_roles(db: Session = Depends(get_db)):
+def list_roles(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     return db.query(Role).all()
 
 
-# ─── User management (admin / manager) ───────────────────────────
-
-def _user_to_admin_out(u: User) -> dict:
-    return {
-        "id": u.id, "username": u.username, "email": u.email,
-        "full_name": u.full_name, "phone": u.phone,
-        "role_id": u.role_id, "role_name": u.role.name if u.role else None,
-        "is_active": u.is_active, "created_at": u.created_at,
-    }
-
+# ── User management (admin / manager) ──────────────────────────────────────
 
 @router.get("/users", response_model=List[UserAdminOut])
 def list_users(
@@ -149,9 +231,12 @@ def create_user_admin(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Admin / Manager creates a user and can assign any role."""
     if current_user.role.name not in ("admin", "manager"):
         raise HTTPException(403, "Admin or Manager role required")
+    try:
+        validate_password_strength(data.password)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
     if db.query(User).filter(User.username == data.username).first():
         raise HTTPException(400, "Username already exists")
     if db.query(User).filter(User.email == data.email).first():
@@ -182,8 +267,21 @@ def update_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
-    for field, value in data.model_dump(exclude_none=True).items():
-        setattr(user, field, value)
+    # Explicitly update only allowed fields — no bulk setattr
+    updates = data.model_dump(exclude_none=True)
+    if "full_name" in updates:
+        user.full_name = updates["full_name"]
+    if "email" in updates:
+        if db.query(User).filter(User.email == updates["email"], User.id != user_id).first():
+            raise HTTPException(400, "Email already in use")
+        user.email = updates["email"]
+    if "phone" in updates:
+        user.phone = updates["phone"]
+    if "role_id" in updates:
+        role = db.query(Role).filter(Role.id == updates["role_id"]).first()
+        if not role:
+            raise HTTPException(400, "Invalid role_id")
+        user.role_id = updates["role_id"]
     db.commit()
     db.refresh(user)
     return _user_to_admin_out(user)

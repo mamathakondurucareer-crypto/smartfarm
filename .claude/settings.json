@@ -1,0 +1,94 @@
+{
+  "env": {
+    "MAX_THINKING_TOKENS": "10000",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "haiku"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest tests/test_functional_pos.py::TestPOSTransactions::test_void_transaction -x -q --tb=short --no-header)",
+      "Bash(python3 -c \"import json,sys; p=json.load\\(sys.stdin\\); print\\(json.dumps\\(p.get\\(''''exports'''', {}\\), indent=2\\)\\)\")",
+      "Bash(python3 -c \"import json,sys; p=json.load\\(sys.stdin\\); print\\(''''main:'''', p.get\\(''''main''''\\)\\); print\\(''''react-native:'''', p.get\\(''''react-native''''\\)\\); print\\(''''browser:'''', p.get\\(''''browser''''\\)\\)\")",
+      "Bash(python3 -c \":*)",
+      "Bash(ls /Users/usangaraju/Downloads/smartfarm/mobile/node_modules/react-native-svg/src/*.web.*)",
+      "Bash(python3 -c \"import json,sys; p=json.load\\(sys.stdin\\); print\\(''''version:'''', p.get\\(''''version''''\\)\\); print\\(''''peerDeps:'''', p.get\\(''''peerDependencies''''\\)\\)\")",
+      "Bash(ls /Users/usangaraju/Downloads/smartfarm/mobile/node_modules/react-native-safe-area-context/src/NativeSafe*)",
+      "Bash(curl -s \"http://localhost:8081/App.bundle?platform=web&dev=true&hot=false&lazy=true&transform.engine=hermes&transform.routerRoot=app&unstable_transformProfile=hermes-stable\" -o /tmp/exact_bundle.js)",
+      "Read(//tmp/**)",
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(kill 56738)",
+      "Bash(npx expo:*)",
+      "Bash(curl -s http://localhost:8000/api/auth/roles)",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/login -d \"username=admin&password=admin123\")",
+      "Bash(kill -HUP 55843)",
+      "Bash(python -c \":*)",
+      "Bash(python3 -c \"import sqlalchemy; print\\(sqlalchemy.__version__\\)\")",
+      "Bash(source venv/bin/activate)",
+      "Bash(python -m pytest tests/test_functional_service_requests.py::TestServiceRequests::test_assign_service_request -x -q --tb=short --no-header)",
+      "Bash(python -m pytest tests/test_functional_supply_chain.py::TestSupplyChainTransfers::test_create_transfer -q --tb=long)",
+      "Bash(docker --version)",
+      "Bash(docker compose:*)",
+      "Bash(open -a Docker)",
+      "Bash(npm install:*)",
+      "Bash(npx playwright:*)",
+      "Bash(APP_URL=http://localhost:8083 npx playwright test --reporter=list)",
+      "Bash(APP_URL=http://localhost:8083 npx playwright test tests/auth/login.spec.js --project=chromium --reporter=list)",
+      "Bash(node -e \":*)",
+      "Bash(node /tmp/smartfarm-debug.js)",
+      "Bash(cp /tmp/smartfarm-debug.js /Users/usangaraju/Downloads/smartfarm/e2e/smartfarm-debug.js)",
+      "Bash(node smartfarm-debug.js)",
+      "Bash(node smartfarm-debug2.js)",
+      "Bash(jq \".suites | map\\(select\\(.title | test\\(\"\"✘|fail|error\"\"\\)\\) | {title, tests}\\) | .[] | .tests[] | select\\(.status == \"\"failed\"\"\\) | .title\")",
+      "Bash(curl -s http://localhost:8002/api/health -I)",
+      "Bash(curl -s http://localhost:8002/api/health/)",
+      "Bash(curl -s http://localhost:8002/api/ -H \"Content-Type: application/json\")",
+      "Bash(tee test_output.log)",
+      "Bash(wait)",
+      "Bash(find /Users/usangaraju/Downloads/smartfarm/e2e -name *.json -type f)",
+      "Bash(ls -lt /tmp/*.txt)",
+      "Bash(find /Users/usangaraju/Downloads/smartfarm/e2e/test-results -name *.json -mmin -5)",
+      "Bash(curl -s http://localhost:8000/api/auth/login -X POST -H \"Content-Type: application/json\" -d '{\"\"\"\"username\"\"\"\":\"\"\"\"admin\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"admin123\"\"\"\"}')",
+      "Bash(curl -s http://localhost:8000/api/auth/login -X POST -H \"Content-Type: application/json\" -d '{\"\"username\"\":\"\"admin\"\",\"\"password\"\":\"\"admin123\"\"}' -w \"\\\\n\")",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/login -H \"Content-Type: application/json\" --data '{\"\"\"\"username\"\"\"\":\"\"\"\"admin\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"admin123\"\"\"\"}')",
+      "Bash(python3:*)",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/login -d \"username=manager&password=manager123\")",
+      "Bash(pkill -f \"playwright test\")",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(ls -1 /Users/usangaraju/Downloads/smartfarm/e2e/test-results/*.json)",
+      "Bash(xargs cat:*)",
+      "Bash(ls -lh /Users/usangaraju/Downloads/smartfarm/e2e/test-results/*.json)",
+      "Bash(ls -la /Users/usangaraju/Downloads/smartfarm/e2e/test-results/*.json)",
+      "Bash(pkill -9 -f \"playwright test\")",
+      "Bash(tee /tmp/e2e_test_output.txt)",
+      "Bash(while ps:*)",
+      "Bash(npm test:*)",
+      "Bash(find /Users/usangaraju/Downloads/smartfarm/e2e -name *.log -type f -mmin -60)",
+      "Bash(find /Users/usangaraju/Downloads/smartfarm/e2e/test-results -name *.json -type f -newer /Users/usangaraju/Downloads/smartfarm/e2e/tests/farm/crops.spec.js)",
+      "Bash(git rm:*)",
+      "Bash(docker system:*)",
+      "Bash(find /Users/usangaraju/Downloads/smartfarm -type f -name [Rr][Ee][Aa][Dd][Mm][Ee]*)",
+      "Bash(grep -r '^router = APIRouter' /Users/usangaraju/Downloads/smartfarm/backend/routers/*.py)",
+      "Bash(grep -h @router /Users/usangaraju/Downloads/smartfarm/backend/routers/*.py)",
+      "Bash(wc -l /Users/usangaraju/Downloads/smartfarm/tests/test_*.py)",
+      "Bash(grep -r \"APIRouter\\\\|prefix=\" /Users/usangaraju/Downloads/smartfarm/backend/routers/*.py)",
+      "Bash(git push:*)"
+    ],
+    "additionalDirectories": [
+      "/tmp",
+      "/private/tmp"
+    ]
+  },
+  "model": "sonnet",
+  "enabledPlugins": {
+    "everything-claude-code@everything-claude-code": true
+  },
+  "extraKnownMarketplaces": {
+    "everything-claude-code": {
+      "source": {
+        "source": "github",
+        "repo": "affaan-m/everything-claude-code"
+      }
+    }
+  }
+}

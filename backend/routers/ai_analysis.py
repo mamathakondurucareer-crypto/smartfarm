@@ -1,12 +1,14 @@
 """AI-powered farm analysis endpoint using Anthropic Claude API."""
 
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from backend.database import get_db
 from backend.config import get_settings
+from backend.models.user import User
+from backend.routers.auth import get_current_user
 from backend.schemas import AIQueryRequest, AIQueryResponse
 from backend.services.analytics_service import AnalyticsService
 
@@ -26,7 +28,6 @@ def build_farm_context(db: Session) -> str:
     from backend.models.inventory import InventoryItem
     from backend.models.incident import Incident
 
-    # Pond data
     ponds = db.query(Pond).filter(Pond.is_active == True).all()
     pond_lines = []
     for p in ponds:
@@ -37,28 +38,23 @@ def build_farm_context(db: Session) -> str:
         wq_str = f"DO={wq.dissolved_oxygen},pH={wq.ph},Temp={wq.water_temperature},NH3={wq.ammonia}" if wq else "No data"
         pond_lines.append(f"{p.pond_code}({p.pond_type}): Stock={stock}, Biomass={biomass:.1f}kg, WQ=[{wq_str}]")
 
-    # Crops
     gh_crops = db.query(GreenhouseCrop).filter(GreenhouseCrop.status == "active").all()
     gh_str = "; ".join(f"{c.crop_name}: {c.growth_stage}, Health={c.health_score}%, Yield={c.actual_yield_kg}/{c.target_yield_kg}kg" for c in gh_crops)
 
     vf = db.query(VerticalFarmBatch).filter(VerticalFarmBatch.status == "growing").all()
     vf_str = "; ".join(f"{v.crop_name}: Day{v.current_day}/{v.cycle_days}, Health={v.health_score}%" for v in vf)
 
-    # Poultry
     flock = db.query(PoultryFlock).filter(PoultryFlock.status == "laying").first()
     poultry_str = f"Hens={flock.current_count}, LayRate={flock.lay_rate_pct}%" if flock else "No active flock"
 
-    # Alerts
     active_alerts = db.query(Alert).filter(Alert.resolved == False).order_by(Alert.created_at.desc()).limit(10).all()
     alert_str = "; ".join(f"[{a.alert_type}] {a.message}" for a in active_alerts) or "No active alerts"
 
-    # Low stock
     low_items = db.query(InventoryItem).filter(
         InventoryItem.current_stock <= InventoryItem.reorder_point, InventoryItem.is_active == True
     ).all()
     low_str = "; ".join(f"{i.name}: {i.current_stock}/{i.reorder_point} {i.unit}" for i in low_items) or "All adequate"
 
-    # Open incidents
     incidents = db.query(Incident).filter(Incident.status.in_(["open", "investigating"])).all()
     inc_str = "; ".join(f"[{i.severity}] {i.title}" for i in incidents) or "None"
 
@@ -81,9 +77,13 @@ PENDING ORDERS: {kpis['operations']['pending_orders']}"""
 
 
 @router.post("/analyze", response_model=AIQueryResponse)
-async def analyze(request: AIQueryRequest, db: Session = Depends(get_db)):
+async def analyze(
+    request: AIQueryRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     if not settings.anthropic_api_key:
-        raise HTTPException(500, "Anthropic API key not configured. Set ANTHROPIC_API_KEY in .env")
+        raise HTTPException(503, "AI analysis service is not available")
 
     try:
         import httpx
@@ -115,14 +115,17 @@ async def analyze(request: AIQueryRequest, db: Session = Depends(get_db)):
             modules_analyzed=request.context_modules,
             timestamp=datetime.now(timezone.utc),
         )
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(502, f"AI API error: {e.response.status_code}")
-    except Exception as e:
-        raise HTTPException(500, f"AI analysis failed: {str(e)}")
+    except httpx.HTTPStatusError:
+        raise HTTPException(502, "AI service error — please try again")
+    except Exception:
+        raise HTTPException(500, "AI analysis failed")
 
 
 @router.get("/quick-health")
-def quick_health_check(db: Session = Depends(get_db)):
+def quick_health_check(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     """Non-AI quick health summary from database."""
     svc = AnalyticsService(db)
     kpis = svc.get_dashboard_kpis()

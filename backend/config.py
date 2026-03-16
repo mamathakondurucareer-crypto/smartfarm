@@ -1,7 +1,6 @@
 """Application configuration loaded from environment variables."""
 
-import os
-from pathlib import Path
+import secrets
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings
@@ -11,10 +10,23 @@ class Settings(BaseSettings):
     # ── Application ──
     app_name: str = "SmartFarm OS"
     app_version: str = "1.0.0"
-    debug: bool = True
-    secret_key: str = "dev-secret-key-change-in-production"
+    debug: bool = False
+
+    # SECRET_KEY must be set in .env — never use the fallback in production.
+    # Generate a strong key with: python -c "import secrets; print(secrets.token_hex(32))"
+    secret_key: str = ""
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 480
+    access_token_expire_minutes: int = 60
+    refresh_token_expire_minutes: int = 10080  # 7 days
+
+    # ── CORS ──
+    # Comma-separated list of allowed origins.  Empty string = deny all cross-origin requests.
+    # Example: "http://localhost:8081,https://farm.example.com"
+    allowed_origins: str = "http://localhost:8081,http://localhost:3000"
+
+    # ── Brute-force protection ──
+    login_max_attempts: int = 5       # failed attempts before lockout
+    login_lockout_seconds: int = 900  # 15-minute lockout
 
     # ── Database ──
     database_url: str = "sqlite:///./smartfarm.db"
@@ -42,6 +54,25 @@ class Settings(BaseSettings):
 
     # ── Markets ──
     market_cities: str = "Hyderabad,Chennai,Vijayawada,Kadapa,Nellore"
+
+    def effective_secret_key(self) -> str:
+        """Return configured secret or raise on startup if missing in production."""
+        if self.secret_key:
+            return self.secret_key
+        if self.debug:
+            # Dev-only: generate a stable random key for the process lifetime.
+            # Store it on the class so the same value is returned on every call.
+            if not hasattr(Settings, "_dev_secret"):
+                Settings._dev_secret = secrets.token_hex(32)
+            return Settings._dev_secret
+        raise RuntimeError(
+            "SECRET_KEY must be set in .env for production. "
+            "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+        )
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
 
     class Config:
         env_file = ".env"

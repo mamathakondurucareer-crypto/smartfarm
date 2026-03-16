@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
+from backend.models.user import User
+from backend.routers.auth import get_current_user
 from backend.services.analytics_service import AnalyticsService
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
@@ -16,6 +18,7 @@ def get_kpis(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     svc = AnalyticsService(db)
     return svc.get_dashboard_kpis(start_date, end_date)
@@ -26,6 +29,7 @@ def revenue_by_stream(
     start_date: date = Query(...),
     end_date: date = Query(...),
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     svc = AnalyticsService(db)
     return svc.get_revenue_by_stream(start_date, end_date)
@@ -36,12 +40,17 @@ def expense_by_category(
     start_date: date = Query(...),
     end_date: date = Query(...),
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     svc = AnalyticsService(db)
     return svc.get_expense_by_category(start_date, end_date)
 
 
 @router.get("/monthly-pnl")
-def monthly_pnl(year: int = Query(...), db: Session = Depends(get_db)):
+def monthly_pnl(
+    year: int = Query(...),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     svc = AnalyticsService(db)
     return svc.get_monthly_pnl(year)

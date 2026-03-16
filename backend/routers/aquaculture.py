@@ -8,6 +8,8 @@ from sqlalchemy import func
 
 from backend.database import get_db
 from backend.models.aquaculture import Pond, FishBatch, FeedLog, WaterQualityLog, FishHarvest, CrabBatch
+from backend.models.user import User
+from backend.routers.auth import get_current_user
 from backend.schemas import (
     PondCreate, PondOut, FishBatchCreate, FishBatchOut,
     FeedLogCreate, WaterQualityCreate, FishHarvestCreate,
@@ -16,10 +18,17 @@ from backend.services.alert_service import check_threshold
 
 router = APIRouter(prefix="/api/aquaculture", tags=["Aquaculture"])
 
+# Roles allowed to write aquaculture data
+_WRITE_ROLES = ("admin", "manager", "operator")
+
 
 # ── Ponds ──
 @router.get("/ponds", response_model=list[PondOut])
-def list_ponds(status: Optional[str] = None, db: Session = Depends(get_db)):
+def list_ponds(
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     q = db.query(Pond).filter(Pond.is_active == True)
     if status:
         q = q.filter(Pond.status == status)
@@ -27,7 +36,13 @@ def list_ponds(status: Optional[str] = None, db: Session = Depends(get_db)):
 
 
 @router.post("/ponds", response_model=PondOut, status_code=201)
-def create_pond(data: PondCreate, db: Session = Depends(get_db)):
+def create_pond(
+    data: PondCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to create ponds")
     pond = Pond(
         **data.model_dump(),
         area_sqm=data.length_m * data.width_m,
@@ -40,7 +55,11 @@ def create_pond(data: PondCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/ponds/{pond_id}")
-def get_pond(pond_id: int, db: Session = Depends(get_db)):
+def get_pond(
+    pond_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     pond = db.query(Pond).filter(Pond.id == pond_id).first()
     if not pond:
         raise HTTPException(404, "Pond not found")
@@ -70,7 +89,13 @@ def get_pond(pond_id: int, db: Session = Depends(get_db)):
 
 # ── Fish Batches ──
 @router.post("/batches", response_model=FishBatchOut, status_code=201)
-def create_batch(data: FishBatchCreate, db: Session = Depends(get_db)):
+def create_batch(
+    data: FishBatchCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to create batches")
     pond = db.query(Pond).filter(Pond.id == data.pond_id).first()
     if not pond:
         raise HTTPException(404, "Pond not found")
@@ -87,7 +112,12 @@ def create_batch(data: FishBatchCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/batches")
-def list_batches(pond_id: Optional[int] = None, status: Optional[str] = None, db: Session = Depends(get_db)):
+def list_batches(
+    pond_id: Optional[int] = None,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     q = db.query(FishBatch)
     if pond_id:
         q = q.filter(FishBatch.pond_id == pond_id)
@@ -97,7 +127,15 @@ def list_batches(pond_id: Optional[int] = None, status: Optional[str] = None, db
 
 
 @router.put("/batches/{batch_id}/update-weight")
-def update_batch_weight(batch_id: int, avg_weight_g: float, mortality_count: int = 0, db: Session = Depends(get_db)):
+def update_batch_weight(
+    batch_id: int,
+    avg_weight_g: float,
+    mortality_count: int = 0,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to update batches")
     batch = db.query(FishBatch).filter(FishBatch.id == batch_id).first()
     if not batch:
         raise HTTPException(404, "Batch not found")
@@ -105,7 +143,6 @@ def update_batch_weight(batch_id: int, avg_weight_g: float, mortality_count: int
     if mortality_count > 0:
         batch.mortality_count += mortality_count
         batch.current_count = max(0, batch.current_count - mortality_count)
-    # Recalculate FCR
     total_feed = db.query(func.coalesce(func.sum(FeedLog.quantity_kg), 0)).filter(
         FeedLog.pond_id == batch.pond_id
     ).scalar()
@@ -117,7 +154,13 @@ def update_batch_weight(batch_id: int, avg_weight_g: float, mortality_count: int
 
 # ── Feed Logs ──
 @router.post("/feed-logs", status_code=201)
-def log_feed(data: FeedLogCreate, db: Session = Depends(get_db)):
+def log_feed(
+    data: FeedLogCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to log feed")
     log = FeedLog(**data.model_dump())
     db.add(log)
     db.commit()
@@ -131,6 +174,7 @@ def list_feed_logs(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     q = db.query(FeedLog)
     if pond_id:
@@ -144,11 +188,16 @@ def list_feed_logs(
 
 # ── Water Quality ──
 @router.post("/water-quality", status_code=201)
-def log_water_quality(data: WaterQualityCreate, db: Session = Depends(get_db)):
+def log_water_quality(
+    data: WaterQualityCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to log water quality")
     log = WaterQualityLog(**data.model_dump())
     db.add(log)
     db.commit()
-    # Check thresholds
     alerts = []
     pond = db.query(Pond).filter(Pond.id == data.pond_id).first()
     zone = pond.pond_code if pond else f"pond_{data.pond_id}"
@@ -168,7 +217,12 @@ def log_water_quality(data: WaterQualityCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/water-quality/{pond_id}/latest")
-def latest_water_quality(pond_id: int, limit: int = 24, db: Session = Depends(get_db)):
+def latest_water_quality(
+    pond_id: int,
+    limit: int = Query(24, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     logs = db.query(WaterQualityLog).filter(
         WaterQualityLog.pond_id == pond_id
     ).order_by(WaterQualityLog.recorded_at.desc()).limit(limit).all()
@@ -177,13 +231,18 @@ def latest_water_quality(pond_id: int, limit: int = 24, db: Session = Depends(ge
 
 # ── Harvests ──
 @router.post("/harvests", status_code=201)
-def log_harvest(data: FishHarvestCreate, db: Session = Depends(get_db)):
+def log_harvest(
+    data: FishHarvestCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to log harvests")
     harvest = FishHarvest(
         **data.model_dump(),
         total_revenue=data.quantity_kg * data.sale_price_per_kg,
     )
     db.add(harvest)
-    # Update batch
     batch = db.query(FishBatch).filter(FishBatch.id == data.batch_id).first()
     if batch:
         batch.current_count = max(0, batch.current_count - data.count)
@@ -195,7 +254,12 @@ def log_harvest(data: FishHarvestCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/harvests")
-def list_harvests(start_date: Optional[date] = None, end_date: Optional[date] = None, db: Session = Depends(get_db)):
+def list_harvests(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     q = db.query(FishHarvest)
     if start_date:
         q = q.filter(FishHarvest.harvest_date >= start_date)
@@ -206,7 +270,10 @@ def list_harvests(start_date: Optional[date] = None, end_date: Optional[date] = 
 
 # ── Summary ──
 @router.get("/summary")
-def aquaculture_summary(db: Session = Depends(get_db)):
+def aquaculture_summary(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     ponds = db.query(Pond).filter(Pond.is_active == True).all()
     batches = db.query(FishBatch).filter(FishBatch.status == "growing").all()
     total_stock = sum(b.current_count for b in batches)
