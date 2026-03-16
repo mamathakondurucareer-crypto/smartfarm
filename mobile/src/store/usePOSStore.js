@@ -21,9 +21,9 @@ const usePOSStore = create((set, get) => ({
         ),
       });
     } else {
-      const unit_price   = product.selling_price ?? product.price ?? 0;
+      const unit_price   = Number(product.selling_price ?? product.price ?? 0);
       const discount_pct = 0;
-      const tax_rate     = product.tax_rate ?? 0;
+      const tax_rate     = Number(product.tax_rate ?? product.gst_rate ?? 0);
       const total        = qty * unit_price * (1 - discount_pct / 100) * (1 + tax_rate / 100);
       set({ cart: [...cart, { product, quantity: qty, unit_price, discount_pct, tax_rate, total }] });
     }

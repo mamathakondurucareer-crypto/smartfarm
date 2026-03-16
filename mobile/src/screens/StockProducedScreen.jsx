@@ -45,26 +45,24 @@ export default function StockProducedScreen() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const batches  = data?.batches ?? data?.records ?? [];
-  const summary  = data?.summary ?? {};
-  const topCat   = summary.top_category ?? (batches[0]?.category ?? "—");
-  const totalVal = summary.total_value ?? batches.reduce((s, b) => s + (b.value ?? 0), 0);
+  const totalBatches = data?.total_batches ?? 0;
+  const totalVal     = data?.total_value ?? 0;
+  const byCategory   = data?.by_category ?? {};
+  const bySource     = data?.by_source ?? {};
+  const topCat       = Object.keys(byCategory).length > 0
+    ? Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0][0]
+    : "—";
 
   const stats = [
-    { label: "Total Batches",  value: String(batches.length),                    color: colors.primary,  icon: Layers },
+    { label: "Total Batches",  value: String(totalBatches),                      color: colors.primary,  icon: Layers },
     { label: "Total Value",    value: `₹${Number(totalVal).toLocaleString()}`,   color: colors.store,    icon: Layers },
     { label: "Top Category",   value: topCat,                                    color: colors.packing,  icon: Layers },
   ];
 
-  const headers = ["Date", "Product", "Category", "Source", "Qty", "Grade", "Value"];
-  const rows    = batches.map((b) => [
-    b.date ?? b.production_date ?? "—",
-    b.product_name ?? b.product ?? "—",
-    <Badge key={`c${b.id}`} label={b.category ?? "—"} color={colors.packing} />,
-    b.source ?? b.source_module ?? "—",
-    `${b.quantity ?? b.qty ?? 0} ${b.unit ?? ""}`,
-    b.grade ?? "—",
-    `₹${(b.value ?? 0).toLocaleString()}`,
+  const headers = ["Category", "Quantity"];
+  const rows    = Object.entries(byCategory).map(([cat, qty]) => [
+    cat,
+    String(qty),
   ]);
 
   return (
@@ -115,13 +113,20 @@ export default function StockProducedScreen() {
             <StatGrid stats={stats} />
           </Card>
 
-          <Card>
-            <SectionHeader Icon={Layers} title="Production Records" color={colors.primary} />
+          <Card style={styles.cardGap}>
+            <SectionHeader Icon={Layers} title="By Category" color={colors.primary} />
             {rows.length === 0
               ? <Text style={styles.empty}>No production records found</Text>
               : <DataTable headers={headers} rows={rows} />
             }
           </Card>
+
+          {Object.keys(bySource).length > 0 && (
+            <Card>
+              <SectionHeader Icon={Layers} title="By Source" color={colors.store} />
+              <DataTable headers={["Source", "Quantity"]} rows={Object.entries(bySource).map(([src, qty]) => [src, String(qty)])} />
+            </Card>
+          )}
         </>
       )}
     </ScreenWrapper>

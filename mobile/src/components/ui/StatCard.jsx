@@ -13,16 +13,19 @@ import { colors, spacing, radius, fontSize } from "../../config/theme";
  * @param {string}  sub           — secondary line below value
  * @param {boolean} compact       — smaller variant for dense layouts
  */
-export default function StatCard({ Icon, label, value, unit, color = colors.primary, sub, compact }) {
+export default function StatCard({ Icon, icon, label, value, unit, color = colors.primary, sub, compact }) {
+  if (!Icon && icon) Icon = icon;
   const iconSize  = compact ? 32 : 38;
   const iconInner = compact ? 16 : 18;
   const valueSize = compact ? fontSize.xl : fontSize.h1;
 
   return (
     <View style={styles.card}>
-      <View style={[styles.iconWrap, { width: iconSize, height: iconSize, backgroundColor: color + "22" }]}>
-        <Icon size={iconInner} color={color} />
-      </View>
+      {Icon && (
+        <View style={[styles.iconWrap, { width: iconSize, height: iconSize, backgroundColor: color + "22" }]}>
+          <Icon size={iconInner} color={color} />
+        </View>
+      )}
       <View style={styles.body}>
         <Text style={styles.label} numberOfLines={1}>{label}</Text>
         <View style={styles.valueRow}>

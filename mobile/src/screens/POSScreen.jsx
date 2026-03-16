@@ -77,7 +77,19 @@ export default function POSScreen() {
     if (!barcode.trim()) return;
     try {
       const result = await api.pos.lookup(barcode.trim(), token);
-      if (result?.product) addToCart(result.product, 1);
+      if (result?.found && result?.result) {
+        // Normalize barcode result to match product shape for cart
+        const r = result.result;
+        addToCart({
+          id:            r.product_id,
+          name:          r.name,
+          unit:          r.unit,
+          selling_price: r.selling_price ?? 0,
+          gst_rate:      r.gst_rate ?? 0,
+        }, 1);
+      } else {
+        setError("Barcode not found in product catalog");
+      }
       setBarcode("");
     } catch (e) {
       setError(e.message);
@@ -213,7 +225,7 @@ export default function POSScreen() {
                         activeOpacity={0.75}
                       >
                         <Text style={styles.productName} numberOfLines={2}>{p.name}</Text>
-                        <Text style={styles.productPrice}>₹{(p.selling_price ?? p.price ?? 0).toLocaleString()}</Text>
+                        <Text style={styles.productPrice}>₹{Number(p.selling_price ?? p.price ?? 0).toLocaleString()}</Text>
                         <Text style={styles.productUnit}>{p.unit ?? ""}</Text>
                       </TouchableOpacity>
                     ))
@@ -376,9 +388,9 @@ export default function POSScreen() {
             {receipt && (
               <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.receiptCode}>Txn: {receipt.transaction_code ?? receipt.id}</Text>
-                <Text style={styles.receiptTotal}>Total Paid: ₹{(receipt.total_amount ?? 0).toFixed(2)}</Text>
+                <Text style={styles.receiptTotal}>Total Paid: ₹{Number(receipt.total_amount ?? 0).toFixed(2)}</Text>
                 <Text style={styles.receiptMode}>Mode: {receipt.payment_mode ?? "—"}</Text>
-                {receipt.items?.length > 0 && (
+                {Array.isArray(receipt.items) && receipt.items.length > 0 && (
                   <>
                     <Text style={[styles.label, { marginTop: spacing.md }]}>Items</Text>
                     {receipt.items.map((it, idx) => (

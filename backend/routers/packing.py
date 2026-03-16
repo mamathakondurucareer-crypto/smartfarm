@@ -84,7 +84,7 @@ def create_packing_order(
         item = PackingOrderItem(
             packing_order_id=order.id,
             product_id=item_data.product_id,
-            product_name=item_data.product_name,
+            product_name=item_data.product_name or product.name,
             quantity_required=item_data.quantity_required,
             quantity_packed=0,
             packaging_type=item_data.packaging_type,
@@ -94,7 +94,12 @@ def create_packing_order(
         db.add(item)
 
     db.commit()
-    db.refresh(order)
+    order = (
+        db.query(PackingOrder)
+        .options(joinedload(PackingOrder.items))
+        .filter(PackingOrder.id == order.id)
+        .first()
+    )
     return order
 
 

@@ -902,7 +902,7 @@ class POSTransactionOut(OrmBase):
 # ═══════════════════════════════════════════════════════════════
 class PackingItemCreate(BaseModel):
     product_id: int
-    product_name: str
+    product_name: Optional[str] = None
     quantity_required: float
     packaging_type: Optional[str] = None
     expiry_date: Optional[datetime] = None

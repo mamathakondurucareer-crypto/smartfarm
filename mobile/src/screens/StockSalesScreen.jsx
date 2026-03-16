@@ -66,7 +66,7 @@ export default function StockSalesScreen() {
 
   const txnHeaders = ["Date", "Code", "Items", "Total", "Payment", "Status"];
   const txnRows    = txns.map((t) => [
-    t.created_at ? new Date(t.created_at).toLocaleDateString() : "—",
+    (t.transaction_time ?? t.created_at) ? new Date(t.transaction_time ?? t.created_at).toLocaleDateString() : "—",
     t.transaction_code ?? t.id ?? "—",
     String(t.item_count ?? t.items?.length ?? 0),
     `₹${(t.total_amount ?? 0).toLocaleString()}`,

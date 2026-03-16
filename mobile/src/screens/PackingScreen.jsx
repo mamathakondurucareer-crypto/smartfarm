@@ -57,7 +57,7 @@ export default function PackingScreen() {
   const pending     = orders.filter((o) => o.status === "pending").length;
   const inProgress  = orders.filter((o) => o.status === "in_progress").length;
   const today       = new Date().toDateString();
-  const completedToday = orders.filter((o) => o.status === "completed" && new Date(o.completed_at ?? o.updated_at ?? "").toDateString() === today).length;
+  const completedToday = orders.filter((o) => o.status === "completed" && o.completed_at && new Date(o.completed_at).toDateString() === today).length;
 
   const stats = [
     { label: "Pending",          value: String(pending),        color: colors.warn,    icon: Package },
@@ -90,15 +90,23 @@ export default function PackingScreen() {
 
   const handleCreate = async () => {
     if (!form.order_ref_type) { setFormError("Select a reference type."); return; }
-    const validItems = form.items.filter((it) => it.product_id && it.quantity);
-    if (validItems.length === 0) { setFormError("Add at least one item with product ID and quantity."); return; }
+    const validItems = form.items.filter((it) => {
+      const pid = parseInt(it.product_id);
+      const qty = parseFloat(it.quantity);
+      return !isNaN(pid) && pid > 0 && !isNaN(qty) && qty > 0;
+    });
+    if (validItems.length === 0) { setFormError("Add at least one item with a valid product ID and quantity."); return; }
     setSaving(true);
     setFormError("");
     try {
       await api.packing.create({
         order_ref_type: form.order_ref_type,
         notes:          form.notes,
-        items:          validItems.map((it) => ({ product_id: parseInt(it.product_id), quantity: parseFloat(it.quantity) })),
+        items:          validItems.map((it) => ({
+          product_id:        parseInt(it.product_id),
+          product_name:      `Product #${it.product_id}`,
+          quantity_required: parseFloat(it.quantity),
+        })),
       }, token);
       setModalOpen(false);
       setForm(EMPTY_FORM);
@@ -143,7 +151,7 @@ export default function PackingScreen() {
                 <View key={order.id} style={styles.orderRow}>
                   <View style={styles.orderInfo}>
                     <View style={styles.orderTopRow}>
-                      <Text style={styles.orderCode}>#{order.order_code ?? order.id}</Text>
+                      <Text style={styles.orderCode}>#{order.packing_order_code ?? order.id}</Text>
                       <Badge label={order.status ?? "—"} color={STATUS_COLORS[order.status] ?? colors.textMuted} />
                     </View>
                     <Text style={styles.orderMeta}>

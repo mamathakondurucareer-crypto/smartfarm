@@ -288,7 +288,13 @@ def checkout(
     )
 
     db.commit()
-    db.refresh(txn)
+    # Re-query with joinedload to guarantee items are included in the response
+    txn = (
+        db.query(POSTransaction)
+        .options(joinedload(POSTransaction.items))
+        .filter(POSTransaction.id == txn.id)
+        .first()
+    )
     return txn
 
 

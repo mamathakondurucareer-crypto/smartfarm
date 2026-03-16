@@ -33,7 +33,10 @@ export default function LogisticsScreen() {
 
   const fetchTrips = useCallback(async () => {
     setLoading(true); setError("");
-    try { setTrips(await api.logistics.trips.list(token)); }
+    try {
+      const response = await api.logistics.trips.list(token);
+      setTrips(Array.isArray(response) ? response : []);
+    }
     catch (e) { setError(e.message); }
     finally { setLoading(false); }
   }, [token]);

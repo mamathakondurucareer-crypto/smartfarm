@@ -49,20 +49,22 @@ export default function StoreScreen() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const stats = daily ? [
-    { label: "Today's Sales",  value: `₹${(daily.total_sales ?? 0).toLocaleString()}`, color: colors.store,   icon: TrendingUp },
-    { label: "Transactions",   value: String(daily.transaction_count ?? 0),            color: colors.pos,     icon: ShoppingBag },
-    { label: "Low Stock",      value: String(lowStock.length),                         color: colors.warn,    icon: AlertTriangle },
-    { label: "Session",        value: daily.session_open ? "Open" : "Closed",          color: daily.session_open ? colors.primary : colors.textMuted, icon: Terminal },
+    { label: "Today's Sales",  value: `₹${Number(daily.total_sales ?? 0).toLocaleString()}`, color: colors.store,   icon: TrendingUp },
+    { label: "Transactions",   value: String(daily.total_transactions ?? 0),                  color: colors.pos,     icon: ShoppingBag },
+    { label: "Low Stock",      value: String(lowStock.length),                                color: colors.warn,    icon: AlertTriangle },
   ] : [];
 
   const txnHeaders = ["Time", "Code", "Amount", "Payment", "Status"];
-  const txnRows    = txns.map((t) => [
-    t.created_at ? new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—",
-    t.transaction_code ?? t.id ?? "—",
-    `₹${(t.total_amount ?? 0).toLocaleString()}`,
-    <Badge key={t.id} label={t.payment_mode ?? "—"} color={colors.info} />,
-    <Badge key={`s${t.id}`} label={t.status ?? "—"} color={t.status === "completed" ? colors.primary : colors.textMuted} />,
-  ]);
+  const txnRows    = txns.map((t) => {
+    const ts = t.transaction_time ?? t.created_at;
+    return [
+      ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—",
+      t.transaction_code ?? t.id ?? "—",
+      `₹${Number(t.total_amount ?? 0).toLocaleString()}`,
+      <Badge key={t.id} label={t.payment_mode ?? "—"} color={colors.info} />,
+      <Badge key={`s${t.id}`} label={t.status ?? "—"} color={t.status === "completed" ? colors.primary : colors.textMuted} />,
+    ];
+  });
 
   return (
     <ScreenWrapper title="Store">

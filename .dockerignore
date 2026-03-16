@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info
+.pytest_cache
+
+# Node
+mobile/node_modules/
+e2e/node_modules/
+
+# IDE
+.idea/
+.vscode/
+.claude/
+*.swp
+.DS_Store
+
+# Database
+*.db
+*.db-wal
+*.db-shm
+*.bak
+*.sqlite
+
+# Test artifacts
+e2e/playwright-report/
+e2e/test-results/
+mobile/__tests__/
+mobile/__mocks__/
+tests/
+
+# Build artifacts
+mobile/dist/
+mobile/web-build/

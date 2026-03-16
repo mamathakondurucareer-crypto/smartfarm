@@ -77,9 +77,9 @@ export default function ReportsScreen() {
 
 function SalesReport({ data }) {
   const stats = [
-    { Icon: TrendingUp, label: "Total Revenue", value: `₹${(data.total_revenue ?? 0).toLocaleString()}`, color: colors.primary },
+    { Icon: TrendingUp, label: "Total Revenue", value: `₹${Number(data.total_revenue ?? 0).toLocaleString()}`, color: colors.primary },
     { Icon: BarChart3,  label: "Transactions",  value: String(data.total_transactions ?? 0), color: colors.info },
-    { Icon: DollarSign, label: "Avg Value",     value: `₹${(data.avg_transaction_value ?? 0).toFixed(0)}`, color: colors.accent },
+    { Icon: DollarSign, label: "Avg Value",     value: `₹${Number(data.avg_transaction_value ?? 0).toFixed(0)}`, color: colors.accent },
   ];
   return (
     <>
@@ -91,22 +91,21 @@ function SalesReport({ data }) {
           ? <Text style={styles.empty}>No sales data yet.</Text>
           : (data.top_products ?? []).map((p, i) => (
             <View key={i} style={styles.row}>
-              <Text style={[styles.cell, { flex: 3 }]}>{p.product_name ?? p.product ?? "N/A"}</Text>
-              <Text style={[styles.cell, { flex: 1, textAlign: "right" }]}>{p.quantity ?? 0}</Text>
-              <Text style={[styles.cell, { flex: 2, textAlign: "right", color: colors.primary }]}>₹{(p.revenue ?? 0).toLocaleString()}</Text>
+              <Text style={[styles.cell, { flex: 3 }]}>{p.product_name ?? "N/A"}</Text>
+              <Text style={[styles.cell, { flex: 1, textAlign: "right" }]}>{p.qty_sold ?? p.quantity ?? 0}</Text>
+              <Text style={[styles.cell, { flex: 2, textAlign: "right", color: colors.primary }]}>₹{Number(p.revenue ?? 0).toLocaleString()}</Text>
             </View>
           ))}
       </Card>
-      {(data.by_payment_mode ?? []).length > 0 && (
+      {data.by_payment_mode && Object.keys(data.by_payment_mode).length > 0 && (
         <>
           <View style={{ height: spacing.lg }} />
           <Card>
             <SectionHeader Icon={DollarSign} title="By Payment Mode" color={colors.accent} />
-            {data.by_payment_mode.map((m, i) => (
+            {Object.entries(data.by_payment_mode).map(([mode, total], i) => (
               <View key={i} style={styles.row}>
-                <Text style={[styles.cell, { flex: 2 }]}>{m.payment_mode}</Text>
-                <Text style={[styles.cell, { flex: 1, textAlign: "right" }]}>{m.count}</Text>
-                <Text style={[styles.cell, { flex: 2, textAlign: "right", color: colors.accent }]}>₹{(m.total ?? 0).toLocaleString()}</Text>
+                <Text style={[styles.cell, { flex: 2 }]}>{mode}</Text>
+                <Text style={[styles.cell, { flex: 2, textAlign: "right", color: colors.accent }]}>₹{(total ?? 0).toLocaleString()}</Text>
               </View>
             ))}
           </Card>
@@ -127,13 +126,12 @@ function ProductionReport({ data }) {
       <View style={{ height: spacing.lg }} />
       <Card>
         <SectionHeader Icon={BarChart3} title="By Category" color={colors.crop} />
-        {(data.by_category ?? []).length === 0
+        {!data.by_category || Object.keys(data.by_category).length === 0
           ? <Text style={styles.empty}>No production data.</Text>
-          : (data.by_category ?? []).map((c, i) => (
+          : Object.entries(data.by_category).map(([category, qty], i) => (
             <View key={i} style={styles.row}>
-              <Text style={[styles.cell, { flex: 2 }]}>{c.category}</Text>
-              <Text style={[styles.cell, { flex: 1, textAlign: "right" }]}>{c.batches ?? c.count ?? 0}</Text>
-              <Text style={[styles.cell, { flex: 2, textAlign: "right", color: colors.primary }]}>₹{(c.value ?? 0).toLocaleString()}</Text>
+              <Text style={[styles.cell, { flex: 2 }]}>{category}</Text>
+              <Text style={[styles.cell, { flex: 2, textAlign: "right", color: colors.primary }]}>{Number(qty ?? 0).toFixed(2)}</Text>
             </View>
           ))}
       </Card>
@@ -145,19 +143,19 @@ function FinancialReport({ data }) {
   const stats = [
     { Icon: TrendingUp, label: "Revenue",  value: `₹${(data.total_revenue ?? 0).toLocaleString()}`,  color: colors.primary },
     { Icon: DollarSign, label: "Expenses", value: `₹${(data.total_expenses ?? 0).toLocaleString()}`, color: colors.danger },
-    { Icon: DollarSign, label: "Profit",   value: `₹${(data.net_profit ?? 0).toLocaleString()}`,     color: colors.accent },
+    { Icon: DollarSign, label: "Profit",   value: `₹${(data.gross_profit ?? 0).toLocaleString()}`,     color: colors.accent },
   ];
   return (
     <>
       <StatGrid stats={stats} />
       <View style={{ height: spacing.lg }} />
-      {(data.revenue_streams ?? []).length > 0 && (
+      {data.revenue_streams && Object.keys(data.revenue_streams).length > 0 && (
         <Card>
           <SectionHeader Icon={TrendingUp} title="Revenue Streams" color={colors.primary} />
-          {data.revenue_streams.map((s, i) => (
+          {Object.entries(data.revenue_streams).map(([stream, total], i) => (
             <View key={i} style={styles.row}>
-              <Text style={[styles.cell, { flex: 3 }]}>{s.stream ?? s.category}</Text>
-              <Text style={[styles.cell, { flex: 2, textAlign: "right", color: colors.primary }]}>₹{(s.total ?? s.amount ?? 0).toLocaleString()}</Text>
+              <Text style={[styles.cell, { flex: 3 }]}>{stream}</Text>
+              <Text style={[styles.cell, { flex: 2, textAlign: "right", color: colors.primary }]}>₹{(total ?? 0).toLocaleString()}</Text>
             </View>
           ))}
         </Card>
@@ -168,21 +166,35 @@ function FinancialReport({ data }) {
 
 function StoreDailyReport({ data }) {
   const stats = [
-    { Icon: Store,      label: "Today Sales",    value: `₹${(data.total_sales ?? 0).toLocaleString()}`,         color: colors.store },
-    { Icon: BarChart3,  label: "Transactions",   value: String(data.total_transactions ?? 0),                    color: colors.info },
-    { Icon: DollarSign, label: "Cash In Hand",   value: `₹${(data.cash_in_hand ?? 0).toLocaleString()}`,        color: colors.accent },
-    { Icon: TrendingUp, label: "Items Sold",     value: String(data.items_sold ?? 0),                            color: colors.primary },
+    { Icon: Store,      label: "Today Sales",    value: `₹${Number(data.total_sales ?? 0).toLocaleString()}`,         color: colors.store },
+    { Icon: BarChart3,  label: "Transactions",   value: String(data.total_transactions ?? 0),                          color: colors.info },
+    { Icon: DollarSign, label: "Cash In Hand",   value: `₹${Number(data.cash_in_hand ?? 0).toLocaleString()}`,        color: colors.accent },
+    { Icon: TrendingUp, label: "Items Sold",     value: String(Math.round(data.items_sold ?? 0)),                      color: colors.primary },
   ];
   return (
     <>
       <StatGrid stats={stats} />
       <View style={{ height: spacing.lg }} />
       {data.top_product && (
-        <Card>
+        <Card style={{ marginBottom: spacing.lg }}>
           <SectionHeader Icon={Store} title="Top Product Today" color={colors.store} />
           <View style={{ padding: spacing.md }}>
             <Text style={{ color: colors.text, fontSize: fontSize.lg, fontWeight: "600" }}>{data.top_product}</Text>
+            {data.top_product_revenue > 0 && (
+              <Text style={{ color: colors.store, fontSize: fontSize.md, marginTop: 4 }}>₹{Number(data.top_product_revenue).toLocaleString()}</Text>
+            )}
           </View>
+        </Card>
+      )}
+      {data.payment_breakdown && Object.keys(data.payment_breakdown).length > 0 && (
+        <Card>
+          <SectionHeader Icon={DollarSign} title="Payment Breakdown" color={colors.accent} />
+          {Object.entries(data.payment_breakdown).map(([mode, total], i) => (
+            <View key={i} style={styles.row}>
+              <Text style={[styles.cell, { flex: 2, textTransform: "capitalize" }]}>{mode}</Text>
+              <Text style={[styles.cell, { flex: 2, textAlign: "right", color: colors.accent }]}>₹{Number(total ?? 0).toLocaleString()}</Text>
+            </View>
+          ))}
         </Card>
       )}
     </>

@@ -54,7 +54,7 @@ export const api = {
       create:   (data, token)        => request("POST",   "/api/store/products",                   data,  token),
       update:   (id, data, token)    => request("PUT",    `/api/store/products/${id}`,             data,  token),
       deactivate:(id, token)         => request("DELETE", `/api/store/products/${id}`,             null,  token),
-      genBarcode:(id, token)         => request("POST",   `/api/store/products/${id}/barcode`,     null,  token),
+      genBarcode:(id, token)         => request("POST",   `/api/store/products/${id}/barcode`,     { product_id: id, prefix: "SFN" },  token),
     },
     priceRules: {
       list:   (token)            => request("GET",    "/api/store/price-rules",          null, token),

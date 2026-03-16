@@ -6,8 +6,8 @@
 import {
   Home, Fish, Leaf, Sprout, Egg,
   Droplets, Sun, Zap, Truck, DollarSign, Brain, Users,
-  Store, ShoppingCart, ScanLine, Package, Truck2,
-  BarChart3, ClipboardList, Wrench, Activity, Box,
+  Store, ShoppingCart, ScanLine, Package,
+  BarChart3, ClipboardList, Wrench, Activity, Box, MapPin,
 } from "lucide-react-native";
 import { colors } from "./theme";
 
@@ -32,7 +32,7 @@ export const SCREENS = [
   // ── Store & Retail ────────────────────────────────────────────
   { name: "Store",            label: "Store",            Icon: Store,         color: colors.store },
   { name: "POS",              label: "Point of Sale",    Icon: ShoppingCart,  color: colors.pos },
-  { name: "Logistics",        label: "Logistics",        Icon: Truck2,        color: colors.logistics },
+  { name: "Logistics",        label: "Logistics",        Icon: MapPin,        color: colors.logistics },
 
   // ── Finance & Markets ─────────────────────────────────────────
   { name: "Market",           label: "Markets",          Icon: Truck,         color: colors.market },

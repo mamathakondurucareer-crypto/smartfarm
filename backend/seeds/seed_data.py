@@ -53,7 +53,25 @@ def seed():
     cashier1 = User(username="cashier1", email="cashier1@smartfarm.in",
                     hashed_password=hash_password("cashier123"),
                     full_name="Ramu Cashier", phone="9876543221", role_id=7)
-    db.add_all([store_mgr, cashier1])
+    packer1 = User(username="packer1", email="packer1@smartfarm.in",
+                   hashed_password=hash_password("packer123"),
+                   full_name="Krishna Packer", phone="9876543222", role_id=8)
+    driver1 = User(username="driver1", email="driver1@smartfarm.in",
+                   hashed_password=hash_password("driver123"),
+                   full_name="Ramesh Driver", phone="9876543223", role_id=9)
+    scanner1 = User(username="scanner1", email="scanner1@smartfarm.in",
+                    hashed_password=hash_password("scanner123"),
+                    full_name="Sunil Scanner", phone="9876543224", role_id=10)
+    supervisor1 = User(username="supervisor1", email="supervisor1@smartfarm.in",
+                       hashed_password=hash_password("supervisor123"),
+                       full_name="Anil Supervisor", phone="9876543225", role_id=3)
+    worker1 = User(username="worker1", email="worker1@smartfarm.in",
+                   hashed_password=hash_password("worker123"),
+                   full_name="Gopal Worker", phone="9876543226", role_id=4)
+    viewer1 = User(username="viewer1", email="viewer1@smartfarm.in",
+                   hashed_password=hash_password("viewer123"),
+                   full_name="Sita Viewer", phone="9876543227", role_id=5)
+    db.add_all([store_mgr, cashier1, packer1, driver1, scanner1, supervisor1, worker1, viewer1])
     db.flush()
 
     # ── Employees ──
@@ -398,7 +416,7 @@ def seed():
     db.commit()
     db.close()
     print("✅ Database seeded successfully with:")
-    print("   • 10 roles (5 original + 5 store), 4 users (admin, manager, store_mgr, cashier1), 5 employees")
+    print("   • 10 roles, 12 users (admin, manager, supervisor1, worker1, viewer1, store_mgr, cashier1, packer1, driver1, scanner1), 5 employees")
     print("   • 6 ponds, 5 fish batches")
     print("   • 5 greenhouse crops, 4 VF batches, 2 field crops")
     print("   • 1 poultry flock (800 hens), 1 duck flock (400), 20 bee hives")

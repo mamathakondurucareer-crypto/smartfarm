@@ -40,10 +40,10 @@ export default function ActivityLogScreen() {
       if (moduleFilter !== "all") params += `&module=${moduleFilter}`;
       if (searchAction.trim()) params += `&action=${encodeURIComponent(searchAction.trim())}`;
       const result = await api.activityLog.list(token, params);
-      const items = result.items ?? result;
+      const items = Array.isArray(result.items) ? result.items : (Array.isArray(result) ? result : []);
       if (append) { setLogs((prev) => [...prev, ...items]); }
       else { setLogs(items); }
-      setHasMore(Array.isArray(items) && items.length >= 30);
+      setHasMore(items.length >= 30);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   }, [token, moduleFilter, searchAction]);
@@ -123,7 +123,7 @@ export default function ActivityLogScreen() {
                       <Text style={styles.logMeta}>{log.username}</Text>
                       <Text style={styles.logMeta}>{fmtTime(log.timestamp)}</Text>
                     </View>
-                    {log.entity_type && (
+                    {log.entity_type && log.entity_id != null && (
                       <Text style={styles.logEntity}>{log.entity_type} #{log.entity_id}</Text>
                     )}
                   </View>
