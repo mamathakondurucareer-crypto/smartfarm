@@ -159,4 +159,104 @@ export const api = {
     list: (token, params = "") => request("GET", `/api/activity-logs${params}`, null, token),
     get:  (id, token)          => request("GET", `/api/activity-logs/${id}`,    null, token),
   },
+
+  // ─── Feed Production ──────────────────────────────────────────
+  feedProduction: {
+    bsf: {
+      list:   (token)            => request("GET",    "/api/feed-production/bsf",       null, token),
+      create: (data, token)      => request("POST",   "/api/feed-production/bsf",       data, token),
+      update: (id, data, token)  => request("PUT",    `/api/feed-production/bsf/${id}`, data, token),
+      delete: (id, token)        => request("DELETE", `/api/feed-production/bsf/${id}`, null, token),
+    },
+    azolla: {
+      list:   (token)       => request("GET",  "/api/feed-production/azolla", null, token),
+      create: (data, token) => request("POST", "/api/feed-production/azolla", data, token),
+    },
+    duckweed: {
+      list:   (token)       => request("GET",  "/api/feed-production/duckweed", null, token),
+      create: (data, token) => request("POST", "/api/feed-production/duckweed", data, token),
+    },
+    batches: {
+      list:   (token)       => request("GET",    "/api/feed-production/batches",       null, token),
+      create: (data, token) => request("POST",   "/api/feed-production/batches",       data, token),
+      delete: (id, token)   => request("DELETE", `/api/feed-production/batches/${id}`, null, token),
+    },
+    inventory: {
+      list:   (token)       => request("GET",    "/api/feed-production/inventory",       null, token),
+      create: (data, token) => request("POST",   "/api/feed-production/inventory",       data, token),
+      delete: (id, token)   => request("DELETE", `/api/feed-production/inventory/${id}`, null, token),
+    },
+    selfSufficiency: (token) => request("GET", "/api/feed-production/self-sufficiency", null, token),
+  },
+
+  // ─── Drones ───────────────────────────────────────────────────
+  drones: {
+    list:   (token)           => request("GET",    "/api/drones",       null, token),
+    create: (data, token)     => request("POST",   "/api/drones",       data, token),
+    update: (id, data, token) => request("PUT",    `/api/drones/${id}`, data, token),
+    delete: (id, token)       => request("DELETE", `/api/drones/${id}`, null, token),
+    flights: {
+      list:   (token)       => request("GET",    "/api/drones/flights",       null, token),
+      create: (data, token) => request("POST",   "/api/drones/flights",       data, token),
+      delete: (id, token)   => request("DELETE", `/api/drones/flights/${id}`, null, token),
+    },
+    sprays: {
+      list:   (token)       => request("GET",  "/api/drones/sprays", null, token),
+      create: (data, token) => request("POST", "/api/drones/sprays", data, token),
+    },
+  },
+
+  // ─── QA & Traceability ────────────────────────────────────────
+  qa: {
+    lots: {
+      list:         (token)                => request("GET",   "/api/qa/lots",                      null,  token),
+      create:       (data, token)          => request("POST",  "/api/qa/lots",                      data,  token),
+      get:          (id, token)            => request("GET",   `/api/qa/lots/${id}`,                null,  token),
+      trace:        (lotCode, token)       => request("GET",   `/api/qa/lots/trace/${lotCode}`,     null,  token),
+      updateStatus: (id, status, token)    => request("PATCH", `/api/qa/lots/${id}/status?status=${status}`, null, token),
+    },
+    tests: {
+      list:   (token)       => request("GET",  "/api/qa/tests", null, token),
+      create: (data, token) => request("POST", "/api/qa/tests", data, token),
+    },
+    quarantine: {
+      list:    (token)            => request("GET",  "/api/qa/quarantine",               null, token),
+      create:  (data, token)      => request("POST", "/api/qa/quarantine",               data, token),
+      resolve: (id, data, token)  => request("PUT",  `/api/qa/quarantine/${id}/resolve`, data, token),
+    },
+  },
+
+  // ─── Compliance & Licences ────────────────────────────────────
+  compliance: {
+    licences: {
+      list:         (token)           => request("GET",    "/api/compliance/licences",               null, token),
+      create:       (data, token)     => request("POST",   "/api/compliance/licences",               data, token),
+      update:       (id, data, token) => request("PUT",    `/api/compliance/licences/${id}`,         data, token),
+      delete:       (id, token)       => request("DELETE", `/api/compliance/licences/${id}`,         null, token),
+      expiringSoon: (token)           => request("GET",    "/api/compliance/licences/expiring-soon", null, token),
+    },
+    tasks: {
+      list:   (token)           => request("GET",    "/api/compliance/tasks",       null, token),
+      create: (data, token)     => request("POST",   "/api/compliance/tasks",       data, token),
+      update: (id, data, token) => request("PUT",    `/api/compliance/tasks/${id}`, data, token),
+      delete: (id, token)       => request("DELETE", `/api/compliance/tasks/${id}`, null, token),
+    },
+  },
+
+  // ─── Nursery (Backend) ────────────────────────────────────────
+  nursery: {
+    batches: {
+      list:    (token)           => request("GET",    "/api/nursery/batches",          null, token),
+      create:  (data, token)     => request("POST",   "/api/nursery/batches",          data, token),
+      update:  (id, data, token) => request("PUT",    `/api/nursery/batches/${id}`,    data, token),
+      delete:  (id, token)       => request("DELETE", `/api/nursery/batches/${id}`,    null, token),
+      summary: (token)           => request("GET",    "/api/nursery/batches/summary",  null, token),
+    },
+    orders: {
+      list:   (token)           => request("GET",    "/api/nursery/orders",       null, token),
+      create: (data, token)     => request("POST",   "/api/nursery/orders",       data, token),
+      update: (id, data, token) => request("PUT",    `/api/nursery/orders/${id}`, data, token),
+      delete: (id, token)       => request("DELETE", `/api/nursery/orders/${id}`, null, token),
+    },
+  },
 };

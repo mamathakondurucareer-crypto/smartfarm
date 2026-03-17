@@ -8,7 +8,8 @@ from sqlalchemy import func
 
 from backend.database import get_db
 from backend.models.sensor import SensorDevice, SensorReading, Alert
-from backend.models.automation import AutomationRule, AutomationLog, DroneFlightLog
+from backend.models.automation import AutomationRule, AutomationLog
+from backend.models.drone import DroneFlightLog
 from backend.schemas import SensorReadingCreate, SensorReadingBulk, SensorDeviceOut, AlertOut
 from backend.services.alert_service import check_threshold
 

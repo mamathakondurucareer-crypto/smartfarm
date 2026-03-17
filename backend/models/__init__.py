@@ -17,7 +17,8 @@ from backend.models.inventory import (
     PurchaseOrder, PurchaseOrderItem, Supplier,
 )
 from backend.models.sensor import SensorDevice, SensorReading, Alert
-from backend.models.automation import AutomationRule, AutomationLog, DroneFlightLog
+from backend.models.automation import AutomationRule, AutomationLog
+from backend.models.drone import Drone, DroneFlightLog, DroneSprayLog
 from backend.models.financial import (
     RevenueEntry, ExpenseEntry, SalaryRecord, Invoice, InvoiceItem,
     BankTransaction, Budget, CostCenter,
@@ -37,6 +38,10 @@ from backend.models.packing import PackingOrder, PackingOrderItem, BarcodeRegist
 from backend.models.logistics import DeliveryRoute, DeliveryTrip, DeliveryTripOrder
 from backend.models.service_request import ServiceRequest
 from backend.models.activity_log import ActivityLog
+from backend.models.feed_production import BSFColony, AzollaLog, DuckweedLog, FeedMillBatch, FeedInventory
+from backend.models.qa_traceability import ProductLot, QualityTest, QAQuarantine
+from backend.models.compliance import Licence, ComplianceTask
+from backend.models.nursery import NurseryBatch, NurseryOrder
 
 __all__ = [
     "User", "Role", "Employee", "Attendance", "LeaveRequest",
@@ -62,4 +67,9 @@ __all__ = [
     "DeliveryRoute", "DeliveryTrip", "DeliveryTripOrder",
     "ServiceRequest",
     "ActivityLog",
+    "Drone", "DroneFlightLog", "DroneSprayLog",
+    "BSFColony", "AzollaLog", "DuckweedLog", "FeedMillBatch", "FeedInventory",
+    "ProductLot", "QualityTest", "QAQuarantine",
+    "Licence", "ComplianceTask",
+    "NurseryBatch", "NurseryOrder",
 ]

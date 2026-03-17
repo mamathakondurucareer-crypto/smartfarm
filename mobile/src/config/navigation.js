@@ -8,6 +8,7 @@ import {
   Droplets, Sun, Zap, Truck, DollarSign, Brain, Users,
   Store, ShoppingCart, ScanLine, Package,
   BarChart3, ClipboardList, Wrench, Activity, Box, MapPin, Settings,
+  Bug, Plane, Shield, FileText, Layers,
 } from "lucide-react-native";
 import { colors } from "./theme";
 
@@ -45,4 +46,11 @@ export const SCREENS = [
   { name: "ActivityLog",      label: "Activity Log",     Icon: Activity,      color: colors.textDim },
   { name: "Users",            label: "User Management",  Icon: Users,         color: colors.info },
   { name: "Settings",         label: "Settings",         Icon: Settings,      color: colors.textDim },
+
+  // ── New Modules ───────────────────────────────────────────────
+  { name: "FeedProduction",   label: "Feed Production",  Icon: Bug,           color: "#8D6E63" },
+  { name: "Drones",           label: "Drones",           Icon: Plane,         color: "#29B6F6" },
+  { name: "QA",               label: "QA & Traceability",Icon: Shield,        color: "#66BB6A" },
+  { name: "Compliance",       label: "Compliance",       Icon: FileText,      color: "#5C6BC0" },
+  { name: "NurseryBE",        label: "Nursery Orders",   Icon: Layers,        color: "#26A69A" },
 ];

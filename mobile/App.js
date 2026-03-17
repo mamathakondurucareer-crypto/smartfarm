@@ -52,6 +52,12 @@ import ServiceRequestsScreen   from "./src/screens/ServiceRequestsScreen";
 import ActivityLogScreen       from "./src/screens/ActivityLogScreen";
 import UsersScreen             from "./src/screens/UsersScreen";
 import SettingsScreen          from "./src/screens/SettingsScreen";
+// ─── New Modules ─────────────────────────────────────────────────
+import FeedProductionScreen   from "./src/screens/FeedProductionScreen";
+import DroneScreen            from "./src/screens/DroneScreen";
+import QAScreen               from "./src/screens/QAScreen";
+import ComplianceScreen       from "./src/screens/ComplianceScreen";
+import NurseryBackendScreen   from "./src/screens/NurseryBackendScreen";
 
 const SCREEN_MAP = {
   // Farm ops
@@ -83,6 +89,12 @@ const SCREEN_MAP = {
   ActivityLog:     ActivityLogScreen,
   Users:           UsersScreen,
   Settings:        SettingsScreen,
+  // New modules
+  FeedProduction:  FeedProductionScreen,
+  Drones:          DroneScreen,
+  QA:              QAScreen,
+  Compliance:      ComplianceScreen,
+  NurseryBE:       NurseryBackendScreen,
 };
 
 // ─── Error boundary ───────────────────────────────────────────────

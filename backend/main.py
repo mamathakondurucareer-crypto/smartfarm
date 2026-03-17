@@ -80,6 +80,11 @@ from backend.routers.logistics import router as logistics_router
 from backend.routers.service_requests import router as service_requests_router
 from backend.routers.activity_log import router as activity_log_router
 from backend.routers.reports import router as reports_router
+from backend.routers.feed_production import router as feed_production_router
+from backend.routers.drones import router as drones_router
+from backend.routers.qa_traceability import router as qa_router
+from backend.routers.compliance import router as compliance_router
+from backend.routers.nursery import router as nursery_router
 
 app.include_router(auth_router)
 app.include_router(dashboard_router)
@@ -103,6 +108,11 @@ app.include_router(logistics_router)
 app.include_router(service_requests_router)
 app.include_router(activity_log_router)
 app.include_router(reports_router)
+app.include_router(feed_production_router)
+app.include_router(drones_router)
+app.include_router(qa_router)
+app.include_router(compliance_router)
+app.include_router(nursery_router)
 
 
 # ── Health Check (public — no sensitive data) ──

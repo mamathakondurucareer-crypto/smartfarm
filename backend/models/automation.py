@@ -1,8 +1,8 @@
-"""Automation rules engine, execution logs, and drone flight management."""
+"""Automation rules engine and execution logs."""
 
-from datetime import datetime, date
+from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Integer, Float, Boolean, DateTime, Date, Text, ForeignKey
+from sqlalchemy import String, Integer, Float, Boolean, DateTime, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -44,28 +44,3 @@ class AutomationLog(Base, TimestampMixin):
     error_message: Mapped[Optional[str]] = mapped_column(Text)
     manual_override: Mapped[bool] = mapped_column(Boolean, default=False)
     overridden_by: Mapped[Optional[str]] = mapped_column(String(50))
-
-
-class DroneFlightLog(Base, TimestampMixin):
-    __tablename__ = "drone_flight_logs"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    drone_id: Mapped[str] = mapped_column(String(20), nullable=False)  # SPRAY-1, SURVEY-1
-    flight_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
-    takeoff_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    landing_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    flight_type: Mapped[str] = mapped_column(String(20), nullable=False)  # spraying, survey, ndvi, inspection
-    area_covered_sqm: Mapped[float] = mapped_column(Float, default=0)
-    altitude_m: Mapped[float] = mapped_column(Float, default=5)
-    speed_ms: Mapped[float] = mapped_column(Float, default=3)
-    chemical_used: Mapped[Optional[str]] = mapped_column(String(100))
-    chemical_volume_liters: Mapped[Optional[float]] = mapped_column(Float)
-    battery_start_pct: Mapped[float] = mapped_column(Float, default=100)
-    battery_end_pct: Mapped[Optional[float]] = mapped_column(Float)
-    images_captured: Mapped[int] = mapped_column(Integer, default=0)
-    ndvi_data_path: Mapped[Optional[str]] = mapped_column(String(200))
-    anomalies_detected: Mapped[int] = mapped_column(Integer, default=0)
-    pilot: Mapped[Optional[str]] = mapped_column(String(50))
-    weather_conditions: Mapped[Optional[str]] = mapped_column(String(100))
-    status: Mapped[str] = mapped_column(String(20), default="completed")
-    notes: Mapped[Optional[str]] = mapped_column(Text)

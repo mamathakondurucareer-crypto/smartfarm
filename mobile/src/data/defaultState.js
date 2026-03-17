@@ -90,6 +90,7 @@ export const defaultFarmState = () => ({
     Store: true, POS: true, Logistics: true, Market: true, Financial: true,
     Reports: true, AI: true, ServiceRequests: true, ActivityLog: true,
     Users: true, Settings: true,
+    FeedProduction: true, Drones: true, QA: true, Compliance: true, NurseryBE: true,
   },
   lastUpdated: Date.now(),
 });
