@@ -1,185 +1,52 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  StyleSheet,
   Modal,
   FlatList,
   ActivityIndicator,
-  Alert,
   TextInput,
 } from "react-native";
-import useAuthStore from "../store/useAuthStore";
-import { api } from "../services/api";
 import { CheckCircle, AlertTriangle, Package } from "lucide-react-native";
+import { useQAScreen } from "../hooks/screens/useQAScreen";
+import { styles } from "./QAScreen.styles";
+import { commonStyles as cs } from "../styles/common";
+import { colors } from "../config/theme";
 
 const QAScreen = () => {
-  const token = useAuthStore((s) => s.token);
-  const [tab, setTab] = useState("lots");
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-
-  // Lots state
-  const [lots, setLots] = useState([]);
-  const [selectedLot, setSelectedLot] = useState(null);
-  const [traceDetails, setTraceDetails] = useState(null);
-
-  // Tests state
-  const [tests, setTests] = useState([]);
-
-  // Quarantine state
-  const [quarantineRecords, setQuarantineRecords] = useState([]);
-
-  // Modal state
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalMode, setModalMode] = useState("view"); // view/create/edit/resolve
-  const [formData, setFormData] = useState({});
-  const [formErrors, setFormErrors] = useState({});
-
-  // Field definitions per tab
-  const fieldsByTab = {
-    lots: [
-      { key: "product_type", label: "Product Type", type: "text" },
-      { key: "source_module", label: "Source Module", type: "text" },
-      { key: "produced_date", label: "Produced Date", type: "date" },
-      { key: "quantity", label: "Quantity", type: "number" },
-      { key: "unit", label: "Unit", type: "text" },
-      { key: "harvest_team", label: "Harvest Team", type: "text" },
-      { key: "notes", label: "Notes", type: "text" },
-    ],
-    tests: [
-      { key: "lot_id", label: "Lot ID", type: "number" },
-      { key: "test_type", label: "Test Type", type: "text" },
-      { key: "test_date", label: "Test Date", type: "date" },
-      { key: "result_value", label: "Result Value", type: "number" },
-      { key: "result_text", label: "Result Text", type: "text" },
-      { key: "passed", label: "Passed", type: "checkbox" },
-      { key: "tester", label: "Tester", type: "text" },
-      { key: "lab", label: "Lab", type: "text" },
-      { key: "notes", label: "Notes", type: "text" },
-    ],
-    quarantine: [
-      { key: "lot_id", label: "Lot ID", type: "number" },
-      { key: "reason", label: "Reason", type: "text" },
-      { key: "quarantine_date", label: "Quarantine Date", type: "date" },
-    ],
-  };
-
-  const fetchAll = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
-    try {
-      const [lotsData, testsData, quarData] = await Promise.all([
-        api.qa.lots.list(token),
-        api.qa.tests.list(token),
-        api.qa.quarantine.list(token),
-      ]);
-      setLots(lotsData || []);
-      setTests(testsData || []);
-      setQuarantineRecords(quarData || []);
-    } catch (err) {
-      console.error("Fetch error:", err);
-      Alert.alert("Error", "Failed to load QA data");
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchAll();
-    setRefreshing(false);
-  };
-
-  const handleCreateLot = async () => {
-    try {
-      const newLot = await api.qa.lots.create(formData, token);
-      setLots([newLot, ...lots]);
-      setModalVisible(false);
-      setFormData({});
-      Alert.alert("Success", "Lot created");
-    } catch (err) {
-      Alert.alert("Error", err.response?.data?.detail || "Failed to create lot");
-    }
-  };
-
-  const handleCreateTest = async () => {
-    try {
-      const newTest = await api.qa.tests.create(formData, token);
-      setTests([newTest, ...tests]);
-      setModalVisible(false);
-      setFormData({});
-      Alert.alert("Success", "Test created");
-    } catch (err) {
-      Alert.alert("Error", err.response?.data?.detail || "Failed to create test");
-    }
-  };
-
-  const handleCreateQuarantine = async () => {
-    try {
-      const newQr = await api.qa.quarantine.create(formData, token);
-      setQuarantineRecords([newQr, ...quarantineRecords]);
-      setModalVisible(false);
-      setFormData({});
-      Alert.alert("Success", "Quarantine record created");
-    } catch (err) {
-      Alert.alert("Error", err.response?.data?.detail || "Failed to create quarantine");
-    }
-  };
-
-  const handleResolveQuarantine = async (qrId) => {
-    try {
-      const resolved = await api.qa.quarantine.resolve(qrId, formData, token);
-      setQuarantineRecords(
-        quarantineRecords.map((q) => (q.id === qrId ? resolved : q))
-      );
-      setModalVisible(false);
-      setFormData({});
-      Alert.alert("Success", "Quarantine resolved");
-    } catch (err) {
-      Alert.alert("Error", err.response?.data?.detail || "Failed to resolve");
-    }
-  };
-
-  const handleTraceLot = async (lotCode) => {
-    try {
-      setLoading(true);
-      const trace = await api.qa.lots.trace(lotCode, token);
-      setTraceDetails(trace);
-      setModalVisible(true);
-      setModalMode("view");
-    } catch (err) {
-      Alert.alert("Error", "Failed to trace lot");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "active":
-        return "#4CAF50";
-      case "quarantine":
-        return "#FF5722";
-      case "released":
-        return "#2196F3";
-      case "rejected":
-        return "#9C27B0";
-      default:
-        return "#757575";
-    }
-  };
+  const {
+    tab,
+    setTab,
+    loading,
+    refreshing,
+    lots,
+    selectedLot,
+    setSelectedLot,
+    traceDetails,
+    tests,
+    quarantineRecords,
+    modalVisible,
+    setModalVisible,
+    modalMode,
+    setModalMode,
+    formData,
+    setFormData,
+    fieldsByTab,
+    onRefresh,
+    handleCreateLot,
+    handleCreateTest,
+    handleCreateQuarantine,
+    handleResolveQuarantine,
+    handleTraceLot,
+    getStatusColor,
+  } = useQAScreen();
 
   const renderLotsTab = () => (
     <View style={styles.tabContent}>
       <TouchableOpacity
-        style={styles.addButton}
+        style={cs.addButton}
         onPress={() => {
           setModalMode("create");
           setFormData({});
@@ -187,17 +54,17 @@ const QAScreen = () => {
           setModalVisible(true);
         }}
       >
-        <Text style={styles.addButtonText}>+ Add Lot</Text>
+        <Text style={cs.addButtonText}>+ Add Lot</Text>
       </TouchableOpacity>
 
       <FlatList
         data={lots}
         keyExtractor={(item) => item.id.toString()}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Package size={48} color="#bdbdbd" />
-            <Text style={styles.emptyTitle}>No production lots yet</Text>
-            <Text style={styles.emptyText}>Tap "+ Add Lot" to create a traceable production lot.</Text>
+          <View style={cs.emptyState}>
+            <Package size={48} color={colors.textMuted} />
+            <Text style={cs.emptyTitle}>No production lots yet</Text>
+            <Text style={cs.emptyText}>Tap "+ Add Lot" to create a traceable production lot.</Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -207,7 +74,7 @@ const QAScreen = () => {
           >
             <View style={styles.listItemContent}>
               <View style={styles.listItemHeader}>
-                <Package size={20} color="#666" />
+                <Package size={20} color={colors.textDim} />
                 <Text style={styles.listItemTitle}>{item.lot_code}</Text>
               </View>
               <Text style={styles.listItemSubtitle}>{item.product_type}</Text>
@@ -238,24 +105,24 @@ const QAScreen = () => {
   const renderTestsTab = () => (
     <View style={styles.tabContent}>
       <TouchableOpacity
-        style={styles.addButton}
+        style={cs.addButton}
         onPress={() => {
           setModalMode("create");
           setFormData({});
           setModalVisible(true);
         }}
       >
-        <Text style={styles.addButtonText}>+ Add Test</Text>
+        <Text style={cs.addButtonText}>+ Add Test</Text>
       </TouchableOpacity>
 
       <FlatList
         data={tests}
         keyExtractor={(item) => item.id.toString()}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <CheckCircle size={48} color="#bdbdbd" />
-            <Text style={styles.emptyTitle}>No quality tests recorded</Text>
-            <Text style={styles.emptyText}>Tap "+ Add Test" to log a quality test against a lot.</Text>
+          <View style={cs.emptyState}>
+            <CheckCircle size={48} color={colors.textMuted} />
+            <Text style={cs.emptyTitle}>No quality tests recorded</Text>
+            <Text style={cs.emptyText}>Tap "+ Add Test" to log a quality test against a lot.</Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -264,7 +131,7 @@ const QAScreen = () => {
               <View style={styles.listItemHeader}>
                 <CheckCircle
                   size={20}
-                  color={item.passed ? "#4CAF50" : "#FF5722"}
+                  color={item.passed ? colors.primary : colors.danger}
                 />
                 <Text style={styles.listItemTitle}>{item.test_type}</Text>
               </View>
@@ -291,24 +158,24 @@ const QAScreen = () => {
   const renderQuarantineTab = () => (
     <View style={styles.tabContent}>
       <TouchableOpacity
-        style={styles.addButton}
+        style={cs.addButton}
         onPress={() => {
           setModalMode("create");
           setFormData({});
           setModalVisible(true);
         }}
       >
-        <Text style={styles.addButtonText}>+ Add Quarantine</Text>
+        <Text style={cs.addButtonText}>+ Add Quarantine</Text>
       </TouchableOpacity>
 
       <FlatList
         data={quarantineRecords}
         keyExtractor={(item) => item.id.toString()}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <AlertTriangle size={48} color="#bdbdbd" />
-            <Text style={styles.emptyTitle}>No quarantine records</Text>
-            <Text style={styles.emptyText}>Quarantine records appear here when lots are flagged for review.</Text>
+          <View style={cs.emptyState}>
+            <AlertTriangle size={48} color={colors.textMuted} />
+            <Text style={cs.emptyTitle}>No quarantine records</Text>
+            <Text style={cs.emptyText}>Quarantine records appear here when lots are flagged for review.</Text>
           </View>
         }
         renderItem={({ item }) => {
@@ -317,7 +184,7 @@ const QAScreen = () => {
             <View style={styles.listItem}>
               <View style={styles.listItemContent}>
                 <View style={styles.listItemHeader}>
-                  <AlertTriangle size={20} color="#FF5722" />
+                  <AlertTriangle size={20} color={colors.danger} />
                   <Text style={styles.listItemTitle}>
                     {lotInfo?.lot_code || `Lot ${item.lot_id}`}
                   </Text>
@@ -329,7 +196,7 @@ const QAScreen = () => {
                     style={[
                       styles.statusBadge,
                       {
-                        backgroundColor: item.is_resolved ? "#4CAF50" : "#FF5722",
+                        backgroundColor: item.is_resolved ? colors.primary : colors.danger,
                       },
                     ]}
                   >
@@ -371,9 +238,9 @@ const QAScreen = () => {
           animationType="slide"
           onRequestClose={() => setModalVisible(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Lot Trace</Text>
+          <View style={cs.modalOverlay}>
+            <View style={cs.modalContent}>
+              <Text style={cs.modalTitle}>Lot Trace</Text>
               <ScrollView style={styles.modalScroll}>
                 <Text style={styles.modalSubtitle}>Lot Information</Text>
                 <View style={styles.traceCard}>
@@ -433,7 +300,7 @@ const QAScreen = () => {
                   style={[
                     styles.traceText,
                     {
-                      color: traceDetails.all_passed ? "#4CAF50" : "#FF5722",
+                      color: traceDetails.all_passed ? colors.primary : colors.danger,
                     },
                   ]}
                 >
@@ -462,28 +329,30 @@ const QAScreen = () => {
         animationType="slide"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
+        <View style={cs.modalOverlay}>
+          <View style={cs.modalContent}>
+            <Text style={cs.modalTitle}>
               {modalMode === "create" && `New ${tab}`}
               {modalMode === "resolve" && "Resolve Quarantine"}
             </Text>
-            <ScrollView style={styles.modalScroll}>
+            <ScrollView style={cs.formScroll}>
               {modalMode === "resolve" ? (
                 <>
-                  <Text style={styles.fieldLabel}>Resolved By</Text>
+                  <Text style={cs.label}>Resolved By</Text>
                   <TextInput
-                    style={styles.fieldInput}
+                    style={cs.input}
                     placeholder="Your name"
+                    placeholderTextColor={colors.textMuted}
                     value={formData.resolved_by || ""}
                     onChangeText={(val) =>
                       setFormData({ ...formData, resolved_by: val })
                     }
                   />
-                  <Text style={styles.fieldLabel}>Resolution</Text>
+                  <Text style={cs.label}>Resolution</Text>
                   <TextInput
-                    style={[styles.fieldInput, { minHeight: 80 }]}
+                    style={[cs.input, { minHeight: 80 }]}
                     placeholder="Describe resolution"
+                    placeholderTextColor={colors.textMuted}
                     multiline
                     value={formData.resolution || ""}
                     onChangeText={(val) =>
@@ -494,7 +363,7 @@ const QAScreen = () => {
               ) : (
                 fields.map((field) => (
                   <View key={field.key}>
-                    <Text style={styles.fieldLabel}>{field.label}</Text>
+                    <Text style={cs.label}>{field.label}</Text>
                     {field.type === "checkbox" ? (
                       <TouchableOpacity
                         style={styles.checkboxContainer}
@@ -517,8 +386,9 @@ const QAScreen = () => {
                       </TouchableOpacity>
                     ) : (
                       <TextInput
-                        style={styles.fieldInput}
+                        style={cs.input}
                         placeholder={field.label}
+                        placeholderTextColor={colors.textMuted}
                         keyboardType={
                           field.type === "number" ? "decimal-pad" : "default"
                         }
@@ -532,15 +402,15 @@ const QAScreen = () => {
                 ))
               )}
             </ScrollView>
-            <View style={styles.modalActions}>
+            <View style={cs.modalButtonGroup}>
               <TouchableOpacity
-                style={[styles.button, styles.cancelButton]}
+                style={cs.cancelButton}
                 onPress={() => setModalVisible(false)}
               >
-                <Text style={styles.buttonText}>Cancel</Text>
+                <Text style={cs.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.button, styles.submitButton]}
+                style={cs.saveButton}
                 onPress={() => {
                   if (modalMode === "resolve") {
                     handleResolveQuarantine(selectedLot);
@@ -553,7 +423,7 @@ const QAScreen = () => {
                   }
                 }}
               >
-                <Text style={styles.buttonText}>
+                <Text style={cs.saveButtonText}>
                   {modalMode === "resolve" ? "Resolve" : "Create"}
                 </Text>
               </TouchableOpacity>
@@ -617,7 +487,7 @@ const QAScreen = () => {
 
       {loading && !refreshing ? (
         <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color="#2196F3" />
+          <ActivityIndicator size="large" color={colors.info} />
         </View>
       ) : (
         <ScrollView style={styles.scrollView} scrollEventThrottle={16}>
@@ -631,268 +501,5 @@ const QAScreen = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  header: {
-    backgroundColor: "#2196F3",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  tabBar: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  tabActive: {
-    borderBottomWidth: 3,
-    borderBottomColor: "#2196F3",
-  },
-  tabButtonText: {
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "500",
-  },
-  tabActiveText: {
-    color: "#2196F3",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  tabContent: {
-    padding: 16,
-  },
-  addButton: {
-    backgroundColor: "#4CAF50",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 16,
-    alignItems: "center",
-  },
-  addButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
-  },
-  listItem: {
-    backgroundColor: "#fff",
-    padding: 12,
-    marginBottom: 12,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: "#2196F3",
-  },
-  listItemContent: {
-    flex: 1,
-  },
-  listItemHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  listItemTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginLeft: 8,
-    flex: 1,
-  },
-  listItemSubtitle: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 8,
-  },
-  listItemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  listItemText: {
-    fontSize: 13,
-    color: "#555",
-  },
-  listItemMeta: {
-    fontSize: 12,
-    color: "#999",
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  statusText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  resolveButton: {
-    backgroundColor: "#FF9800",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 4,
-    marginTop: 8,
-    alignItems: "center",
-  },
-  resolveButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 12,
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 48,
-    paddingHorizontal: 24,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#999",
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: "#bdbdbd",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: "85%",
-    paddingTop: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginHorizontal: 16,
-    marginBottom: 12,
-    color: "#333",
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#2196F3",
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  modalScroll: {
-    paddingHorizontal: 16,
-    maxHeight: 400,
-  },
-  traceCard: {
-    backgroundColor: "#f9f9f9",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: "#2196F3",
-  },
-  traceText: {
-    fontSize: 13,
-    color: "#333",
-    marginBottom: 4,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#333",
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  fieldInput: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    backgroundColor: "#fafafa",
-  },
-  checkboxContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 8,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderWidth: 2,
-    borderColor: "#ddd",
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  checkboxChecked: {
-    backgroundColor: "#4CAF50",
-    borderColor: "#4CAF50",
-  },
-  checkboxLabel: {
-    fontSize: 14,
-    color: "#333",
-  },
-  modalActions: {
-    flexDirection: "row",
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginHorizontal: 8,
-  },
-  cancelButton: {
-    backgroundColor: "#e0e0e0",
-  },
-  submitButton: {
-    backgroundColor: "#2196F3",
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
-  },
-  closeButton: {
-    backgroundColor: "#2196F3",
-    marginHorizontal: 16,
-    marginBottom: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  closeButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
-  },
-});
 
 export default QAScreen;

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
+import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
 import { Leaf, Thermometer, Droplets, Activity, Sun, Plus, Pencil, Trash2 } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import StatGrid      from "../components/ui/StatGrid";
@@ -9,6 +9,8 @@ import Badge         from "../components/ui/Badge";
 import ProgressBar   from "../components/ui/ProgressBar";
 import { colors, spacing, radius, fontSize } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import { styles } from "./GreenhouseScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 const STAGE_COLORS = {
   Harvesting: colors.primary,
@@ -110,14 +112,14 @@ export default function GreenhouseScreen() {
     <ScreenWrapper title="Greenhouse">
       <StatGrid stats={envStats} />
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       <Card>
-        <View style={styles.cardHeader}>
+        <View style={cs.cardHeader}>
           <SectionHeader Icon={Leaf} title="Crop Status" color={colors.crop} />
-          <TouchableOpacity onPress={openAddModal} style={styles.addButton}>
+          <TouchableOpacity onPress={openAddModal} style={cs.addButton}>
             <Plus size={18} color={colors.primary} />
-            <Text style={styles.addButtonText}>Add</Text>
+            <Text style={cs.addButtonText}>Add</Text>
           </TouchableOpacity>
         </View>
 
@@ -153,22 +155,22 @@ export default function GreenhouseScreen() {
       {/* Edit/Add Crop Modal */}
       <Modal visible={modalVisible} animationType="fade" transparent onRequestClose={() => setModalVisible(false)}>
         <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-          <View style={styles.modalOverlay}>
+          <View style={cs.modalOverlay}>
             <TouchableWithoutFeedback>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>{editingCrop ? "Edit Crop" : "Add New Crop"}</Text>
+              <View style={cs.modalContent}>
+                <Text style={cs.modalTitle}>{editingCrop ? "Edit Crop" : "Add New Crop"}</Text>
 
-                <ScrollView style={styles.formScroll} showsVerticalScrollIndicator={false}>
-                  <Text style={styles.label}>Crop Name *</Text>
+                <ScrollView style={cs.formScroll} showsVerticalScrollIndicator={false}>
+                  <Text style={cs.label}>Crop Name *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., Tomato"
                     value={formData.crop}
                     onChangeText={(text) => setFormData({ ...formData, crop: text })}
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>Stage</Text>
+                  <Text style={cs.label}>Stage</Text>
                   <View style={styles.stagePicker}>
                     {STAGES.map((stage) => (
                       <TouchableOpacity
@@ -183,9 +185,9 @@ export default function GreenhouseScreen() {
                     ))}
                   </View>
 
-                  <Text style={styles.label}>Days Planted</Text>
+                  <Text style={cs.label}>Days Planted</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., 85"
                     keyboardType="numeric"
                     value={formData.daysPlanted}
@@ -193,9 +195,9 @@ export default function GreenhouseScreen() {
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>Health (%)</Text>
+                  <Text style={cs.label}>Health (%)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., 92"
                     keyboardType="numeric"
                     value={formData.health}
@@ -203,9 +205,9 @@ export default function GreenhouseScreen() {
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>Yield (kg)</Text>
+                  <Text style={cs.label}>Yield (kg)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., 2400"
                     keyboardType="numeric"
                     value={formData.yieldKg}
@@ -213,9 +215,9 @@ export default function GreenhouseScreen() {
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>Target (kg)</Text>
+                  <Text style={cs.label}>Target (kg)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., 9000"
                     keyboardType="numeric"
                     value={formData.targetKg}
@@ -224,20 +226,20 @@ export default function GreenhouseScreen() {
                   />
                 </ScrollView>
 
-                <View style={styles.modalButtonGroup}>
-                  <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                <View style={cs.modalButtonGroup}>
+                  <TouchableOpacity onPress={() => setModalVisible(false)} style={cs.cancelButton}>
+                    <Text style={cs.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
 
                   {editingCrop && (
-                    <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
+                    <TouchableOpacity onPress={handleDelete} style={cs.deleteButton}>
                       <Trash2 size={16} color={colors.bg} />
-                      <Text style={styles.deleteButtonText}>Delete</Text>
+                      <Text style={cs.deleteButtonText}>Delete</Text>
                     </TouchableOpacity>
                   )}
 
-                  <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-                    <Text style={styles.saveButtonText}>{editingCrop ? "Update" : "Add"}</Text>
+                  <TouchableOpacity onPress={handleSave} style={cs.saveButton}>
+                    <Text style={cs.saveButtonText}>{editingCrop ? "Update" : "Add"}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -255,41 +257,3 @@ function healthColor(pct) {
   return colors.danger;
 }
 
-const styles = StyleSheet.create({
-  gap:           { height: spacing.lg },
-  cardHeader:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm },
-  addButton:     { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.sm, backgroundColor: colors.primary + "15" },
-  addButtonText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: "600" },
-
-  cropCard:        { backgroundColor: colors.bg, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
-  cropHeader:      { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: spacing.sm },
-  cropTitleRow:    { flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1 },
-  cropName:        { fontSize: fontSize.lg, fontWeight: "700", color: colors.text },
-  editIconSmall:   { padding: spacing.xs },
-  cropMeta:        { flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.xs },
-  metaText:        { fontSize: fontSize.md, color: colors.textDim },
-  healthText:      { fontSize: fontSize.md, fontWeight: "600" },
-  yieldText:       { fontSize: fontSize.sm, color: colors.textDim, marginBottom: spacing.xs },
-  progressWrap:    { marginTop: 2 },
-
-  modalOverlay:    { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContent:    { backgroundColor: colors.card, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg, maxHeight: "85%" },
-  modalTitle:      { fontSize: fontSize.lg, fontWeight: "700", color: colors.text, marginBottom: spacing.md },
-  formScroll:      { maxHeight: 350 },
-  label:           { fontSize: fontSize.sm, fontWeight: "600", color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md },
-  input:           { backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, fontSize: fontSize.md, color: colors.text },
-
-  stagePicker:         { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginBottom: spacing.md },
-  stageOption:         { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bg },
-  stageOptionActive:   { backgroundColor: colors.primary, borderColor: colors.primary },
-  stageOptionText:     { fontSize: fontSize.sm, color: colors.textDim },
-  stageOptionTextActive: { color: colors.bg, fontWeight: "600" },
-
-  modalButtonGroup:  { flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg },
-  cancelButton:      { flex: 1, backgroundColor: colors.border, borderRadius: radius.md, paddingVertical: spacing.sm, alignItems: "center" },
-  cancelButtonText:  { fontSize: fontSize.md, color: colors.textDim, fontWeight: "600" },
-  deleteButton:      { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.danger, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
-  deleteButtonText:  { fontSize: fontSize.md, color: colors.bg, fontWeight: "600" },
-  saveButton:        { flex: 1, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: spacing.sm, alignItems: "center" },
-  saveButtonText:    { fontSize: fontSize.md, color: colors.bg, fontWeight: "600" },
-});

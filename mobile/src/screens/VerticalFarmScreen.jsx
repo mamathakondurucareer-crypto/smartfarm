@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
+import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
 import { Sprout, Thermometer, Droplets, Activity, Plus, Pencil, Trash2 } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import StatGrid      from "../components/ui/StatGrid";
@@ -8,6 +8,8 @@ import SectionHeader from "../components/ui/SectionHeader";
 import Badge         from "../components/ui/Badge";
 import { colors, spacing, radius, fontSize } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import { styles } from "./VerticalFarmScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 export default function VerticalFarmScreen() {
   const farm = useFarmStore((s) => s.farm);
@@ -96,14 +98,14 @@ export default function VerticalFarmScreen() {
     <ScreenWrapper title="Vertical Farm">
       <StatGrid stats={envStats} />
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       <Card>
-        <View style={styles.cardHeader}>
+        <View style={cs.cardHeader}>
           <SectionHeader Icon={Sprout} title="Vertical Farm Tiers" color={colors.verticalFarm} />
-          <TouchableOpacity onPress={openAddModal} style={styles.addButton}>
+          <TouchableOpacity onPress={openAddModal} style={cs.addButton}>
             <Plus size={18} color={colors.primary} />
-            <Text style={styles.addButtonText}>Add</Text>
+            <Text style={cs.addButtonText}>Add</Text>
           </TouchableOpacity>
         </View>
 
@@ -131,15 +133,15 @@ export default function VerticalFarmScreen() {
       {/* Edit/Add Batch Modal */}
       <Modal visible={modalVisible} animationType="fade" transparent onRequestClose={() => setModalVisible(false)}>
         <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-          <View style={styles.modalOverlay}>
+          <View style={cs.modalOverlay}>
             <TouchableWithoutFeedback>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>{editingBatch ? "Edit Batch" : "Add New Batch"}</Text>
+              <View style={cs.modalContent}>
+                <Text style={cs.modalTitle}>{editingBatch ? "Edit Batch" : "Add New Batch"}</Text>
 
-                <ScrollView style={styles.formScroll} showsVerticalScrollIndicator={false}>
-                  <Text style={styles.label}>Crop Name *</Text>
+                <ScrollView style={cs.formScroll} showsVerticalScrollIndicator={false}>
+                  <Text style={cs.label}>Crop Name *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., Spinach"
                     editable={!editingBatch}
                     value={formData.crop}
@@ -147,18 +149,18 @@ export default function VerticalFarmScreen() {
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>Tier *</Text>
+                  <Text style={cs.label}>Tier *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., 1-2"
                     value={formData.tier}
                     onChangeText={(text) => setFormData({ ...formData, tier: text })}
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>Cycle Day</Text>
+                  <Text style={cs.label}>Cycle Day</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., 18"
                     keyboardType="numeric"
                     value={formData.cycleDay}
@@ -166,9 +168,9 @@ export default function VerticalFarmScreen() {
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>Health (%)</Text>
+                  <Text style={cs.label}>Health (%)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., 96"
                     keyboardType="numeric"
                     value={formData.health}
@@ -176,9 +178,9 @@ export default function VerticalFarmScreen() {
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>Batch (kg)</Text>
+                  <Text style={cs.label}>Batch (kg)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., 120"
                     keyboardType="numeric"
                     value={formData.batchKg}
@@ -186,9 +188,9 @@ export default function VerticalFarmScreen() {
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>Cycles Left</Text>
+                  <Text style={cs.label}>Cycles Left</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., 2"
                     keyboardType="numeric"
                     value={formData.cyclesLeft}
@@ -197,20 +199,20 @@ export default function VerticalFarmScreen() {
                   />
                 </ScrollView>
 
-                <View style={styles.modalButtonGroup}>
-                  <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                <View style={cs.modalButtonGroup}>
+                  <TouchableOpacity onPress={() => setModalVisible(false)} style={cs.cancelButton}>
+                    <Text style={cs.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
 
                   {editingBatch && (
-                    <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
+                    <TouchableOpacity onPress={handleDelete} style={cs.deleteButton}>
                       <Trash2 size={16} color={colors.bg} />
-                      <Text style={styles.deleteButtonText}>Delete</Text>
+                      <Text style={cs.deleteButtonText}>Delete</Text>
                     </TouchableOpacity>
                   )}
 
-                  <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-                    <Text style={styles.saveButtonText}>{editingBatch ? "Update" : "Add"}</Text>
+                  <TouchableOpacity onPress={handleSave} style={cs.saveButton}>
+                    <Text style={cs.saveButtonText}>{editingBatch ? "Update" : "Add"}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -231,34 +233,3 @@ function MetaItem({ label, value, valueColor }) {
   );
 }
 
-const styles = StyleSheet.create({
-  gap:           { height: spacing.lg },
-  cardHeader:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm },
-  addButton:     { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.sm, backgroundColor: colors.primary + "15" },
-  addButtonText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: "600" },
-
-  tierCard:        { backgroundColor: colors.bg, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
-  tierHeader:      { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: spacing.sm },
-  tierTitleRow:    { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  tierCrop:        { fontSize: fontSize.lg, fontWeight: "700", color: colors.text },
-  editIconSmall:   { padding: spacing.xs },
-  tierGrid:        { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  metaItem:        { width: "47%" },
-  metaLabel:       { fontSize: fontSize.xs, color: colors.textMuted },
-  metaValue:       { fontSize: fontSize.sm, color: colors.textDim, marginTop: 1 },
-
-  modalOverlay:    { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContent:    { backgroundColor: colors.card, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg, maxHeight: "85%" },
-  modalTitle:      { fontSize: fontSize.lg, fontWeight: "700", color: colors.text, marginBottom: spacing.md },
-  formScroll:      { maxHeight: 350 },
-  label:           { fontSize: fontSize.sm, fontWeight: "600", color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md },
-  input:           { backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, fontSize: fontSize.md, color: colors.text },
-
-  modalButtonGroup: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg },
-  cancelButton:     { flex: 1, backgroundColor: colors.border, borderRadius: radius.md, paddingVertical: spacing.sm, alignItems: "center" },
-  cancelButtonText: { fontSize: fontSize.md, color: colors.textDim, fontWeight: "600" },
-  deleteButton:     { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.danger, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
-  deleteButtonText: { fontSize: fontSize.md, color: colors.bg, fontWeight: "600" },
-  saveButton:       { flex: 1, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: spacing.sm, alignItems: "center" },
-  saveButtonText:   { fontSize: fontSize.md, color: colors.bg, fontWeight: "600" },
-});

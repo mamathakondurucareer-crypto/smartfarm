@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, TextInput, TouchableOpacity,
-  ScrollView, StyleSheet, ActivityIndicator, Modal,
+  ScrollView, ActivityIndicator, Modal,
 } from "react-native";
 import {
   Users, UserPlus, Shield, CheckCircle, XCircle,
@@ -18,6 +18,8 @@ import Badge         from "../components/ui/Badge";
 import { colors, spacing, radius, fontSize } from "../config/theme";
 import { api } from "../services/api";
 import useAuthStore  from "../store/useAuthStore";
+import { styles } from "./UsersScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 const ROLE_COLORS = {
   ADMIN:      colors.danger,
@@ -102,8 +104,8 @@ export default function UsersScreen() {
   return (
     <ScreenWrapper title="User Management">
       {/* Header row */}
-      <View style={styles.topRow}>
-        <Text style={styles.count}>{users.length} users registered</Text>
+      <View style={cs.topRow}>
+        <Text style={cs.count}>{users.length} users registered</Text>
         <TouchableOpacity style={styles.addBtn} onPress={openCreate} activeOpacity={0.8}>
           <UserPlus size={14} color={colors.bg} />
           <Text style={styles.addBtnText}>Create User</Text>
@@ -112,8 +114,8 @@ export default function UsersScreen() {
 
       {/* Error banner */}
       {!!error && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={cs.errorBox}>
+          <Text style={cs.errorText}>{error}</Text>
         </View>
       )}
 
@@ -125,7 +127,7 @@ export default function UsersScreen() {
             <SectionHeader Icon={Users} title="All Users" color={colors.info} />
 
             {/* Table header */}
-            <View style={[styles.row, styles.tableHead]}>
+            <View style={[cs.row, styles.tableHead]}>
               <Text style={[styles.col, styles.colName, styles.headText]}>User</Text>
               <Text style={[styles.col, styles.colRole, styles.headText]}>Role</Text>
               <Text style={[styles.col, styles.colStatus, styles.headText]}>Status</Text>
@@ -133,7 +135,7 @@ export default function UsersScreen() {
             </View>
 
             {users.map((u) => (
-              <View key={u.id} style={[styles.row, u.id === myUser?.id && styles.rowSelf]}>
+              <View key={u.id} style={[cs.row, u.id === myUser?.id && styles.rowSelf]}>
                 <View style={[styles.col, styles.colName]}>
                   <Text style={styles.userName}>{u.full_name}</Text>
                   <Text style={styles.userSub}>@{u.username}</Text>
@@ -178,8 +180,8 @@ export default function UsersScreen() {
 
       {/* Create User Modal */}
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={() => setModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+        <View style={cs.modalOverlayCentered}>
+          <View style={cs.modalCard}>
             {/* Modal header */}
             <View style={styles.modalHeader}>
               <View style={styles.modalTitle}>
@@ -193,8 +195,8 @@ export default function UsersScreen() {
 
             <ScrollView showsVerticalScrollIndicator={false}>
               {!!formError && (
-                <View style={styles.errorBox}>
-                  <Text style={styles.errorText}>{formError}</Text>
+                <View style={cs.errorBox}>
+                  <Text style={cs.errorText}>{formError}</Text>
                 </View>
               )}
 
@@ -206,9 +208,9 @@ export default function UsersScreen() {
                 { key: "password",   label: "Password *",  secure: true },
               ].map(({ key, label, auto, keyboard, secure }) => (
                 <View key={key}>
-                  <Text style={styles.label}>{label}</Text>
+                  <Text style={cs.label}>{label}</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     value={form[key]}
                     onChangeText={(v) => setForm((f) => ({ ...f, [key]: v }))}
                     placeholder={label.replace(" *", "")}
@@ -221,7 +223,7 @@ export default function UsersScreen() {
               ))}
 
               {/* Role picker */}
-              <Text style={styles.label}>Role *</Text>
+              <Text style={cs.label}>Role *</Text>
               <TouchableOpacity style={styles.rolePicker} onPress={() => setRoleOpen((v) => !v)} activeOpacity={0.8}>
                 <Text style={{ color: colors.text, fontSize: fontSize.base }}>
                   {selectedRole?.name ?? "Select role"}
@@ -263,40 +265,3 @@ export default function UsersScreen() {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  topRow:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.md },
-  count:     { fontSize: fontSize.md, color: colors.textDim },
-  addBtn:    { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.primary, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  addBtnText:{ color: colors.bg, fontSize: fontSize.md, fontWeight: "700" },
-  errorBox:  { backgroundColor: colors.danger + "20", borderWidth: 1, borderColor: colors.danger + "40", borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
-  errorText: { color: colors.danger, fontSize: fontSize.md },
-  tableHead: { backgroundColor: colors.bg, borderRadius: radius.sm, marginBottom: spacing.xs },
-  headText:  { fontSize: fontSize.xs, color: colors.textMuted, fontWeight: "600", textTransform: "uppercase" },
-  row:       { flexDirection: "row", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border + "40", alignItems: "flex-start" },
-  rowSelf:   { backgroundColor: colors.primary + "08" },
-  col:       { paddingHorizontal: spacing.xs },
-  colName:   { flex: 3 },
-  colRole:   { flex: 2, alignItems: "flex-start" },
-  colStatus: { flex: 2, alignItems: "center" },
-  colAction: { flex: 2, alignItems: "center" },
-  userName:  { fontSize: fontSize.md, color: colors.text, fontWeight: "600" },
-  userSub:   { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 1 },
-  toggleBtn: { borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 3 },
-
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", padding: spacing.xl },
-  modalCard:    { backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: spacing.xl, width: "100%", maxWidth: 480, maxHeight: "90%" },
-  modalHeader:  { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.lg },
-  modalTitle:   { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  modalTitleText:{ fontSize: fontSize.lg, fontWeight: "700", color: colors.text },
-  label:     { fontSize: fontSize.md, color: colors.textDim, marginBottom: spacing.xs, marginTop: spacing.sm },
-  input:     { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, color: colors.text, fontSize: fontSize.base, marginBottom: spacing.xs },
-  rolePicker:{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
-  roleList:  { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, marginTop: 2, overflow: "hidden" },
-  roleItem:  { padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border + "40" },
-  roleItemActive: { backgroundColor: colors.primary + "15" },
-  roleDesc:  { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
-  saveBtn:   { backgroundColor: colors.primary, borderRadius: radius.md, padding: spacing.md, alignItems: "center", marginTop: spacing.xl, height: 48, justifyContent: "center" },
-  saveBtnText:{ color: colors.bg, fontSize: fontSize.base, fontWeight: "700" },
-});

@@ -3,7 +3,7 @@
  */
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
+  View, Text, TextInput, TouchableOpacity, ActivityIndicator,
 } from "react-native";
 import { Layers, RefreshCw, Filter } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
@@ -12,9 +12,11 @@ import SectionHeader from "../components/ui/SectionHeader";
 import StatGrid      from "../components/ui/StatGrid";
 import DataTable     from "../components/ui/DataTable";
 import Badge         from "../components/ui/Badge";
-import { colors, spacing, radius, fontSize } from "../config/theme";
+import { colors } from "../config/theme";
 import { api }       from "../services/api";
 import useAuthStore  from "../store/useAuthStore";
+import { styles } from "./StockProducedScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 export default function StockProducedScreen() {
   const token = useAuthStore((s) => s.token);
@@ -68,19 +70,19 @@ export default function StockProducedScreen() {
   return (
     <ScreenWrapper title="Stock Produced">
       {!!error && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={cs.errorBox}>
+          <Text style={cs.errorText}>{error}</Text>
         </View>
       )}
 
       {/* Filter row */}
-      <Card style={styles.cardGap}>
+      <Card style={cs.cardGap}>
         <SectionHeader Icon={Filter} title="Date Filter" color={colors.packing} />
         <View style={styles.filterRow}>
           <View style={styles.filterField}>
-            <Text style={styles.label}>Start Date</Text>
+            <Text style={cs.label}>Start Date</Text>
             <TextInput
-              style={styles.input}
+              style={cs.input}
               value={startDate}
               onChangeText={setStartDate}
               placeholder="YYYY-MM-DD"
@@ -88,9 +90,9 @@ export default function StockProducedScreen() {
             />
           </View>
           <View style={styles.filterField}>
-            <Text style={styles.label}>End Date</Text>
+            <Text style={cs.label}>End Date</Text>
             <TextInput
-              style={styles.input}
+              style={cs.input}
               value={endDate}
               onChangeText={setEndDate}
               placeholder="YYYY-MM-DD"
@@ -108,15 +110,15 @@ export default function StockProducedScreen() {
         <ActivityIndicator size="large" color={colors.packing} style={{ marginTop: 40 }} />
       ) : (
         <>
-          <Card style={styles.cardGap}>
+          <Card style={cs.cardGap}>
             <SectionHeader Icon={Layers} title="Production Summary" color={colors.packing} />
             <StatGrid stats={stats} />
           </Card>
 
-          <Card style={styles.cardGap}>
+          <Card style={cs.cardGap}>
             <SectionHeader Icon={Layers} title="By Category" color={colors.primary} />
             {rows.length === 0
-              ? <Text style={styles.empty}>No production records found</Text>
+              ? <Text style={cs.empty}>No production records found</Text>
               : <DataTable headers={headers} rows={rows} />
             }
           </Card>
@@ -133,15 +135,3 @@ export default function StockProducedScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  errorBox:       { backgroundColor: colors.danger + "20", borderWidth: 1, borderColor: colors.danger + "40", borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
-  errorText:      { color: colors.danger, fontSize: fontSize.md },
-  cardGap:        { marginBottom: spacing.md },
-  filterRow:      { flexDirection: "row", gap: spacing.sm, alignItems: "flex-end", flexWrap: "wrap" },
-  filterField:    { flex: 1, minWidth: 120 },
-  label:          { fontSize: fontSize.md, color: colors.textDim, marginBottom: spacing.xs },
-  input:          { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, color: colors.text, fontSize: fontSize.base },
-  refreshBtn:     { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.packing, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.md, marginTop: spacing.lg },
-  refreshBtnText: { color: colors.bg, fontWeight: "700", fontSize: fontSize.md },
-  empty:          { color: colors.textMuted, fontSize: fontSize.md, textAlign: "center", paddingVertical: spacing.lg },
-});

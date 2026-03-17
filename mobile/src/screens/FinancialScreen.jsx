@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet } from "react-native";
+import { View } from "react-native";
 import { TrendingUp, DollarSign, BarChart3 } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import StatGrid      from "../components/ui/StatGrid";
@@ -7,6 +7,8 @@ import BarChartCard  from "../components/charts/BarChartCard";
 import PieChartCard  from "../components/charts/PieChartCard";
 import { colors, spacing, chartColors } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import { styles } from "./FinancialScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 export default function FinancialScreen() {
   const f = useFarmStore((s) => s.farm.financial);
@@ -35,7 +37,7 @@ export default function FinancialScreen() {
     <ScreenWrapper title="Financials">
       <StatGrid stats={kpiStats} />
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       <BarChartCard
         Icon={BarChart3}
@@ -47,7 +49,7 @@ export default function FinancialScreen() {
         height={240}
       />
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       <PieChartCard
         Icon={DollarSign}
@@ -61,6 +63,3 @@ export default function FinancialScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  gap: { height: spacing.lg },
-});

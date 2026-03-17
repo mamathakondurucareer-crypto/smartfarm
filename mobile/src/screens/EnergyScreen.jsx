@@ -1,11 +1,13 @@
 import React, { useMemo } from "react";
-import { View, StyleSheet } from "react-native";
+import { View } from "react-native";
 import { Sun, Zap, TrendingUp, DollarSign, BarChart3 } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import StatGrid      from "../components/ui/StatGrid";
 import LineChartCard from "../components/charts/LineChartCard";
 import { colors, spacing } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import { styles } from "./EnergyScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 // Simulated 24-hour solar profile (every 2 hours for readability)
 function buildHourlyProfile() {
@@ -38,7 +40,7 @@ export default function EnergyScreen() {
     <ScreenWrapper title="Solar Energy">
       <StatGrid stats={kpiStats} />
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       <LineChartCard
         Icon={BarChart3}
@@ -56,6 +58,3 @@ export default function EnergyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  gap: { height: spacing.lg },
-});

@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, TouchableOpacity, ScrollView, Modal, TextInput,
-  StyleSheet, ActivityIndicator,
+  ActivityIndicator,
 } from "react-native";
 import { Truck, Plus, X, MapPin } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
@@ -15,6 +15,8 @@ import Badge         from "../components/ui/Badge";
 import { colors, spacing, radius, fontSize } from "../config/theme";
 import { api }       from "../services/api";
 import useAuthStore  from "../store/useAuthStore";
+import { styles } from "./LogisticsScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 const STATUS_COLORS = {
   scheduled: colors.info, loading: colors.warn,
@@ -78,23 +80,23 @@ export default function LogisticsScreen() {
       <StatGrid stats={stats} />
       <View style={{ height: spacing.lg }} />
 
-      <View style={styles.topRow}>
-        <Text style={styles.count}>{trips.length} trips</Text>
+      <View style={cs.topRow}>
+        <Text style={cs.count}>{trips.length} trips</Text>
         <TouchableOpacity style={styles.addBtn} onPress={() => setModal(true)} activeOpacity={0.8}>
           <Plus size={14} color={colors.bg} />
           <Text style={styles.addBtnText}>New Trip</Text>
         </TouchableOpacity>
       </View>
 
-      {!!error && <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View>}
+      {!!error && <View style={cs.errorBox}><Text style={cs.errorText}>{error}</Text></View>}
 
       {loading ? <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} /> : (
         <Card>
           <SectionHeader Icon={Truck} title="Delivery Trips" color={colors.logistics} />
           {trips.length === 0 ? (
-            <Text style={styles.empty}>No delivery trips yet.</Text>
+            <Text style={cs.empty}>No delivery trips yet.</Text>
           ) : trips.map((t) => (
-            <View key={t.id} style={styles.row}>
+            <View key={t.id} style={cs.row}>
               <View style={{ flex: 3 }}>
                 <Text style={styles.tripCode}>{t.trip_code}</Text>
                 <Text style={styles.tripMeta}>{t.vehicle_type} • {t.vehicle_number}</Text>
@@ -122,17 +124,17 @@ export default function LogisticsScreen() {
 
       {/* Create Trip Modal */}
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={() => setModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+        <View style={cs.modalOverlayCentered}>
+          <View style={cs.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>New Delivery Trip</Text>
+              <Text style={cs.modalTitle}>New Delivery Trip</Text>
               <TouchableOpacity onPress={() => setModal(false)}><X size={18} color={colors.textDim} /></TouchableOpacity>
             </View>
-            <Text style={styles.label}>Driver Employee ID *</Text>
-            <TextInput style={styles.input} value={form.driver_id} onChangeText={(v) => setForm((f) => ({ ...f, driver_id: v }))} placeholder="e.g. 1" placeholderTextColor={colors.textMuted} keyboardType="numeric" />
-            <Text style={styles.label}>Vehicle Number *</Text>
-            <TextInput style={styles.input} value={form.vehicle_number} onChangeText={(v) => setForm((f) => ({ ...f, vehicle_number: v }))} placeholder="AP-01-AB-1234" placeholderTextColor={colors.textMuted} />
-            <Text style={styles.label}>Vehicle Type</Text>
+            <Text style={cs.label}>Driver Employee ID *</Text>
+            <TextInput style={cs.input} value={form.driver_id} onChangeText={(v) => setForm((f) => ({ ...f, driver_id: v }))} placeholder="e.g. 1" placeholderTextColor={colors.textMuted} keyboardType="numeric" />
+            <Text style={cs.label}>Vehicle Number *</Text>
+            <TextInput style={cs.input} value={form.vehicle_number} onChangeText={(v) => setForm((f) => ({ ...f, vehicle_number: v }))} placeholder="AP-01-AB-1234" placeholderTextColor={colors.textMuted} />
+            <Text style={cs.label}>Vehicle Type</Text>
             <View style={styles.typeRow}>
               {VEHICLE_TYPES.map((vt) => (
                 <TouchableOpacity key={vt} style={[styles.typeChip, form.vehicle_type === vt && styles.typeChipActive]} onPress={() => setForm((f) => ({ ...f, vehicle_type: vt }))}>
@@ -149,29 +151,3 @@ export default function LogisticsScreen() {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  topRow:      { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.md },
-  count:       { fontSize: fontSize.md, color: colors.textDim },
-  addBtn:      { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.logistics, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  addBtnText:  { color: colors.bg, fontSize: fontSize.md, fontWeight: "700" },
-  errorBox:    { backgroundColor: colors.danger + "20", borderWidth: 1, borderColor: colors.danger + "40", borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
-  errorText:   { color: colors.danger, fontSize: fontSize.md },
-  empty:       { color: colors.textMuted, fontSize: fontSize.md, textAlign: "center", paddingVertical: 30 },
-  row:         { flexDirection: "row", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border + "40", alignItems: "center" },
-  tripCode:    { fontSize: fontSize.md, color: colors.text, fontWeight: "600" },
-  tripMeta:    { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
-  actionBtn:   { borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 3 },
-  // Modal
-  modalOverlay:{ flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", padding: spacing.xl },
-  modalCard:   { backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: spacing.xl, width: "100%", maxWidth: 440 },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.lg },
-  modalTitle:  { fontSize: fontSize.lg, fontWeight: "700", color: colors.text },
-  label:       { fontSize: fontSize.md, color: colors.textDim, marginBottom: spacing.xs, marginTop: spacing.sm },
-  input:       { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, color: colors.text, fontSize: fontSize.base },
-  typeRow:     { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginTop: spacing.xs },
-  typeChip:    { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
-  typeChipActive: { borderColor: colors.primary, backgroundColor: colors.primary + "15" },
-  saveBtn:     { backgroundColor: colors.logistics, borderRadius: radius.md, padding: spacing.md, alignItems: "center", marginTop: spacing.xl, height: 48, justifyContent: "center" },
-  saveBtnText: { color: colors.bg, fontSize: fontSize.base, fontWeight: "700" },
-});

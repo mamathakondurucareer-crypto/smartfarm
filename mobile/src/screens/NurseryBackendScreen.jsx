@@ -1,223 +1,45 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  StyleSheet,
   Modal,
   FlatList,
   ActivityIndicator,
-  Alert,
   TextInput,
 } from "react-native";
-import useAuthStore from "../store/useAuthStore";
-import { api } from "../services/api";
 import { Sprout, ShoppingCart } from "lucide-react-native";
+import { useNurseryBackendScreen } from "../hooks/screens/useNurseryBackendScreen";
+import { styles } from "./NurseryBackendScreen.styles";
+import { commonStyles as cs } from "../styles/common";
+import { colors } from "../config/theme";
 
 const NurseryBackendScreen = () => {
-  const token = useAuthStore((state) => state.token);
-  const [tab, setTab] = useState("batches");
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-
-  // Batches state
-  const [batches, setBatches] = useState([]);
-  const [batchesSummary, setBatchesSummary] = useState(null);
-
-  // Orders state
-  const [orders, setOrders] = useState([]);
-
-  // Modal state
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalMode, setModalMode] = useState("create"); // create/edit
-  const [formData, setFormData] = useState({});
-  const [selectedItem, setSelectedItem] = useState(null);
-
-  // Field definitions per tab
-  const fieldsByTab = {
-    batches: [
-      { key: "batch_code", label: "Batch Code", type: "text" },
-      { key: "species", label: "Species", type: "text" },
-      { key: "category", label: "Category", type: "text" },
-      { key: "sowing_date", label: "Sowing Date", type: "date" },
-      { key: "expected_ready_date", label: "Expected Ready Date", type: "date" },
-      { key: "tray_count", label: "Tray Count", type: "number" },
-      { key: "cells_per_tray", label: "Cells Per Tray", type: "number" },
-      { key: "germination_pct", label: "Germination %", type: "number" },
-      { key: "seedlings_ready", label: "Seedlings Ready", type: "number" },
-      { key: "status", label: "Status", type: "text" },
-      { key: "notes", label: "Notes", type: "text" },
-    ],
-    orders: [
-      { key: "batch_id", label: "Batch ID", type: "number" },
-      { key: "buyer_name", label: "Buyer Name", type: "text" },
-      { key: "buyer_contact", label: "Buyer Contact", type: "text" },
-      { key: "species", label: "Species", type: "text" },
-      { key: "quantity", label: "Quantity", type: "number" },
-      { key: "price_per_seedling", label: "Price per Seedling", type: "number" },
-      { key: "order_date", label: "Order Date", type: "date" },
-      { key: "dispatch_date", label: "Dispatch Date", type: "date" },
-      { key: "status", label: "Status", type: "text" },
-      { key: "notes", label: "Notes", type: "text" },
-    ],
-  };
-
-  const fetchAll = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
-    try {
-      const [batchesData, summaryData, ordersData] = await Promise.all([
-        api.nursery.batches.list(token),
-        api.nursery.batches.summary(token),
-        api.nursery.orders.list(token),
-      ]);
-      setBatches(batchesData || []);
-      setBatchesSummary(summaryData || null);
-      setOrders(ordersData || []);
-    } catch (err) {
-      console.error("Fetch error:", err);
-      Alert.alert("Error", "Failed to load nursery data");
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchAll();
-    setRefreshing(false);
-  };
-
-  const handleCreateBatch = async () => {
-    try {
-      const newBatch = await api.nursery.batches.create(formData, token);
-      setBatches([newBatch, ...batches]);
-      setModalVisible(false);
-      setFormData({});
-      Alert.alert("Success", "Batch created");
-      await fetchAll();
-    } catch (err) {
-      Alert.alert("Error", err.response?.data?.detail || "Failed to create batch");
-    }
-  };
-
-  const handleUpdateBatch = async () => {
-    try {
-      const updated = await api.nursery.batches.update(
-        selectedItem.id,
-        formData,
-        token
-      );
-      setBatches(batches.map((b) => (b.id === selectedItem.id ? updated : b)));
-      setModalVisible(false);
-      setFormData({});
-      setSelectedItem(null);
-      Alert.alert("Success", "Batch updated");
-      await fetchAll();
-    } catch (err) {
-      Alert.alert("Error", err.response?.data?.detail || "Failed to update batch");
-    }
-  };
-
-  const handleDeleteBatch = async (batchId) => {
-    Alert.alert("Confirm", "Delete this batch?", [
-      { text: "Cancel" },
-      {
-        text: "Delete",
-        onPress: async () => {
-          try {
-            await api.nursery.batches.delete(batchId, token);
-            setBatches(batches.filter((b) => b.id !== batchId));
-            Alert.alert("Success", "Batch deleted");
-            await fetchAll();
-          } catch (err) {
-            Alert.alert(
-              "Error",
-              err.response?.data?.detail || "Failed to delete batch"
-            );
-          }
-        },
-      },
-    ]);
-  };
-
-  const handleCreateOrder = async () => {
-    try {
-      const newOrder = await api.nursery.orders.create(formData, token);
-      setOrders([newOrder, ...orders]);
-      setModalVisible(false);
-      setFormData({});
-      Alert.alert("Success", "Order created");
-    } catch (err) {
-      Alert.alert("Error", err.response?.data?.detail || "Failed to create order");
-    }
-  };
-
-  const handleUpdateOrder = async () => {
-    try {
-      const updated = await api.nursery.orders.update(
-        selectedItem.id,
-        formData,
-        token
-      );
-      setOrders(orders.map((o) => (o.id === selectedItem.id ? updated : o)));
-      setModalVisible(false);
-      setFormData({});
-      setSelectedItem(null);
-      Alert.alert("Success", "Order updated");
-    } catch (err) {
-      Alert.alert("Error", err.response?.data?.detail || "Failed to update order");
-    }
-  };
-
-  const handleDeleteOrder = async (orderId) => {
-    Alert.alert("Confirm", "Delete this order?", [
-      { text: "Cancel" },
-      {
-        text: "Delete",
-        onPress: async () => {
-          try {
-            await api.nursery.orders.delete(orderId, token);
-            setOrders(orders.filter((o) => o.id !== orderId));
-            Alert.alert("Success", "Order deleted");
-          } catch (err) {
-            Alert.alert(
-              "Error",
-              err.response?.data?.detail || "Failed to delete order"
-            );
-          }
-        },
-      },
-    ]);
-  };
-
-  const getStatusColor = (status) => {
-    const colors = {
-      sown: "#FFC107",
-      germinated: "#FF9800",
-      hardening: "#2196F3",
-      ready: "#4CAF50",
-      dispatched: "#9C27B0",
-      pending: "#FFC107",
-      confirmed: "#2196F3",
-      delivered: "#4CAF50",
-      cancelled: "#FF5722",
-    };
-    return colors[status] || "#757575";
-  };
-
-  const calculateMonthlyRevenue = () => {
-    const now = new Date();
-    const currentMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
-    return orders
-      .filter((o) => o.order_date.startsWith(currentMonth))
-      .reduce((sum, o) => sum + o.total_amount, 0);
-  };
+  const {
+    tab,
+    setTab,
+    loading,
+    refreshing,
+    batches,
+    batchesSummary,
+    orders,
+    modalVisible,
+    setModalVisible,
+    modalMode,
+    formData,
+    setFormData,
+    selectedItem,
+    fieldsByTab,
+    onRefresh,
+    handleDeleteBatch,
+    handleDeleteOrder,
+    getStatusColor,
+    calculateMonthlyRevenue,
+    handleOpenBatchModal,
+    handleOpenOrderModal,
+    handleModalSubmit,
+  } = useNurseryBackendScreen();
 
   const renderBatchesSummary = () => {
     if (!batchesSummary) return null;
@@ -225,12 +47,14 @@ const NurseryBackendScreen = () => {
       ? ((batchesSummary.total_ready / batchesSummary.total_capacity) * 100).toFixed(1)
       : 0;
     const isEmpty = batchesSummary.total_batches === 0;
-    const valueColor = isEmpty ? "#bdbdbd" : "#4CAF50";
+    const valueColor = isEmpty ? colors.textMuted : colors.primary;
     return (
-      <View style={[styles.summaryCard, isEmpty && { borderLeftColor: "#bdbdbd" }]}>
+      <View style={[styles.summaryCard, isEmpty && { borderLeftColor: colors.textMuted }]}>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Total Batches</Text>
-          <Text style={[styles.summaryValue, { color: valueColor }]}>{batchesSummary.total_batches}</Text>
+          <Text style={[styles.summaryValue, { color: valueColor }]}>
+            {batchesSummary.total_batches}
+          </Text>
         </View>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Seedlings Ready</Text>
@@ -240,7 +64,9 @@ const NurseryBackendScreen = () => {
         </View>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Capacity Used</Text>
-          <Text style={[styles.summaryValue, { color: valueColor }]}>{capacityUsed}%</Text>
+          <Text style={[styles.summaryValue, { color: valueColor }]}>
+            {capacityUsed}%
+          </Text>
         </View>
       </View>
     );
@@ -251,25 +77,20 @@ const NurseryBackendScreen = () => {
       {renderBatchesSummary()}
 
       <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => {
-          setModalMode("create");
-          setFormData({});
-          setSelectedItem(null);
-          setModalVisible(true);
-        }}
+        style={cs.addButton}
+        onPress={() => handleOpenBatchModal("create")}
       >
-        <Text style={styles.addButtonText}>+ Add Batch</Text>
+        <Text style={cs.addButtonText}>+ Add Batch</Text>
       </TouchableOpacity>
 
       <FlatList
         data={batches}
         keyExtractor={(item) => item.id.toString()}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Sprout size={48} color="#bdbdbd" />
-            <Text style={styles.emptyTitle}>No batches yet</Text>
-            <Text style={styles.emptyText}>Tap "+ Add Batch" to record your first nursery batch.</Text>
+          <View style={cs.emptyState}>
+            <Sprout size={48} color={colors.textMuted} />
+            <Text style={cs.emptyTitle}>No batches yet</Text>
+            <Text style={cs.emptyText}>Tap "+ Add Batch" to record your first nursery batch.</Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -307,12 +128,7 @@ const NurseryBackendScreen = () => {
               <View style={styles.actionButtons}>
                 <TouchableOpacity
                   style={[styles.smallButton, styles.editButton]}
-                  onPress={() => {
-                    setSelectedItem(item);
-                    setFormData(item);
-                    setModalMode("edit");
-                    setModalVisible(true);
-                  }}
+                  onPress={() => handleOpenBatchModal("edit", item)}
                 >
                   <Text style={styles.smallButtonText}>Edit</Text>
                 </TouchableOpacity>
@@ -343,25 +159,20 @@ const NurseryBackendScreen = () => {
       </View>
 
       <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => {
-          setModalMode("create");
-          setFormData({});
-          setSelectedItem(null);
-          setModalVisible(true);
-        }}
+        style={cs.addButton}
+        onPress={() => handleOpenOrderModal("create")}
       >
-        <Text style={styles.addButtonText}>+ Add Order</Text>
+        <Text style={cs.addButtonText}>+ Add Order</Text>
       </TouchableOpacity>
 
       <FlatList
         data={orders}
         keyExtractor={(item) => item.id.toString()}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <ShoppingCart size={48} color="#bdbdbd" />
-            <Text style={styles.emptyTitle}>No orders yet</Text>
-            <Text style={styles.emptyText}>Tap "+ Add Order" to record your first seedling sale.</Text>
+          <View style={cs.emptyState}>
+            <ShoppingCart size={48} color={colors.textMuted} />
+            <Text style={cs.emptyTitle}>No orders yet</Text>
+            <Text style={cs.emptyText}>Tap "+ Add Order" to record your first seedling sale.</Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -399,12 +210,7 @@ const NurseryBackendScreen = () => {
               <View style={styles.actionButtons}>
                 <TouchableOpacity
                   style={[styles.smallButton, styles.editButton]}
-                  onPress={() => {
-                    setSelectedItem(item);
-                    setFormData(item);
-                    setModalMode("edit");
-                    setModalVisible(true);
-                  }}
+                  onPress={() => handleOpenOrderModal("edit", item)}
                 >
                   <Text style={styles.smallButtonText}>Edit</Text>
                 </TouchableOpacity>
@@ -436,7 +242,7 @@ const NurseryBackendScreen = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
+            <Text style={cs.modalTitle}>
               {modalMode === "create"
                 ? `New ${tab === "batches" ? "Batch" : "Order"}`
                 : `Edit ${tab === "batches" ? "Batch" : "Order"}`}
@@ -461,28 +267,14 @@ const NurseryBackendScreen = () => {
             </ScrollView>
             <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.button, styles.cancelButton]}
+                style={[styles.button, cs.cancelButton]}
                 onPress={() => setModalVisible(false)}
               >
-                <Text style={styles.buttonText}>Cancel</Text>
+                <Text style={cs.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.button, styles.submitButton]}
-                onPress={() => {
-                  if (tab === "batches") {
-                    if (modalMode === "create") {
-                      handleCreateBatch();
-                    } else {
-                      handleUpdateBatch();
-                    }
-                  } else if (tab === "orders") {
-                    if (modalMode === "create") {
-                      handleCreateOrder();
-                    } else {
-                      handleUpdateOrder();
-                    }
-                  }
-                }}
+                onPress={handleModalSubmit}
               >
                 <Text style={styles.buttonText}>
                   {modalMode === "create" ? "Create" : "Update"}
@@ -530,9 +322,9 @@ const NurseryBackendScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {loading && !refreshing ? (
+      {loading ? (
         <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color="#2196F3" />
+          <ActivityIndicator size="large" color={colors.info} />
         </View>
       ) : (
         <ScrollView style={styles.scrollView} scrollEventThrottle={16}>
@@ -545,266 +337,5 @@ const NurseryBackendScreen = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  header: {
-    backgroundColor: "#2196F3",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  tabBar: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  tabActive: {
-    borderBottomWidth: 3,
-    borderBottomColor: "#2196F3",
-  },
-  tabButtonText: {
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "500",
-  },
-  tabActiveText: {
-    color: "#2196F3",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  tabContent: {
-    padding: 16,
-  },
-  summaryCard: {
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    flexDirection: "row",
-    marginBottom: 16,
-    padding: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: "#4CAF50",
-  },
-  summaryItem: {
-    flex: 1,
-    alignItems: "center",
-  },
-  summaryLabel: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 4,
-  },
-  summaryValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#4CAF50",
-  },
-  revenueCard: {
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: "#2196F3",
-    alignItems: "center",
-  },
-  revenueLabel: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 8,
-  },
-  revenueValue: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#2196F3",
-  },
-  addButton: {
-    backgroundColor: "#4CAF50",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 16,
-    alignItems: "center",
-  },
-  addButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
-  },
-  listItem: {
-    backgroundColor: "#fff",
-    padding: 12,
-    marginBottom: 12,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-  },
-  listItemContent: {
-    flex: 1,
-  },
-  listItemHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  listItemTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginLeft: 8,
-    flex: 1,
-  },
-  listItemSubtitle: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 8,
-  },
-  listItemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  listItemText: {
-    fontSize: 13,
-    color: "#555",
-  },
-  listItemMeta: {
-    fontSize: 12,
-    color: "#999",
-    marginBottom: 4,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  statusText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  actionButtons: {
-    flexDirection: "row",
-    marginTop: 12,
-  },
-  smallButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    alignItems: "center",
-    marginHorizontal: 4,
-  },
-  editButton: {
-    backgroundColor: "#FF9800",
-  },
-  deleteButton: {
-    backgroundColor: "#FF5722",
-  },
-  smallButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 12,
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 48,
-    paddingHorizontal: 24,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#999",
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: "#bdbdbd",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: "85%",
-    paddingTop: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginHorizontal: 16,
-    marginBottom: 12,
-    color: "#333",
-  },
-  modalScroll: {
-    paddingHorizontal: 16,
-    maxHeight: 400,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#333",
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  fieldInput: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    backgroundColor: "#fafafa",
-  },
-  modalActions: {
-    flexDirection: "row",
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginHorizontal: 8,
-  },
-  cancelButton: {
-    backgroundColor: "#e0e0e0",
-  },
-  submitButton: {
-    backgroundColor: "#2196F3",
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
-  },
-});
 
 export default NurseryBackendScreen;

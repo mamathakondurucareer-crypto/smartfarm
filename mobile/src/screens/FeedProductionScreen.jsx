@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, ScrollView, TouchableOpacity,
   Modal, TextInput, ActivityIndicator, RefreshControl,
 } from "react-native";
 import { Bug, Leaf, Droplets, Package, BarChart2, Plus, Edit2, Trash2, X, ChevronDown } from "lucide-react-native";
@@ -10,6 +10,8 @@ import ScreenWrapper from "../components/layout/ScreenWrapper";
 import Card from "../components/ui/Card";
 import SectionHeader from "../components/ui/SectionHeader";
 import { colors } from "../config/theme";
+import { styles } from "./FeedProductionScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 const TABS = ["BSF", "Azolla", "Duckweed", "Feed Mill", "Inventory"];
 
@@ -129,7 +131,7 @@ export default function FeedProductionScreen() {
             <SectionHeader Icon={Bug} title={`BSF Colonies (${data.bsf.length})`} action={canEdit && <TouchableOpacity onPress={openCreate}><Plus size={18} color={colors.primary} /></TouchableOpacity>} />
             {data.bsf.length === 0 && <Text style={styles.empty}>No BSF colonies recorded</Text>}
             {data.bsf.map((c) => (
-              <View key={c.id} style={styles.row}>
+              <View key={c.id} style={cs.row}>
                 <View style={styles.rowLeft}>
                   <Text style={styles.rowTitle}>{c.batch_code}</Text>
                   <Text style={styles.rowSub}>Stage: {c.colony_stage} • Health: {c.colony_health}</Text>
@@ -151,7 +153,7 @@ export default function FeedProductionScreen() {
             <SectionHeader Icon={Leaf} title={`Azolla Logs (${data.azolla.length})`} action={canEdit && <TouchableOpacity onPress={openCreate}><Plus size={18} color={colors.primary} /></TouchableOpacity>} />
             {data.azolla.length === 0 && <Text style={styles.empty}>No Azolla logs</Text>}
             {data.azolla.map((l) => (
-              <View key={l.id} style={styles.row}>
+              <View key={l.id} style={cs.row}>
                 <View style={styles.rowLeft}>
                   <Text style={styles.rowTitle}>{l.log_date} — Bed {l.bed_id}</Text>
                   <Text style={styles.rowSub}>Harvest: {l.harvest_kg} kg • Protein: {l.protein_pct}% • Area: {l.area_sqm} m²</Text>
@@ -166,7 +168,7 @@ export default function FeedProductionScreen() {
             <SectionHeader Icon={Droplets} title={`Duckweed Logs (${data.duckweed.length})`} action={canEdit && <TouchableOpacity onPress={openCreate}><Plus size={18} color={colors.primary} /></TouchableOpacity>} />
             {data.duckweed.length === 0 && <Text style={styles.empty}>No Duckweed logs</Text>}
             {data.duckweed.map((l) => (
-              <View key={l.id} style={styles.row}>
+              <View key={l.id} style={cs.row}>
                 <View style={styles.rowLeft}>
                   <Text style={styles.rowTitle}>{l.log_date} — Pond {l.pond_id}</Text>
                   <Text style={styles.rowSub}>Yield: {l.yield_kg} kg • pH: {l.ph} • TDS: {l.water_tds} ppm • For: {l.allocated_to}</Text>
@@ -181,7 +183,7 @@ export default function FeedProductionScreen() {
             <SectionHeader Icon={Package} title={`Feed Mill Batches (${data.batches.length})`} action={canEdit && <TouchableOpacity onPress={openCreate}><Plus size={18} color={colors.primary} /></TouchableOpacity>} />
             {data.batches.length === 0 && <Text style={styles.empty}>No feed mill batches</Text>}
             {data.batches.map((b) => (
-              <View key={b.id} style={styles.row}>
+              <View key={b.id} style={cs.row}>
                 <View style={styles.rowLeft}>
                   <Text style={styles.rowTitle}>{b.batch_code} — {b.date_produced}</Text>
                   <Text style={styles.rowSub}>{b.formulation}</Text>
@@ -216,7 +218,7 @@ export default function FeedProductionScreen() {
               <SectionHeader Icon={Package} title={`Feed Inventory (${data.inventory.length})`} action={canEdit && <TouchableOpacity onPress={openCreate}><Plus size={18} color={colors.primary} /></TouchableOpacity>} />
               {data.inventory.length === 0 && <Text style={styles.empty}>No inventory records</Text>}
               {data.inventory.map((i) => (
-                <View key={i.id} style={styles.row}>
+                <View key={i.id} style={cs.row}>
                   <View style={styles.rowLeft}>
                     <Text style={styles.rowTitle}>{i.feed_type}</Text>
                     <Text style={styles.rowSub}>{i.quantity_kg} kg • ₹{i.unit_cost_per_kg}/kg • {i.source}</Text>
@@ -291,10 +293,10 @@ export default function FeedProductionScreen() {
 
   return (
     <ScreenWrapper title="Feed Production">
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar} contentContainerStyle={styles.tabBarContent}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={cs.tabBar} contentContainerStyle={styles.tabBarContent}>
         {TABS.map((t) => (
-          <TouchableOpacity key={t} style={[styles.tab, activeTab === t && styles.tabActive]} onPress={() => setActiveTab(t)}>
-            <Text style={[styles.tabText, activeTab === t && styles.tabTextActive]}>{t}</Text>
+          <TouchableOpacity key={t} style={[cs.tab, activeTab === t && cs.tabActive]} onPress={() => setActiveTab(t)}>
+            <Text style={[cs.tabText, activeTab === t && cs.tabActiveText]}>{t}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -322,7 +324,7 @@ export default function FeedProductionScreen() {
                   <View key={f.key} style={styles.field}>
                     <Text style={styles.fieldLabel}>{f.label}</Text>
                     <TextInput
-                      style={[styles.input, f.multiline && styles.inputMulti]}
+                      style={[cs.input, f.multiline && styles.inputMulti]}
                       value={String(form[f.key] ?? "")}
                       onChangeText={(v) => setForm((prev) => ({ ...prev, [f.key]: v }))}
                       keyboardType={f.numeric ? "numeric" : "default"}
@@ -341,35 +343,3 @@ export default function FeedProductionScreen() {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBar: { backgroundColor: colors.card, maxHeight: 48 },
-  tabBarContent: { paddingHorizontal: 8, alignItems: "center" },
-  tab: { paddingHorizontal: 14, paddingVertical: 12, marginHorizontal: 2 },
-  tabActive: { borderBottomWidth: 2, borderBottomColor: colors.primary },
-  tabText: { fontSize: 13, color: colors.textDim },
-  tabTextActive: { color: colors.primary, fontWeight: "600" },
-  content: { padding: 12, paddingBottom: 40 },
-  error: { color: colors.danger, marginBottom: 8, fontSize: 13 },
-  empty: { color: colors.textDim, textAlign: "center", padding: 16, fontSize: 13 },
-  row: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
-  rowLeft: { flex: 1 },
-  rowTitle: { color: colors.text, fontSize: 14, fontWeight: "600" },
-  rowSub: { color: colors.textDim, fontSize: 12, marginTop: 2 },
-  rowActions: { flexDirection: "row", alignItems: "center", marginLeft: 8 },
-  suffRow: { flexDirection: "row", gap: 12, marginTop: 8 },
-  suffBox: { flex: 1, borderRadius: 8, padding: 16, alignItems: "center" },
-  suffPct: { fontSize: 24, fontWeight: "700", color: colors.text },
-  suffLabel: { fontSize: 12, color: colors.textDim, marginTop: 4 },
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: "90%", paddingBottom: 24 },
-  sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
-  sheetTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
-  sheetBody: { padding: 16 },
-  field: { marginBottom: 14 },
-  fieldLabel: { color: colors.textDim, fontSize: 12, marginBottom: 4 },
-  input: { backgroundColor: colors.background, color: colors.text, borderRadius: 8, padding: 10, borderWidth: 1, borderColor: colors.border, fontSize: 14 },
-  inputMulti: { minHeight: 80, textAlignVertical: "top" },
-  saveBtn: { backgroundColor: colors.primary, padding: 14, borderRadius: 8, alignItems: "center", marginTop: 8 },
-  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-});

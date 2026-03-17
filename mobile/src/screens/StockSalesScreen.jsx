@@ -3,7 +3,7 @@
  */
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
+  View, Text, TextInput, TouchableOpacity, ActivityIndicator,
 } from "react-native";
 import { TrendingUp, Filter, RefreshCw, DollarSign } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
@@ -12,9 +12,11 @@ import SectionHeader from "../components/ui/SectionHeader";
 import StatGrid      from "../components/ui/StatGrid";
 import DataTable     from "../components/ui/DataTable";
 import Badge         from "../components/ui/Badge";
-import { colors, spacing, radius, fontSize } from "../config/theme";
+import { colors } from "../config/theme";
 import { api }       from "../services/api";
 import useAuthStore  from "../store/useAuthStore";
+import { styles } from "./StockSalesScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 export default function StockSalesScreen() {
   const token = useAuthStore((s) => s.token);
@@ -77,22 +79,22 @@ export default function StockSalesScreen() {
   return (
     <ScreenWrapper title="Stock Sales">
       {!!error && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={cs.errorBox}>
+          <Text style={cs.errorText}>{error}</Text>
         </View>
       )}
 
       {/* Filter */}
-      <Card style={styles.cardGap}>
+      <Card style={cs.cardGap}>
         <SectionHeader Icon={Filter} title="Date Range" color={colors.store} />
         <View style={styles.filterRow}>
           <View style={styles.filterField}>
-            <Text style={styles.label}>Start Date</Text>
-            <TextInput style={styles.input} value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" placeholderTextColor={colors.textMuted} />
+            <Text style={cs.label}>Start Date</Text>
+            <TextInput style={cs.input} value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" placeholderTextColor={colors.textMuted} />
           </View>
           <View style={styles.filterField}>
-            <Text style={styles.label}>End Date</Text>
-            <TextInput style={styles.input} value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" placeholderTextColor={colors.textMuted} />
+            <Text style={cs.label}>End Date</Text>
+            <TextInput style={cs.input} value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" placeholderTextColor={colors.textMuted} />
           </View>
           <TouchableOpacity style={styles.refreshBtn} onPress={fetchData} activeOpacity={0.8}>
             <RefreshCw size={14} color={colors.bg} />
@@ -105,14 +107,14 @@ export default function StockSalesScreen() {
         <ActivityIndicator size="large" color={colors.store} style={{ marginTop: 40 }} />
       ) : (
         <>
-          <Card style={styles.cardGap}>
+          <Card style={cs.cardGap}>
             <SectionHeader Icon={TrendingUp} title="Sales Summary" color={colors.store} />
             <StatGrid stats={stats} />
           </Card>
 
           {/* Payment mode breakdown */}
           {Object.keys(payModes).length > 0 && (
-            <Card style={styles.cardGap}>
+            <Card style={cs.cardGap}>
               <SectionHeader Icon={DollarSign} title="By Payment Mode" color={colors.pos} />
               <View style={styles.modeGrid}>
                 {Object.entries(payModes).map(([mode, val]) => (
@@ -128,7 +130,7 @@ export default function StockSalesScreen() {
           <Card>
             <SectionHeader Icon={TrendingUp} title="Recent Transactions" color={colors.primary} />
             {txnRows.length === 0
-              ? <Text style={styles.empty}>No transactions found</Text>
+              ? <Text style={cs.empty}>No transactions found</Text>
               : <DataTable headers={txnHeaders} rows={txnRows} />
             }
           </Card>
@@ -138,18 +140,3 @@ export default function StockSalesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  errorBox:       { backgroundColor: colors.danger + "20", borderWidth: 1, borderColor: colors.danger + "40", borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
-  errorText:      { color: colors.danger, fontSize: fontSize.md },
-  cardGap:        { marginBottom: spacing.md },
-  filterRow:      { flexDirection: "row", gap: spacing.sm, alignItems: "flex-end", flexWrap: "wrap" },
-  filterField:    { flex: 1, minWidth: 120 },
-  label:          { fontSize: fontSize.md, color: colors.textDim, marginBottom: spacing.xs },
-  input:          { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, color: colors.text, fontSize: fontSize.base },
-  refreshBtn:     { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.store, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.md, marginTop: spacing.lg },
-  refreshBtnText: { color: colors.bg, fontWeight: "700", fontSize: fontSize.md },
-  modeGrid:       { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
-  modeCard:       { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, alignItems: "center", minWidth: 100 },
-  modeVal:        { fontSize: fontSize.xl, color: colors.text, fontWeight: "700", marginTop: spacing.xs },
-  empty:          { color: colors.textMuted, fontSize: fontSize.md, textAlign: "center", paddingVertical: spacing.lg },
-});

@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import {
   DollarSign, TrendingUp, Fish, Egg, Sun, Droplets,
   Thermometer, Wind, Activity, AlertTriangle, Zap, BarChart3,
@@ -12,6 +12,8 @@ import AlertDot     from "../components/ui/AlertDot";
 import PieChartCard from "../components/charts/PieChartCard";
 import { colors, spacing, radius, fontSize } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import { styles } from "./DashboardScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 // Revenue breakdown for the donut chart
 const REVENUE_SEGMENTS = [
@@ -53,15 +55,15 @@ export default function DashboardScreen({ navigation }) {
       {/* KPI row */}
       <StatGrid stats={kpiStats} />
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       {/* Environment + Revenue pie */}
-      <Card style={styles.cardGap}>
+      <Card style={cs.cardGap}>
         <SectionHeader Icon={Thermometer} title="Environment" color={colors.info} />
         <StatGrid stats={envStats} />
       </Card>
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       <PieChartCard
         Icon={BarChart3}
@@ -72,10 +74,10 @@ export default function DashboardScreen({ navigation }) {
         valueSuffix="L"
       />
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       {/* Alerts */}
-      <Card style={styles.cardGap}>
+      <Card style={cs.cardGap}>
         <SectionHeader Icon={AlertTriangle} title="Recent Alerts" color={colors.warn} />
         {farm.alerts.slice(0, 5).map((a) => (
           <View key={a.id} style={styles.alertRow}>
@@ -88,7 +90,7 @@ export default function DashboardScreen({ navigation }) {
         ))}
       </Card>
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       {/* Automation quick status */}
       <Card>
@@ -118,21 +120,3 @@ export default function DashboardScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  gap:      { height: spacing.lg },
-  cardGap:  { marginBottom: 0 },
-  alertRow: { flexDirection: "row", gap: spacing.sm, paddingVertical: spacing.sm, alignItems: "flex-start" },
-  alertBody:{ flex: 1 },
-  alertMsg: { fontSize: fontSize.md, color: colors.text },
-  alertMeta:{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
-  autoGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  autoItem: {
-    flexDirection: "row", alignItems: "center", gap: spacing.sm,
-    backgroundColor: colors.bg, borderRadius: radius.md,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-    width: "47%",
-  },
-  autoDot:    { width: 8, height: 8, borderRadius: 4 },
-  autoName:   { fontSize: fontSize.sm, fontWeight: "600", color: colors.text, textTransform: "capitalize" },
-  autoStatus: { fontSize: fontSize.xs, color: colors.textDim },
-});

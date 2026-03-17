@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { View, Text, ScrollView } from "react-native";
 import { Droplets, Database, Sun, Fish, Sprout, RefreshCw, CloudRain, Activity, ChevronRight, BarChart3 } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import StatGrid      from "../components/ui/StatGrid";
@@ -8,6 +8,8 @@ import SectionHeader from "../components/ui/SectionHeader";
 import BarChartCard  from "../components/charts/BarChartCard";
 import { colors, spacing, radius, fontSize } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import { styles } from "./WaterScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 const WATER_BUDGET = [
   { label: "Fish Ponds",   litres: 25000 },
@@ -44,7 +46,7 @@ export default function WaterScreen() {
     <ScreenWrapper title="Water System">
       <StatGrid stats={summaryStats} />
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       {/* Closed loop flow diagram */}
       <Card>
@@ -68,7 +70,7 @@ export default function WaterScreen() {
         </ScrollView>
       </Card>
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       <BarChartCard
         Icon={BarChart3}
@@ -83,12 +85,3 @@ export default function WaterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  gap:          { height: spacing.lg },
-  flowRow:      { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingVertical: spacing.sm },
-  flowItem:     { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  flowNode:     { alignItems: "center", padding: spacing.md, borderRadius: radius.lg, borderWidth: 1, minWidth: 90 },
-  flowLabel:    { fontSize: fontSize.xs, fontWeight: "700", color: colors.text, marginTop: 4, textAlign: "center" },
-  recycleLabel: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderWidth: 1, borderStyle: "dashed", borderColor: colors.water, borderRadius: radius.sm },
-  recycleTxt:   { fontSize: fontSize.sm, fontWeight: "600" },
-});

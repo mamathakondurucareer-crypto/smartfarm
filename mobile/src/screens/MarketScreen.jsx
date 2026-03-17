@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text } from "react-native";
 import { Truck, MapPin, BarChart3 } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import Card          from "../components/ui/Card";
@@ -9,6 +9,8 @@ import Badge         from "../components/ui/Badge";
 import BarChartCard  from "../components/charts/BarChartCard";
 import { colors, spacing, fontSize } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import { styles } from "./MarketScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 const CITIES = [
   { key: "hyderabad",  name: "Hyderabad",  dist: "400 km", share: "35%" },
@@ -45,7 +47,7 @@ export default function MarketScreen() {
         <DataTable headers={tableHeaders} rows={tableRows} />
       </Card>
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       <BarChartCard
         Icon={BarChart3}
@@ -57,7 +59,7 @@ export default function MarketScreen() {
         height={200}
       />
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       <BarChartCard
         Icon={Truck}
@@ -72,6 +74,3 @@ export default function MarketScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  gap: { height: spacing.lg },
-});

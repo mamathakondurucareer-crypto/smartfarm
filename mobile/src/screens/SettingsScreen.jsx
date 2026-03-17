@@ -4,7 +4,7 @@
  * Dashboard is always enabled and cannot be toggled.
  */
 import React from "react";
-import { View, Text, TouchableOpacity, ScrollView, Switch, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Switch } from "react-native";
 import { Settings } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import Card from "../components/ui/Card";
@@ -13,6 +13,8 @@ import { colors, spacing, radius, fontSize } from "../config/theme";
 import useFarmStore from "../store/useFarmStore";
 import useAuthStore from "../store/useAuthStore";
 import { SCREENS } from "../config/navigation";
+import { styles } from "./SettingsScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 const CATEGORIES = [
   { label: "Farm Operations", names: ["Aquaculture", "Greenhouse", "VerticalFarm", "Poultry", "Water", "Energy", "Automation", "Nursery"] },
@@ -39,7 +41,7 @@ export default function SettingsScreen() {
         </Text>
       </Card>
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {CATEGORIES.map((cat) => (
@@ -54,7 +56,7 @@ export default function SettingsScreen() {
                 return (
                   <View
                     key={name}
-                    style={[styles.row, idx < cat.names.length - 1 && styles.rowBorder]}
+                    style={[cs.row, idx < cat.names.length - 1 && styles.rowBorder]}
                   >
                     <View style={styles.rowLeft}>
                       <View style={[styles.iconBox, { backgroundColor: color + "20" }]}>
@@ -73,7 +75,7 @@ export default function SettingsScreen() {
                 );
               })}
             </Card>
-            <View style={styles.gap} />
+            <View style={cs.gap} />
           </View>
         ))}
       </ScrollView>
@@ -81,15 +83,3 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  hint:        { fontSize: fontSize.sm, color: colors.textMuted, marginTop: spacing.xs },
-  gap:         { height: spacing.md },
-  section:     {},
-  catLabel:    { fontSize: fontSize.xs, fontWeight: "700", color: colors.textMuted, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: spacing.xs, paddingHorizontal: spacing.xs },
-  row:         { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: spacing.sm },
-  rowBorder:   { borderBottomWidth: 1, borderBottomColor: colors.border },
-  rowLeft:     { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  iconBox:     { width: 28, height: 28, borderRadius: radius.sm, alignItems: "center", justifyContent: "center" },
-  rowLabel:    { fontSize: fontSize.md, color: colors.text },
-  rowLabelOff: { color: colors.textMuted },
-});

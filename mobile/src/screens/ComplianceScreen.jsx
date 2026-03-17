@@ -1,262 +1,75 @@
-import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  StyleSheet,
   Modal,
   FlatList,
   ActivityIndicator,
-  Alert,
   TextInput,
 } from "react-native";
-import useAuthStore from "../store/useAuthStore";
-import { api } from "../services/api";
 import { Shield, AlertCircle, CheckSquare } from "lucide-react-native";
+import { useComplianceScreen } from "../hooks/screens/useComplianceScreen";
+import { styles } from "./ComplianceScreen.styles";
+import { commonStyles as cs } from "../styles/common";
+import { colors } from "../config/theme";
 
 const ComplianceScreen = () => {
-  const token = useAuthStore((state) => state.token);
-  const [tab, setTab] = useState("licences");
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-
-  // Licences state
-  const [licences, setLicences] = useState([]);
-  const [expiringSoon, setExpiringSoon] = useState([]);
-
-  // Tasks state
-  const [tasks, setTasks] = useState([]);
-  const [taskFilter, setTaskFilter] = useState("all"); // all/pending/completed
-
-  // Modal state
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalMode, setModalMode] = useState("create"); // create/edit
-  const [formData, setFormData] = useState({});
-  const [selectedItem, setSelectedItem] = useState(null);
-
-  // Field definitions per tab
-  const fieldsByTab = {
-    licences: [
-      { key: "name", label: "Licence Name", type: "text" },
-      { key: "category", label: "Category", type: "text" },
-      { key: "issuing_authority", label: "Issuing Authority", type: "text" },
-      { key: "licence_number", label: "Licence Number", type: "text" },
-      { key: "cost_inr", label: "Cost (INR)", type: "number" },
-      { key: "issue_date", label: "Issue Date", type: "date" },
-      { key: "expiry_date", label: "Expiry Date", type: "date" },
-      { key: "responsible_person", label: "Responsible Person", type: "text" },
-      { key: "notes", label: "Notes", type: "text" },
-    ],
-    tasks: [
-      { key: "title", label: "Task Title", type: "text" },
-      { key: "task_type", label: "Task Type", type: "text" },
-      { key: "frequency", label: "Frequency", type: "text" },
-      { key: "due_date", label: "Due Date", type: "date" },
-      { key: "assigned_to", label: "Assigned To", type: "text" },
-      { key: "notes", label: "Notes", type: "text" },
-    ],
-  };
-
-  const fetchAll = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
-    try {
-      const [licsData, tasksData, expData] = await Promise.all([
-        api.compliance.licences.list(token),
-        api.compliance.tasks.list(token),
-        api.compliance.licences.expiringSoon(token),
-      ]);
-      setLicences(licsData || []);
-      setTasks(tasksData || []);
-      setExpiringSoon(expData || []);
-    } catch (err) {
-      console.error("Fetch error:", err);
-      Alert.alert("Error", "Failed to load compliance data");
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchAll();
-    setRefreshing(false);
-  };
-
-  const handleCreateLicence = async () => {
-    try {
-      const newLic = await api.compliance.licences.create(formData, token);
-      setLicences([newLic, ...licences]);
-      setModalVisible(false);
-      setFormData({});
-      Alert.alert("Success", "Licence created");
-    } catch (err) {
-      Alert.alert("Error", err.response?.data?.detail || "Failed to create licence");
-    }
-  };
-
-  const handleUpdateLicence = async () => {
-    try {
-      const updated = await api.compliance.licences.update(
-        selectedItem.id,
-        formData,
-        token
-      );
-      setLicences(licences.map((l) => (l.id === selectedItem.id ? updated : l)));
-      setModalVisible(false);
-      setFormData({});
-      setSelectedItem(null);
-      Alert.alert("Success", "Licence updated");
-    } catch (err) {
-      Alert.alert("Error", err.response?.data?.detail || "Failed to update licence");
-    }
-  };
-
-  const handleDeleteLicence = async (licId) => {
-    Alert.alert("Confirm", "Delete this licence?", [
-      { text: "Cancel" },
-      {
-        text: "Delete",
-        onPress: async () => {
-          try {
-            await api.compliance.licences.delete(licId, token);
-            setLicences(licences.filter((l) => l.id !== licId));
-            Alert.alert("Success", "Licence deleted");
-          } catch (err) {
-            Alert.alert(
-              "Error",
-              err.response?.data?.detail || "Failed to delete licence"
-            );
-          }
-        },
-      },
-    ]);
-  };
-
-  const handleCreateTask = async () => {
-    try {
-      const newTask = await api.compliance.tasks.create(formData, token);
-      setTasks([newTask, ...tasks]);
-      setModalVisible(false);
-      setFormData({});
-      Alert.alert("Success", "Task created");
-    } catch (err) {
-      Alert.alert("Error", err.response?.data?.detail || "Failed to create task");
-    }
-  };
-
-  const handleUpdateTask = async () => {
-    try {
-      const updated = await api.compliance.tasks.update(
-        selectedItem.id,
-        formData,
-        token
-      );
-      setTasks(tasks.map((t) => (t.id === selectedItem.id ? updated : t)));
-      setModalVisible(false);
-      setFormData({});
-      setSelectedItem(null);
-      Alert.alert("Success", "Task updated");
-    } catch (err) {
-      Alert.alert("Error", err.response?.data?.detail || "Failed to update task");
-    }
-  };
-
-  const handleMarkTaskComplete = async (taskId, currentStatus) => {
-    try {
-      const updated = await api.compliance.tasks.update(
-        taskId,
-        {
-          completed: !currentStatus,
-          completed_date: !currentStatus ? new Date().toISOString().split("T")[0] : null,
-        },
-        token
-      );
-      setTasks(tasks.map((t) => (t.id === taskId ? updated : t)));
-    } catch (err) {
-      Alert.alert("Error", "Failed to update task");
-    }
-  };
-
-  const handleDeleteTask = async (taskId) => {
-    Alert.alert("Confirm", "Delete this task?", [
-      { text: "Cancel" },
-      {
-        text: "Delete",
-        onPress: async () => {
-          try {
-            await api.compliance.tasks.delete(taskId, token);
-            setTasks(tasks.filter((t) => t.id !== taskId));
-            Alert.alert("Success", "Task deleted");
-          } catch (err) {
-            Alert.alert(
-              "Error",
-              err.response?.data?.detail || "Failed to delete task"
-            );
-          }
-        },
-      },
-    ]);
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "active":
-        return "#4CAF50";
-      case "expiring":
-        return "#FF9800";
-      case "expired":
-        return "#FF5722";
-      case "pending":
-        return "#9C27B0";
-      default:
-        return "#757575";
-    }
-  };
-
-  const getExpireSoonCount = () => {
-    return expiringSoon.length;
-  };
+  const {
+    tab,
+    setTab,
+    licences,
+    tasks,
+    taskFilter,
+    setTaskFilter,
+    loading,
+    refreshing,
+    onRefresh,
+    modalVisible,
+    setModalVisible,
+    modalMode,
+    formData,
+    setFormData,
+    fieldsByTab,
+    handleDeleteLicence,
+    handleMarkTaskComplete,
+    handleDeleteTask,
+    getStatusColor,
+    getExpiringSoonCount,
+    openCreateModal,
+    openEditModal,
+    handleModalSubmit,
+  } = useComplianceScreen();
 
   const renderLicencesTab = () => (
     <View style={styles.tabContent}>
-      {getExpirySoonCount() > 0 && (
+      {getExpiringSoonCount() > 0 && (
         <View style={styles.alertBanner}>
-          <AlertCircle size={24} color="#FF5722" />
+          <AlertCircle size={24} color={colors.danger} />
           <View style={styles.alertContent}>
             <Text style={styles.alertTitle}>Action Required</Text>
             <Text style={styles.alertText}>
-              {getExpirySoonCount()} licence(s) expiring soon
+              {getExpiringSoonCount()} licence(s) expiring soon
             </Text>
           </View>
         </View>
       )}
 
       <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => {
-          setModalMode("create");
-          setFormData({});
-          setSelectedItem(null);
-          setModalVisible(true);
-        }}
+        style={cs.addButton}
+        onPress={() => openCreateModal("licences")}
       >
-        <Text style={styles.addButtonText}>+ Add Licence</Text>
+        <Text style={cs.addButtonText}>+ Add Licence</Text>
       </TouchableOpacity>
 
       <FlatList
         data={licences}
         keyExtractor={(item) => item.id.toString()}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Shield size={48} color="#bdbdbd" />
-            <Text style={styles.emptyTitle}>No licences added</Text>
-            <Text style={styles.emptyText}>Tap "+ Add Licence" to track your farm permits and certificates.</Text>
+          <View style={cs.emptyState}>
+            <Shield size={48} color={colors.textMuted} />
+            <Text style={cs.emptyTitle}>No licences added</Text>
+            <Text style={cs.emptyText}>Tap "+ Add Licence" to track your farm permits and certificates.</Text>
           </View>
         }
         renderItem={({ item }) => {
@@ -304,12 +117,7 @@ const ComplianceScreen = () => {
                 <View style={styles.actionButtons}>
                   <TouchableOpacity
                     style={[styles.smallButton, styles.editButton]}
-                    onPress={() => {
-                      setSelectedItem(item);
-                      setFormData(item);
-                      setModalMode("edit");
-                      setModalVisible(true);
-                    }}
+                    onPress={() => openEditModal(item, "licences")}
                   >
                     <Text style={styles.smallButtonText}>Edit</Text>
                   </TouchableOpacity>
@@ -385,15 +193,10 @@ const ComplianceScreen = () => {
       </View>
 
       <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => {
-          setModalMode("create");
-          setFormData({});
-          setSelectedItem(null);
-          setModalVisible(true);
-        }}
+        style={cs.addButton}
+        onPress={() => openCreateModal("tasks")}
       >
-        <Text style={styles.addButtonText}>+ Add Task</Text>
+        <Text style={cs.addButtonText}>+ Add Task</Text>
       </TouchableOpacity>
 
       <FlatList
@@ -405,12 +208,12 @@ const ComplianceScreen = () => {
         })}
         keyExtractor={(item) => item.id.toString()}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <CheckSquare size={48} color="#bdbdbd" />
-            <Text style={styles.emptyTitle}>
+          <View style={cs.emptyState}>
+            <CheckSquare size={48} color={colors.textMuted} />
+            <Text style={cs.emptyTitle}>
               {taskFilter === "completed" ? "No completed tasks" : taskFilter === "pending" ? "No pending tasks" : "No tasks yet"}
             </Text>
-            <Text style={styles.emptyText}>
+            <Text style={cs.emptyText}>
               {taskFilter === "all" ? "Tap \"+ Add Task\" to schedule your first compliance task." : "Switch to \"All\" to see all tasks."}
             </Text>
           </View>
@@ -420,7 +223,7 @@ const ComplianceScreen = () => {
             style={[
               styles.listItem,
               {
-                borderLeftColor: item.completed ? "#4CAF50" : "#2196F3",
+                borderLeftColor: item.completed ? colors.success : colors.info,
               },
             ]}
           >
@@ -428,7 +231,7 @@ const ComplianceScreen = () => {
               <View style={styles.listItemHeader}>
                 <CheckSquare
                   size={20}
-                  color={item.completed ? "#4CAF50" : "#999"}
+                  color={item.completed ? colors.success : colors.textMuted}
                 />
                 <Text
                   style={[
@@ -446,7 +249,7 @@ const ComplianceScreen = () => {
                   style={[
                     styles.statusBadge,
                     {
-                      backgroundColor: item.completed ? "#4CAF50" : "#FF9800",
+                      backgroundColor: item.completed ? colors.success : colors.warn,
                     },
                   ]}
                 >
@@ -478,12 +281,7 @@ const ComplianceScreen = () => {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.smallButton, styles.editButton]}
-                  onPress={() => {
-                    setSelectedItem(item);
-                    setFormData(item);
-                    setModalMode("edit");
-                    setModalVisible(true);
-                  }}
+                  onPress={() => openEditModal(item, "tasks")}
                 >
                   <Text style={styles.smallButtonText}>Edit</Text>
                 </TouchableOpacity>
@@ -513,9 +311,9 @@ const ComplianceScreen = () => {
         animationType="slide"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
+        <View style={cs.modalOverlay}>
+          <View style={cs.modalContent}>
+            <Text style={cs.modalTitle}>
               {modalMode === "create"
                 ? `New ${tab === "licences" ? "Licence" : "Task"}`
                 : `Edit ${tab === "licences" ? "Licence" : "Task"}`}
@@ -527,6 +325,7 @@ const ComplianceScreen = () => {
                   <TextInput
                     style={styles.fieldInput}
                     placeholder={field.label}
+                    placeholderTextColor={colors.textMuted}
                     keyboardType={
                       field.type === "number" ? "decimal-pad" : "default"
                     }
@@ -540,30 +339,16 @@ const ComplianceScreen = () => {
             </ScrollView>
             <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.button, styles.cancelButton]}
+                style={[styles.button, cs.cancelButton]}
                 onPress={() => setModalVisible(false)}
               >
-                <Text style={styles.buttonText}>Cancel</Text>
+                <Text style={cs.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.button, styles.submitButton]}
-                onPress={() => {
-                  if (tab === "licences") {
-                    if (modalMode === "create") {
-                      handleCreateLicence();
-                    } else {
-                      handleUpdateLicence();
-                    }
-                  } else if (tab === "tasks") {
-                    if (modalMode === "create") {
-                      handleCreateTask();
-                    } else {
-                      handleUpdateTask();
-                    }
-                  }
-                }}
+                style={[styles.button, cs.saveButton]}
+                onPress={handleModalSubmit}
               >
-                <Text style={styles.buttonText}>
+                <Text style={cs.saveButtonText}>
                   {modalMode === "create" ? "Create" : "Update"}
                 </Text>
               </TouchableOpacity>
@@ -572,10 +357,6 @@ const ComplianceScreen = () => {
         </View>
       </Modal>
     );
-  };
-
-  const getExpirySoonCount = () => {
-    return expiringSoon.length;
   };
 
   return (
@@ -613,9 +394,9 @@ const ComplianceScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {loading && !refreshing ? (
+      {loading ? (
         <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color="#2196F3" />
+          <ActivityIndicator size="large" color={colors.info} />
         </View>
       ) : (
         <ScrollView style={styles.scrollView} scrollEventThrottle={16}>
@@ -628,281 +409,5 @@ const ComplianceScreen = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  header: {
-    backgroundColor: "#2196F3",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  tabBar: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  tabActive: {
-    borderBottomWidth: 3,
-    borderBottomColor: "#2196F3",
-  },
-  tabButtonText: {
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "500",
-  },
-  tabActiveText: {
-    color: "#2196F3",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  tabContent: {
-    padding: 16,
-  },
-  alertBanner: {
-    backgroundColor: "#FFF3E0",
-    borderLeftWidth: 4,
-    borderLeftColor: "#FF5722",
-    flexDirection: "row",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    alignItems: "center",
-  },
-  alertContent: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  alertTitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#FF5722",
-  },
-  alertText: {
-    fontSize: 12,
-    color: "#E65100",
-  },
-  filterButtons: {
-    flexDirection: "row",
-    marginBottom: 16,
-  },
-  filterButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: "#e0e0e0",
-    borderRadius: 6,
-    marginHorizontal: 4,
-    alignItems: "center",
-  },
-  filterButtonActive: {
-    backgroundColor: "#2196F3",
-  },
-  filterButtonText: {
-    fontSize: 13,
-    color: "#666",
-    fontWeight: "500",
-  },
-  filterButtonActiveText: {
-    color: "#fff",
-  },
-  addButton: {
-    backgroundColor: "#4CAF50",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 16,
-    alignItems: "center",
-  },
-  addButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
-  },
-  listItem: {
-    backgroundColor: "#fff",
-    padding: 12,
-    marginBottom: 12,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-  },
-  listItemContent: {
-    flex: 1,
-  },
-  listItemHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  listItemTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginLeft: 8,
-    flex: 1,
-  },
-  completedText: {
-    textDecorationLine: "line-through",
-    color: "#999",
-  },
-  listItemSubtitle: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 8,
-  },
-  listItemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  listItemText: {
-    fontSize: 13,
-    color: "#555",
-  },
-  listItemMeta: {
-    fontSize: 12,
-    color: "#999",
-    marginBottom: 8,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  statusText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  actionButtons: {
-    flexDirection: "row",
-    marginTop: 12,
-  },
-  smallButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    alignItems: "center",
-    marginHorizontal: 4,
-  },
-  completeButton: {
-    backgroundColor: "#4CAF50",
-  },
-  uncompleteButton: {
-    backgroundColor: "#999",
-  },
-  editButton: {
-    backgroundColor: "#FF9800",
-  },
-  deleteButton: {
-    backgroundColor: "#FF5722",
-  },
-  smallButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 12,
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 48,
-    paddingHorizontal: 24,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#999",
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: "#bdbdbd",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: "85%",
-    paddingTop: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginHorizontal: 16,
-    marginBottom: 12,
-    color: "#333",
-  },
-  modalScroll: {
-    paddingHorizontal: 16,
-    maxHeight: 400,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#333",
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  fieldInput: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    backgroundColor: "#fafafa",
-  },
-  modalActions: {
-    flexDirection: "row",
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginHorizontal: 8,
-  },
-  cancelButton: {
-    backgroundColor: "#e0e0e0",
-  },
-  submitButton: {
-    backgroundColor: "#2196F3",
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
-  },
-});
 
 export default ComplianceScreen;

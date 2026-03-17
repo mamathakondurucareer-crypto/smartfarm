@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator, Modal, FlatList,
+  ActivityIndicator, Modal, FlatList,
 } from "react-native";
 import {
   ShoppingCart, Search, X, Plus, Minus, CreditCard,
@@ -14,10 +14,12 @@ import ScreenWrapper from "../components/layout/ScreenWrapper";
 import Card          from "../components/ui/Card";
 import SectionHeader from "../components/ui/SectionHeader";
 import Badge         from "../components/ui/Badge";
-import { colors, spacing, radius, fontSize } from "../config/theme";
+import { colors, spacing, fontSize } from "../config/theme";
 import { api }       from "../services/api";
 import useAuthStore  from "../store/useAuthStore";
 import usePOSStore   from "../store/usePOSStore";
+import { styles } from "./POSScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 const PAYMENT_MODES = ["Cash", "UPI", "Card"];
 
@@ -173,15 +175,15 @@ export default function POSScreen() {
       </Card>
 
       {!!error && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={cs.errorBox}>
+          <Text style={cs.errorText}>{error}</Text>
         </View>
       )}
 
       <View style={styles.layout}>
         {/* ── Left panel: products ── */}
         <View style={styles.leftPanel}>
-          <Card style={styles.cardGap}>
+          <Card style={cs.cardGap}>
             <SectionHeader Icon={Package} title="Products" color={colors.pos} />
             {/* Search */}
             <View style={styles.searchRow}>
@@ -199,7 +201,7 @@ export default function POSScreen() {
             {/* Barcode input */}
             <View style={styles.searchRow}>
               <TextInput
-                style={[styles.input, { flex: 1 }]}
+                style={[cs.input, { flex: 1 }]}
                 value={barcode}
                 onChangeText={setBarcode}
                 placeholder="Scan / enter barcode"
@@ -216,7 +218,7 @@ export default function POSScreen() {
               : (
                 <View style={styles.productGrid}>
                   {filteredProducts.length === 0
-                    ? <Text style={styles.empty}>No products found</Text>
+                    ? <Text style={cs.empty}>No products found</Text>
                     : filteredProducts.map((p) => (
                       <TouchableOpacity
                         key={p.id}
@@ -241,7 +243,7 @@ export default function POSScreen() {
           <Card>
             <SectionHeader Icon={ShoppingCart} title="Cart" color={colors.store} />
             {cart.length === 0
-              ? <Text style={styles.empty}>Cart is empty — tap a product to add</Text>
+              ? <Text style={cs.empty}>Cart is empty — tap a product to add</Text>
               : (
                 <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
                   {cart.map((item) => (
@@ -295,7 +297,7 @@ export default function POSScreen() {
             </View>
 
             {/* Payment mode */}
-            <Text style={styles.label}>Payment Mode</Text>
+            <Text style={cs.label}>Payment Mode</Text>
             <View style={styles.modeRow}>
               {PAYMENT_MODES.map((m) => (
                 <TouchableOpacity
@@ -311,9 +313,9 @@ export default function POSScreen() {
 
             {paymentMode === "Cash" && (
               <>
-                <Text style={styles.label}>Amount Tendered</Text>
+                <Text style={cs.label}>Amount Tendered</Text>
                 <TextInput
-                  style={styles.input}
+                  style={cs.input}
                   value={tendered}
                   onChangeText={setTendered}
                   keyboardType="numeric"
@@ -343,8 +345,8 @@ export default function POSScreen() {
 
       {/* Open Session Modal */}
       <Modal visible={sessionModal} transparent animationType="fade" onRequestClose={() => setSessionModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+        <View style={cs.modalOverlayCentered}>
+          <View style={cs.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitleText}>Open POS Session</Text>
               <TouchableOpacity onPress={() => setSessionModal(false)}>
@@ -352,13 +354,13 @@ export default function POSScreen() {
               </TouchableOpacity>
             </View>
             {!!sessionMsg && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{sessionMsg}</Text>
+              <View style={cs.errorBox}>
+                <Text style={cs.errorText}>{sessionMsg}</Text>
               </View>
             )}
-            <Text style={styles.label}>Opening Cash Amount (₹)</Text>
+            <Text style={cs.label}>Opening Cash Amount (₹)</Text>
             <TextInput
-              style={styles.input}
+              style={cs.input}
               value={openingCash}
               onChangeText={setOpeningCash}
               keyboardType="numeric"
@@ -374,8 +376,8 @@ export default function POSScreen() {
 
       {/* Receipt Modal */}
       <Modal visible={receiptModal} transparent animationType="slide" onRequestClose={() => setReceiptModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+        <View style={cs.modalOverlayCentered}>
+          <View style={cs.modalCard}>
             <View style={styles.modalHeader}>
               <View style={styles.receiptHeader}>
                 <CheckCircle size={20} color={colors.primary} />
@@ -392,7 +394,7 @@ export default function POSScreen() {
                 <Text style={styles.receiptMode}>Mode: {receipt.payment_mode ?? "—"}</Text>
                 {Array.isArray(receipt.items) && receipt.items.length > 0 && (
                   <>
-                    <Text style={[styles.label, { marginTop: spacing.md }]}>Items</Text>
+                    <Text style={[cs.label, { marginTop: spacing.md }]}>Items</Text>
                     {receipt.items.map((it, idx) => (
                       <View key={idx} style={styles.receiptItem}>
                         <Text style={styles.receiptItemName}>{it.product_name ?? `Product ${it.product_id}`}</Text>
@@ -413,62 +415,3 @@ export default function POSScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  sessionBar:     { marginBottom: spacing.md },
-  sessionRow:     { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  sessionLeft:    { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  sessionText:    { fontSize: fontSize.base, fontWeight: "600" },
-  sessionBtn:     { borderWidth: 1, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
-  errorBox:       { backgroundColor: colors.danger + "20", borderWidth: 1, borderColor: colors.danger + "40", borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
-  errorText:      { color: colors.danger, fontSize: fontSize.md },
-  layout:         { flexDirection: "row", gap: spacing.md, flexWrap: "wrap" },
-  leftPanel:      { flex: 2, minWidth: 280 },
-  rightPanel:     { flex: 1, minWidth: 260 },
-  cardGap:        { marginBottom: spacing.md },
-  searchRow:      { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.sm },
-  searchBox:      { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.sm },
-  searchInput:    { flex: 1, color: colors.text, fontSize: fontSize.base, height: 38 },
-  input:          { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, color: colors.text, fontSize: fontSize.base },
-  barcodeBtn:     { backgroundColor: colors.scanner, borderRadius: radius.md, paddingHorizontal: spacing.md, justifyContent: "center" },
-  barcodeBtnText: { color: colors.bg, fontWeight: "700", fontSize: fontSize.md },
-  productGrid:    { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.sm },
-  productCard:    { width: "30%", minWidth: 90, backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.sm, alignItems: "center" },
-  productName:    { fontSize: fontSize.sm, color: colors.text, textAlign: "center", marginBottom: 2 },
-  productPrice:   { fontSize: fontSize.md, color: colors.pos, fontWeight: "700" },
-  productUnit:    { fontSize: fontSize.xs, color: colors.textMuted },
-  empty:          { color: colors.textMuted, fontSize: fontSize.md, textAlign: "center", paddingVertical: spacing.lg },
-  cartItem:       { flexDirection: "row", alignItems: "center", paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border + "40", gap: spacing.sm },
-  cartName:       { fontSize: fontSize.md, color: colors.text, fontWeight: "600" },
-  cartPrice:      { fontSize: fontSize.xs, color: colors.textMuted },
-  qtyRow:         { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  qtyBtn:         { backgroundColor: colors.border, borderRadius: radius.sm, padding: 4 },
-  qtyText:        { fontSize: fontSize.base, color: colors.text, minWidth: 20, textAlign: "center" },
-  removeBtn:      { padding: 4 },
-  totalsBox:      { borderTopWidth: 1, borderTopColor: colors.border, marginTop: spacing.md, paddingTop: spacing.md },
-  totalRow:       { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs },
-  totalLabel:     { fontSize: fontSize.md, color: colors.textDim },
-  totalVal:       { fontSize: fontSize.md, color: colors.text },
-  totalFinal:     { borderTopWidth: 1, borderTopColor: colors.border, marginTop: spacing.xs, paddingTop: spacing.sm },
-  totalFinalLabel:{ fontSize: fontSize.lg, color: colors.text, fontWeight: "700" },
-  totalFinalVal:  { fontSize: fontSize.xl, color: colors.primary, fontWeight: "700" },
-  inlineInput:    { backgroundColor: colors.bg, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.sm, paddingVertical: 2, color: colors.text, fontSize: fontSize.md, width: 60, textAlign: "right" },
-  label:          { fontSize: fontSize.md, color: colors.textDim, marginBottom: spacing.xs, marginTop: spacing.sm },
-  modeRow:        { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.sm },
-  modeBtn:        { flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingVertical: spacing.sm, alignItems: "center" },
-  modeBtnActive:  { backgroundColor: colors.primary, borderColor: colors.primary },
-  modeBtnText:    { fontSize: fontSize.md, color: colors.textDim, fontWeight: "600" },
-  changeText:     { fontSize: fontSize.md, color: colors.primary, fontWeight: "600", marginTop: spacing.xs },
-  checkoutBtn:    { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, backgroundColor: colors.pos, borderRadius: radius.md, padding: spacing.md, marginTop: spacing.lg, height: 48 },
-  checkoutBtnText:{ color: colors.bg, fontSize: fontSize.base, fontWeight: "700" },
-  modalOverlay:   { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", padding: spacing.xl },
-  modalCard:      { backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: spacing.xl, width: "100%", maxWidth: 440, maxHeight: "85%" },
-  modalHeader:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.lg },
-  modalTitleText: { fontSize: fontSize.lg, fontWeight: "700", color: colors.text },
-  receiptHeader:  { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  receiptCode:    { fontSize: fontSize.lg, color: colors.primary, fontWeight: "700", marginBottom: spacing.sm },
-  receiptTotal:   { fontSize: fontSize.xl, color: colors.text, fontWeight: "700" },
-  receiptMode:    { fontSize: fontSize.md, color: colors.textDim, marginBottom: spacing.sm },
-  receiptItem:    { flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.xs, borderBottomWidth: 1, borderBottomColor: colors.border + "40" },
-  receiptItemName:{ fontSize: fontSize.md, color: colors.text },
-  receiptItemVal: { fontSize: fontSize.md, color: colors.textDim },
-});

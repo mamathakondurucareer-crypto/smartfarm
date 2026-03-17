@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, ScrollView, TouchableOpacity,
   Modal, TextInput, ActivityIndicator, RefreshControl,
 } from "react-native";
 import { Plane, MapPin, Droplets, Plus, Edit2, Trash2, X } from "lucide-react-native";
@@ -10,6 +10,8 @@ import ScreenWrapper from "../components/layout/ScreenWrapper";
 import Card from "../components/ui/Card";
 import SectionHeader from "../components/ui/SectionHeader";
 import { colors } from "../config/theme";
+import { styles } from "./DroneScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 const TABS = ["Drones", "Flights", "Spray Logs"];
 
@@ -125,7 +127,7 @@ export default function DroneScreen() {
             <SectionHeader Icon={Plane} title={`Drones (${data.drones.length})`} action={canEdit && <TouchableOpacity onPress={openCreate}><Plus size={18} color={colors.primary} /></TouchableOpacity>} />
             {data.drones.length === 0 && <Text style={styles.empty}>No drones registered</Text>}
             {data.drones.map((d) => (
-              <View key={d.id} style={styles.row}>
+              <View key={d.id} style={cs.row}>
                 <View style={styles.rowLeft}>
                   <Text style={styles.rowTitle}>{d.drone_code}</Text>
                   <Text style={styles.rowSub}>{d.name} • Type: {d.drone_type}</Text>
@@ -148,7 +150,7 @@ export default function DroneScreen() {
             <SectionHeader Icon={MapPin} title={`Flight Logs (${data.flights.length})`} action={canEdit && <TouchableOpacity onPress={openCreate}><Plus size={18} color={colors.primary} /></TouchableOpacity>} />
             {data.flights.length === 0 && <Text style={styles.empty}>No flight logs</Text>}
             {data.flights.map((f) => (
-              <View key={f.id} style={styles.row}>
+              <View key={f.id} style={cs.row}>
                 <View style={styles.rowLeft}>
                   <Text style={styles.rowTitle}>{f.flight_date} • {getDroneNameById(f.drone_id)}</Text>
                   <Text style={styles.rowSub}>Mission: {f.mission_type} • Pilot: {f.pilot}</Text>
@@ -168,7 +170,7 @@ export default function DroneScreen() {
             <SectionHeader Icon={Droplets} title={`Spray Logs (${data.sprays.length})`} action={canEdit && <TouchableOpacity onPress={openCreate}><Plus size={18} color={colors.primary} /></TouchableOpacity>} />
             {data.sprays.length === 0 && <Text style={styles.empty}>No spray logs</Text>}
             {data.sprays.map((s) => (
-              <View key={s.id} style={styles.row}>
+              <View key={s.id} style={cs.row}>
                 <View style={styles.rowLeft}>
                   <Text style={styles.rowTitle}>{s.agent_name}</Text>
                   <Text style={styles.rowSub}>Type: {s.agent_type} • Flight ID: {s.flight_id}</Text>
@@ -218,10 +220,10 @@ export default function DroneScreen() {
 
   return (
     <ScreenWrapper title="Drone Management">
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar} contentContainerStyle={styles.tabBarContent}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={cs.tabBar} contentContainerStyle={styles.tabBarContent}>
         {TABS.map((t) => (
-          <TouchableOpacity key={t} style={[styles.tab, activeTab === t && styles.tabActive]} onPress={() => setActiveTab(t)}>
-            <Text style={[styles.tabText, activeTab === t && styles.tabTextActive]}>{t}</Text>
+          <TouchableOpacity key={t} style={[cs.tab, activeTab === t && cs.tabActive]} onPress={() => setActiveTab(t)}>
+            <Text style={[cs.tabText, activeTab === t && cs.tabActiveText]}>{t}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -249,7 +251,7 @@ export default function DroneScreen() {
                   <View key={f.key} style={styles.field}>
                     <Text style={styles.fieldLabel}>{f.label}</Text>
                     <TextInput
-                      style={[styles.input, f.multiline && styles.inputMulti]}
+                      style={[cs.input, f.multiline && styles.inputMulti]}
                       value={String(form[f.key] ?? "")}
                       onChangeText={(v) => setForm((prev) => ({ ...prev, [f.key]: v }))}
                       keyboardType={f.numeric ? "numeric" : "default"}
@@ -268,31 +270,3 @@ export default function DroneScreen() {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBar: { backgroundColor: colors.card, maxHeight: 48 },
-  tabBarContent: { paddingHorizontal: 8, alignItems: "center" },
-  tab: { paddingHorizontal: 14, paddingVertical: 12, marginHorizontal: 2 },
-  tabActive: { borderBottomWidth: 2, borderBottomColor: colors.primary },
-  tabText: { fontSize: 13, color: colors.textDim },
-  tabTextActive: { color: colors.primary, fontWeight: "600" },
-  content: { padding: 12, paddingBottom: 40 },
-  error: { color: colors.danger, marginBottom: 8, fontSize: 13 },
-  empty: { color: colors.textDim, textAlign: "center", padding: 16, fontSize: 13 },
-  row: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
-  rowLeft: { flex: 1 },
-  rowTitle: { color: colors.text, fontSize: 14, fontWeight: "600" },
-  rowSub: { color: colors.textDim, fontSize: 12, marginTop: 2 },
-  rowActions: { flexDirection: "row", alignItems: "center", marginLeft: 8 },
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: "90%", paddingBottom: 24 },
-  sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
-  sheetTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
-  sheetBody: { padding: 16 },
-  field: { marginBottom: 14 },
-  fieldLabel: { color: colors.textDim, fontSize: 12, marginBottom: 4 },
-  input: { backgroundColor: colors.background, color: colors.text, borderRadius: 8, padding: 10, borderWidth: 1, borderColor: colors.border, fontSize: 14 },
-  inputMulti: { minHeight: 80, textAlignVertical: "top" },
-  saveBtn: { backgroundColor: colors.primary, padding: 14, borderRadius: 8, alignItems: "center", marginTop: 8 },
-  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-});

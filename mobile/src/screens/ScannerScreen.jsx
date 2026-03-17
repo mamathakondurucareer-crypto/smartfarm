@@ -4,16 +4,18 @@
 import React, { useState, useRef } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator,
+  ActivityIndicator,
 } from "react-native";
 import { Scan, Search, X, Package, ShoppingBag } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import Card          from "../components/ui/Card";
 import SectionHeader from "../components/ui/SectionHeader";
 import Badge         from "../components/ui/Badge";
-import { colors, spacing, radius, fontSize } from "../config/theme";
+import { colors } from "../config/theme";
 import { api }       from "../services/api";
 import useAuthStore  from "../store/useAuthStore";
+import { styles } from "./ScannerScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 const MODES = [
   { key: "stock", label: "Stock Lookup",  color: colors.scanner, icon: Package },
@@ -66,7 +68,7 @@ export default function ScannerScreen() {
   return (
     <ScreenWrapper title="Scanner">
       {/* Mode toggle */}
-      <Card style={styles.cardGap}>
+      <Card style={cs.cardGap}>
         <SectionHeader Icon={Scan} title="Scan Mode" color={colors.scanner} />
         <View style={styles.modeRow}>
           {MODES.map((m) => (
@@ -84,7 +86,7 @@ export default function ScannerScreen() {
       </Card>
 
       {/* Input */}
-      <Card style={styles.cardGap}>
+      <Card style={cs.cardGap}>
         <SectionHeader Icon={Search} title="Barcode / QR Input" color={activeMode?.color ?? colors.scanner} />
         <View style={styles.inputRow}>
           <TextInput
@@ -115,15 +117,15 @@ export default function ScannerScreen() {
         </View>
 
         {!!error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={cs.errorBox}>
+            <Text style={cs.errorText}>{error}</Text>
           </View>
         )}
       </Card>
 
       {/* Result card */}
       {result && (
-        <Card style={styles.cardGap}>
+        <Card style={cs.cardGap}>
           <SectionHeader Icon={activeMode?.icon ?? Package} title="Scan Result" color={activeMode?.color ?? colors.scanner} />
           <View style={styles.resultGrid}>
             {result.entity_type && (
@@ -187,25 +189,3 @@ export default function ScannerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  cardGap:       { marginBottom: spacing.md },
-  modeRow:       { flexDirection: "row", gap: spacing.sm },
-  modeBtn:       { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingVertical: spacing.md },
-  modeBtnText:   { fontSize: fontSize.md, color: colors.textDim, fontWeight: "600" },
-  inputRow:      { flexDirection: "row", gap: spacing.sm, alignItems: "center" },
-  barcodeInput:  { flex: 1, backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 2, padding: spacing.md, color: colors.text, fontSize: fontSize.base, height: 48 },
-  scanBtn:       { flexDirection: "row", alignItems: "center", gap: spacing.xs, borderRadius: radius.md, paddingHorizontal: spacing.lg, height: 48, justifyContent: "center" },
-  scanBtnText:   { color: colors.bg, fontWeight: "700", fontSize: fontSize.base },
-  clearBtn:      { padding: spacing.sm, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, height: 48, justifyContent: "center", alignItems: "center", paddingHorizontal: spacing.md },
-  errorBox:      { backgroundColor: colors.danger + "20", borderWidth: 1, borderColor: colors.danger + "40", borderRadius: radius.md, padding: spacing.md, marginTop: spacing.sm },
-  errorText:     { color: colors.danger, fontSize: fontSize.md },
-  resultGrid:    { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
-  resultItem:    { minWidth: 120, backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
-  resultLabel:   { fontSize: fontSize.xs, color: colors.textMuted, marginBottom: 2, textTransform: "uppercase" },
-  resultVal:     { fontSize: fontSize.base, color: colors.text, fontWeight: "600" },
-  historyRow:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border + "40" },
-  historyLeft:   { flex: 1 },
-  historyCode:   { fontSize: fontSize.md, color: colors.text, fontWeight: "600" },
-  historyMeta:   { fontSize: fontSize.xs, color: colors.textMuted },
-  historyName:   { fontSize: fontSize.sm, color: colors.textDim, flex: 1, textAlign: "right" },
-});

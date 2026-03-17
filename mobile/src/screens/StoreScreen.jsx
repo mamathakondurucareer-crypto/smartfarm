@@ -3,7 +3,7 @@
  */
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ActivityIndicator,
+  View, Text, TouchableOpacity, ActivityIndicator,
 } from "react-native";
 import { ShoppingBag, AlertTriangle, TrendingUp, Terminal } from "lucide-react-native";
 import ScreenWrapper  from "../components/layout/ScreenWrapper";
@@ -12,10 +12,12 @@ import SectionHeader  from "../components/ui/SectionHeader";
 import StatGrid       from "../components/ui/StatGrid";
 import Badge          from "../components/ui/Badge";
 import DataTable      from "../components/ui/DataTable";
-import { colors, spacing, radius, fontSize } from "../config/theme";
+import { colors } from "../config/theme";
 import { api }        from "../services/api";
 import useAuthStore   from "../store/useAuthStore";
 import { useNavigation } from "../context/NavigationContext";
+import { styles } from "./StoreScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 export default function StoreScreen() {
   const token      = useAuthStore((s) => s.token);
@@ -69,8 +71,8 @@ export default function StoreScreen() {
   return (
     <ScreenWrapper title="Store">
       {!!error && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={cs.errorBox}>
+          <Text style={cs.errorText}>{error}</Text>
         </View>
       )}
 
@@ -79,7 +81,7 @@ export default function StoreScreen() {
       ) : (
         <>
           {/* KPI stats */}
-          <Card style={styles.cardGap}>
+          <Card style={cs.cardGap}>
             <SectionHeader Icon={ShoppingBag} title="Today's Overview" color={colors.store} />
             <StatGrid stats={stats} />
           </Card>
@@ -95,10 +97,10 @@ export default function StoreScreen() {
           </View>
 
           {/* Recent transactions */}
-          <Card style={styles.cardGap}>
+          <Card style={cs.cardGap}>
             <SectionHeader Icon={TrendingUp} title="Recent Transactions" color={colors.pos} />
             {txnRows.length === 0
-              ? <Text style={styles.empty}>No transactions today</Text>
+              ? <Text style={cs.empty}>No transactions today</Text>
               : <DataTable headers={txnHeaders} rows={txnRows} />}
           </Card>
 
@@ -106,7 +108,7 @@ export default function StoreScreen() {
           <Card>
             <SectionHeader Icon={AlertTriangle} title="Low Stock Alerts" color={colors.warn} />
             {lowStock.length === 0
-              ? <Text style={styles.empty}>All stock levels are healthy</Text>
+              ? <Text style={cs.empty}>All stock levels are healthy</Text>
               : lowStock.map((item) => (
                 <View key={item.product_id ?? item.id} style={styles.stockRow}>
                   <Text style={styles.stockName}>{item.product_name ?? item.name ?? "Unknown"}</Text>
@@ -123,16 +125,3 @@ export default function StoreScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  errorBox:       { backgroundColor: colors.danger + "20", borderWidth: 1, borderColor: colors.danger + "40", borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
-  errorText:      { color: colors.danger, fontSize: fontSize.md },
-  cardGap:        { marginBottom: spacing.md },
-  actionRow:      { flexDirection: "row", gap: spacing.md, marginBottom: spacing.md },
-  actionBtn:      { flex: 1, borderWidth: 1, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: "center" },
-  actionBtnText:  { fontSize: fontSize.base, fontWeight: "700" },
-  empty:          { color: colors.textMuted, fontSize: fontSize.md, textAlign: "center", paddingVertical: spacing.lg },
-  stockRow:       { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border + "40" },
-  stockName:      { fontSize: fontSize.base, color: colors.text, flex: 1 },
-  stockRight:     { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  stockQty:       { fontSize: fontSize.md, color: colors.warn, fontWeight: "600" },
-});

@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text } from "react-native";
 import { Droplets, Fish, Egg, RefreshCw, Thermometer, Wind } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import Card          from "../components/ui/Card";
@@ -7,6 +7,8 @@ import SectionHeader from "../components/ui/SectionHeader";
 import Badge         from "../components/ui/Badge";
 import { colors, spacing, radius, fontSize } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import { styles } from "./AutomationScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 const SYSTEM_META = {
   irrigation:    { Icon: Droplets,    name: "Irrigation System",    color: colors.water },
@@ -73,13 +75,3 @@ export default function AutomationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  cardWrap:   { marginBottom: spacing.md },
-  header:     { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
-  headerLeft: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  iconBox:    { width: 40, height: 40, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
-  sysName:    { fontSize: fontSize.base, fontWeight: "700", color: colors.text, marginBottom: 4 },
-  statusDot:  { width: 10, height: 10, borderRadius: 5 },
-  details:    { gap: spacing.xs },
-  detailLine: { fontSize: fontSize.sm, color: colors.textDim },
-});

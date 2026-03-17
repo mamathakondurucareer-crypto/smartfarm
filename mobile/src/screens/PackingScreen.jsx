@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator, Modal,
+  ActivityIndicator, Modal,
 } from "react-native";
 import { Package, Plus, X, ChevronDown, Play, CheckSquare } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
@@ -15,6 +15,8 @@ import Badge         from "../components/ui/Badge";
 import { colors, spacing, radius, fontSize } from "../config/theme";
 import { api }       from "../services/api";
 import useAuthStore  from "../store/useAuthStore";
+import { styles } from "./PackingScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 const STATUS_COLORS = {
   pending:     colors.warn,
@@ -120,8 +122,8 @@ export default function PackingScreen() {
 
   return (
     <ScreenWrapper title="Packing">
-      <View style={styles.topRow}>
-        <Text style={styles.count}>{orders.length} orders</Text>
+      <View style={cs.topRow}>
+        <Text style={cs.count}>{orders.length} orders</Text>
         <TouchableOpacity style={styles.addBtn} onPress={() => { setForm(EMPTY_FORM); setFormError(""); setModalOpen(true); }} activeOpacity={0.8}>
           <Plus size={14} color={colors.bg} />
           <Text style={styles.addBtnText}>Create Order</Text>
@@ -129,8 +131,8 @@ export default function PackingScreen() {
       </View>
 
       {!!error && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={cs.errorBox}>
+          <Text style={cs.errorText}>{error}</Text>
         </View>
       )}
 
@@ -138,7 +140,7 @@ export default function PackingScreen() {
         <ActivityIndicator size="large" color={colors.packing} style={{ marginTop: 40 }} />
       ) : (
         <>
-          <Card style={styles.cardGap}>
+          <Card style={cs.cardGap}>
             <SectionHeader Icon={Package} title="Packing Overview" color={colors.packing} />
             <StatGrid stats={stats} />
           </Card>
@@ -146,7 +148,7 @@ export default function PackingScreen() {
           <Card>
             <SectionHeader Icon={Package} title="Packing Orders" color={colors.primary} />
             {orders.length === 0
-              ? <Text style={styles.empty}>No packing orders found</Text>
+              ? <Text style={cs.empty}>No packing orders found</Text>
               : orders.map((order) => (
                 <View key={order.id} style={styles.orderRow}>
                   <View style={styles.orderInfo}>
@@ -183,8 +185,8 @@ export default function PackingScreen() {
 
       {/* Create Modal */}
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={() => setModalOpen(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+        <View style={cs.modalOverlayCentered}>
+          <View style={cs.modalCard}>
             <View style={styles.modalHeader}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
                 <Package size={16} color={colors.packing} />
@@ -197,12 +199,12 @@ export default function PackingScreen() {
 
             <ScrollView showsVerticalScrollIndicator={false}>
               {!!formError && (
-                <View style={styles.errorBox}>
-                  <Text style={styles.errorText}>{formError}</Text>
+                <View style={cs.errorBox}>
+                  <Text style={cs.errorText}>{formError}</Text>
                 </View>
               )}
 
-              <Text style={styles.label}>Reference Type</Text>
+              <Text style={cs.label}>Reference Type</Text>
               <TouchableOpacity style={styles.picker} onPress={() => setRefOpen((v) => !v)} activeOpacity={0.8}>
                 <Text style={{ color: colors.text, fontSize: fontSize.base }}>{form.order_ref_type}</Text>
                 <ChevronDown size={14} color={colors.textDim} />
@@ -218,9 +220,9 @@ export default function PackingScreen() {
                 </View>
               )}
 
-              <Text style={styles.label}>Notes</Text>
+              <Text style={cs.label}>Notes</Text>
               <TextInput
-                style={[styles.input, { height: 60 }]}
+                style={[cs.input, { height: 60 }]}
                 value={form.notes}
                 onChangeText={(v) => setForm((f) => ({ ...f, notes: v }))}
                 placeholder="Optional notes..."
@@ -228,11 +230,11 @@ export default function PackingScreen() {
                 multiline
               />
 
-              <Text style={styles.label}>Items</Text>
+              <Text style={cs.label}>Items</Text>
               {form.items.map((item, idx) => (
                 <View key={idx} style={styles.itemRow}>
                   <TextInput
-                    style={[styles.input, { flex: 2 }]}
+                    style={[cs.input, { flex: 2 }]}
                     value={item.product_id}
                     onChangeText={(v) => updateItem(idx, "product_id", v)}
                     placeholder="Product ID"
@@ -240,7 +242,7 @@ export default function PackingScreen() {
                     keyboardType="numeric"
                   />
                   <TextInput
-                    style={[styles.input, { flex: 1 }]}
+                    style={[cs.input, { flex: 1 }]}
                     value={item.quantity}
                     onChangeText={(v) => updateItem(idx, "quantity", v)}
                     placeholder="Qty"
@@ -274,37 +276,3 @@ export default function PackingScreen() {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  topRow:         { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.md },
-  count:          { fontSize: fontSize.md, color: colors.textDim },
-  addBtn:         { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.packing, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  addBtnText:     { color: colors.bg, fontSize: fontSize.md, fontWeight: "700" },
-  errorBox:       { backgroundColor: colors.danger + "20", borderWidth: 1, borderColor: colors.danger + "40", borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
-  errorText:      { color: colors.danger, fontSize: fontSize.md },
-  cardGap:        { marginBottom: spacing.md },
-  empty:          { color: colors.textMuted, fontSize: fontSize.md, textAlign: "center", paddingVertical: spacing.lg },
-  orderRow:       { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border + "40" },
-  orderInfo:      { flex: 1 },
-  orderTopRow:    { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: 2 },
-  orderCode:      { fontSize: fontSize.base, color: colors.text, fontWeight: "600" },
-  orderMeta:      { fontSize: fontSize.xs, color: colors.textMuted },
-  orderActions:   { flexDirection: "row", gap: spacing.xs },
-  actionBtn:      { flexDirection: "row", alignItems: "center", gap: 3, borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 4 },
-  actionBtnText:  { fontSize: fontSize.xs, fontWeight: "600" },
-  modalOverlay:   { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", padding: spacing.xl },
-  modalCard:      { backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: spacing.xl, width: "100%", maxWidth: 480, maxHeight: "90%" },
-  modalHeader:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.lg },
-  modalTitleText: { fontSize: fontSize.lg, fontWeight: "700", color: colors.text },
-  label:          { fontSize: fontSize.md, color: colors.textDim, marginBottom: spacing.xs, marginTop: spacing.sm },
-  input:          { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, color: colors.text, fontSize: fontSize.base },
-  picker:         { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
-  pickerList:     { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, marginTop: 2, overflow: "hidden" },
-  pickerItem:     { padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border + "40" },
-  pickerItemActive:{ backgroundColor: colors.primary + "15" },
-  itemRow:        { flexDirection: "row", gap: spacing.xs, alignItems: "center", marginBottom: spacing.xs },
-  removeBtn:      { padding: spacing.xs },
-  addItemBtn:     { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginTop: spacing.sm },
-  saveBtn:        { backgroundColor: colors.packing, borderRadius: radius.md, padding: spacing.md, alignItems: "center", marginTop: spacing.xl, height: 48, justifyContent: "center" },
-  saveBtnText:    { color: colors.bg, fontSize: fontSize.base, fontWeight: "700" },
-});

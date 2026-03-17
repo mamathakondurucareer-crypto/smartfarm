@@ -4,16 +4,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, TouchableOpacity, TextInput,
-  StyleSheet, ActivityIndicator, FlatList,
+  ActivityIndicator, FlatList,
 } from "react-native";
 import { Activity, Search, RefreshCw } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import Card          from "../components/ui/Card";
 import SectionHeader from "../components/ui/SectionHeader";
 import Badge         from "../components/ui/Badge";
-import { colors, spacing, radius, fontSize } from "../config/theme";
+import { colors, fontSize } from "../config/theme";
 import { api }       from "../services/api";
 import useAuthStore  from "../store/useAuthStore";
+import { styles } from "./ActivityLogScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 const MODULE_COLORS = {
   store: colors.store, pos: colors.pos, financial: colors.accent,
@@ -83,11 +85,11 @@ export default function ActivityLogScreen() {
       </View>
 
       {/* Module filter chips */}
-      <View style={styles.chipRow}>
+      <View style={cs.chipRow}>
         {MODULES.map((m) => (
           <TouchableOpacity
             key={m}
-            style={[styles.chip, moduleFilter === m && styles.chipActive]}
+            style={[cs.chip, moduleFilter === m && cs.chipActive]}
             onPress={() => setModuleFilter(m)}
           >
             <Text style={{ color: moduleFilter === m ? (MODULE_COLORS[m] ?? colors.primary) : colors.textDim, fontSize: fontSize.sm }}>
@@ -97,7 +99,7 @@ export default function ActivityLogScreen() {
         ))}
       </View>
 
-      {!!error && <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View>}
+      {!!error && <View style={cs.errorBox}><Text style={cs.errorText}>{error}</Text></View>}
 
       {loading && logs.length === 0 ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
@@ -105,7 +107,7 @@ export default function ActivityLogScreen() {
         <Card>
           <SectionHeader Icon={Activity} title={`Activity Log (${logs.length}${hasMore ? "+" : ""})`} color={colors.textDim} />
           {logs.length === 0 ? (
-            <Text style={styles.empty}>No activity logs found.</Text>
+            <Text style={cs.empty}>No activity logs found.</Text>
           ) : (
             <>
               {logs.map((log, idx) => (
@@ -142,28 +144,3 @@ export default function ActivityLogScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  filterBar:   { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.sm, alignItems: "center" },
-  searchWrap:  { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md },
-  searchInput: { flex: 1, color: colors.text, fontSize: fontSize.base, paddingVertical: spacing.sm },
-  refreshBtn:  { padding: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
-  chipRow:     { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, marginBottom: spacing.lg },
-  chip:        { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
-  chipActive:  { borderColor: colors.primary, backgroundColor: colors.primary + "15" },
-  errorBox:    { backgroundColor: colors.danger + "20", borderWidth: 1, borderColor: colors.danger + "40", borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
-  errorText:   { color: colors.danger, fontSize: fontSize.md },
-  empty:       { color: colors.textMuted, fontSize: fontSize.md, textAlign: "center", paddingVertical: 30 },
-  logRow:      { flexDirection: "row", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border + "40", gap: spacing.sm },
-  failureRow:  { backgroundColor: colors.danger + "08" },
-  logLeft:     { paddingTop: 4 },
-  dot:         { width: 8, height: 8, borderRadius: 4 },
-  logBody:     { flex: 1 },
-  logTop:      { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: 4 },
-  logAction:   { fontSize: fontSize.md, color: colors.text, fontWeight: "600" },
-  logDesc:     { fontSize: fontSize.sm, color: colors.textDim, marginBottom: 4 },
-  logBottom:   { flexDirection: "row", justifyContent: "space-between" },
-  logMeta:     { fontSize: fontSize.xs, color: colors.textMuted },
-  logEntity:   { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
-  loadMore:    { padding: spacing.md, alignItems: "center", marginTop: spacing.sm },
-  loadMoreText:{ color: colors.primary, fontSize: fontSize.md, fontWeight: "600" },
-});

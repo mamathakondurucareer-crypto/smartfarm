@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
+import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
 import { Fish, Activity, Thermometer, Droplets, AlertTriangle, BarChart3, Plus, Pencil, Trash2 } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import StatGrid      from "../components/ui/StatGrid";
@@ -10,6 +10,8 @@ import Badge         from "../components/ui/Badge";
 import LineChartCard from "../components/charts/LineChartCard";
 import { colors, spacing, fontSize, radius } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import { styles } from "./AquacultureScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 // Generate 24 hours of simulated water quality data
 const waterQuality24hr = Array.from({ length: 24 }, (_, i) => ({
@@ -61,7 +63,7 @@ export default function AquacultureScreen() {
     <Text style={{ color: p.do < 5 ? colors.danger : colors.primary, fontWeight: "600" }}>{p.do}</Text>,
     p.feedToday,
     <Text style={{ color: p.mortality > 2 ? colors.danger : colors.textDim }}>{p.mortality}%</Text>,
-    <TouchableOpacity onPress={() => openEditModal(p)} style={styles.editIcon}>
+    <TouchableOpacity onPress={() => openEditModal(p)} style={cs.editIcon}>
       <Pencil size={14} color={colors.primary} />
     </TouchableOpacity>,
   ]);
@@ -137,21 +139,21 @@ export default function AquacultureScreen() {
     <ScreenWrapper title="Aquaculture">
       <StatGrid stats={summaryStats} />
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       {/* Pond table with Add button */}
       <Card>
-        <View style={styles.cardHeader}>
+        <View style={cs.cardHeader}>
           <SectionHeader Icon={Fish} title="Pond Status" color={colors.fish} />
-          <TouchableOpacity onPress={openAddModal} style={styles.addButton}>
+          <TouchableOpacity onPress={openAddModal} style={cs.addButton}>
             <Plus size={18} color={colors.primary} />
-            <Text style={styles.addButtonText}>Add</Text>
+            <Text style={cs.addButtonText}>Add</Text>
           </TouchableOpacity>
         </View>
         <DataTable headers={tableHeaders} rows={tableRows} />
       </Card>
 
-      <View style={styles.gap} />
+      <View style={cs.gap} />
 
       {/* Water quality chart */}
       <LineChartCard
@@ -169,15 +171,15 @@ export default function AquacultureScreen() {
       {/* Edit/Add Pond Modal */}
       <Modal visible={modalVisible} animationType="fade" transparent onRequestClose={() => setModalVisible(false)}>
         <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-          <View style={styles.modalOverlay}>
+          <View style={cs.modalOverlay}>
             <TouchableWithoutFeedback>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>{editingPond ? "Edit Pond" : "Add New Pond"}</Text>
+              <View style={cs.modalContent}>
+                <Text style={cs.modalTitle}>{editingPond ? "Edit Pond" : "Add New Pond"}</Text>
 
-                <ScrollView style={styles.formScroll} showsVerticalScrollIndicator={false}>
-                  <Text style={styles.label}>Pond Code *</Text>
+                <ScrollView style={cs.formScroll} showsVerticalScrollIndicator={false}>
+                  <Text style={cs.label}>Pond Code *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., P1"
                     editable={!editingPond}
                     value={formData.id}
@@ -185,18 +187,18 @@ export default function AquacultureScreen() {
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>Species *</Text>
+                  <Text style={cs.label}>Species *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., Murrel"
                     value={formData.species}
                     onChangeText={(text) => setFormData({ ...formData, species: text })}
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>Stock Count *</Text>
+                  <Text style={cs.label}>Stock Count *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., 3800"
                     keyboardType="numeric"
                     value={formData.stock}
@@ -204,9 +206,9 @@ export default function AquacultureScreen() {
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>Avg Weight (kg)</Text>
+                  <Text style={cs.label}>Avg Weight (kg)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., 0.62"
                     keyboardType="numeric"
                     value={formData.avgWeight}
@@ -214,9 +216,9 @@ export default function AquacultureScreen() {
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>FCR</Text>
+                  <Text style={cs.label}>FCR</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., 1.78"
                     keyboardType="numeric"
                     value={formData.fcr}
@@ -224,9 +226,9 @@ export default function AquacultureScreen() {
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>DO (mg/L)</Text>
+                  <Text style={cs.label}>DO (mg/L)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., 5.8"
                     keyboardType="numeric"
                     value={formData.do}
@@ -234,9 +236,9 @@ export default function AquacultureScreen() {
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>Feed Today (kg)</Text>
+                  <Text style={cs.label}>Feed Today (kg)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., 42"
                     keyboardType="numeric"
                     value={formData.feedToday}
@@ -244,9 +246,9 @@ export default function AquacultureScreen() {
                     placeholderTextColor={colors.textMuted}
                   />
 
-                  <Text style={styles.label}>Mortality (%)</Text>
+                  <Text style={cs.label}>Mortality (%)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={cs.input}
                     placeholder="e.g., 1.2"
                     keyboardType="numeric"
                     value={formData.mortality}
@@ -255,20 +257,20 @@ export default function AquacultureScreen() {
                   />
                 </ScrollView>
 
-                <View style={styles.modalButtonGroup}>
-                  <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                <View style={cs.modalButtonGroup}>
+                  <TouchableOpacity onPress={() => setModalVisible(false)} style={cs.cancelButton}>
+                    <Text style={cs.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
 
                   {editingPond && (
-                    <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
+                    <TouchableOpacity onPress={handleDelete} style={cs.deleteButton}>
                       <Trash2 size={16} color={colors.bg} />
-                      <Text style={styles.deleteButtonText}>Delete</Text>
+                      <Text style={cs.deleteButtonText}>Delete</Text>
                     </TouchableOpacity>
                   )}
 
-                  <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-                    <Text style={styles.saveButtonText}>{editingPond ? "Update" : "Add"}</Text>
+                  <TouchableOpacity onPress={handleSave} style={cs.saveButton}>
+                    <Text style={cs.saveButtonText}>{editingPond ? "Update" : "Add"}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -280,25 +282,3 @@ export default function AquacultureScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  gap: { height: spacing.lg },
-  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm },
-  addButton: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.sm, backgroundColor: colors.primary + "15" },
-  addButtonText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: "600" },
-  editIcon: { padding: spacing.xs },
-
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContent: { backgroundColor: colors.card, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg, maxHeight: "85%" },
-  modalTitle: { fontSize: fontSize.lg, fontWeight: "700", color: colors.text, marginBottom: spacing.md },
-  formScroll: { maxHeight: 350 },
-  label: { fontSize: fontSize.sm, fontWeight: "600", color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md },
-  input: { backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, fontSize: fontSize.md, color: colors.text },
-
-  modalButtonGroup: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg },
-  cancelButton: { flex: 1, backgroundColor: colors.border, borderRadius: radius.md, paddingVertical: spacing.sm, alignItems: "center" },
-  cancelButtonText: { fontSize: fontSize.md, color: colors.textDim, fontWeight: "600" },
-  deleteButton: { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.danger, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
-  deleteButtonText: { fontSize: fontSize.md, color: colors.bg, fontWeight: "600" },
-  saveButton: { flex: 1, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: spacing.sm, alignItems: "center" },
-  saveButtonText: { fontSize: fontSize.md, color: colors.bg, fontWeight: "600" },
-});

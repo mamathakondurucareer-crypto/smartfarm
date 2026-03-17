@@ -7,13 +7,15 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View, Text, TextInput, TouchableOpacity,
   ScrollView, KeyboardAvoidingView, Platform,
-  ActivityIndicator, StyleSheet,
+  ActivityIndicator,
 } from "react-native";
 import { Brain, Send } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import Badge         from "../components/ui/Badge";
-import { colors, spacing, radius, fontSize } from "../config/theme";
+import { colors } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import { styles } from "./AIScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 import { CLAUDE_API_KEY } from "../config/apiConfig";
 
 // ─── Quick analysis prompts ───────────────────────────────────────
@@ -168,9 +170,9 @@ ${buildFarmContext(farm)}`,
           showsVerticalScrollIndicator={false}
         >
           {messages.length === 0 && (
-            <View style={styles.emptyState}>
+            <View style={cs.emptyState}>
               <Brain size={40} color={colors.textMuted} />
-              <Text style={styles.emptyTitle}>AI Farm Analysis Ready</Text>
+              <Text style={cs.emptyTitle}>AI Farm Analysis Ready</Text>
               <Text style={styles.emptyBody}>
                 Ask any question about your farm or tap a quick analysis above.
                 The AI has access to all live sensor data, financials, and market prices.
@@ -200,7 +202,7 @@ ${buildFarmContext(farm)}`,
         {/* Input row */}
         <View style={styles.inputRow}>
           <TextInput
-            style={styles.input}
+            style={cs.input}
             value={inputText}
             onChangeText={setInputText}
             placeholder="Ask about water quality, crops, financials…"
@@ -223,28 +225,3 @@ ${buildFarmContext(farm)}`,
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  chipsScroll:      { marginBottom: spacing.md, flexGrow: 0 },
-  chips:            { gap: spacing.sm, paddingHorizontal: 2 },
-  chip:             { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  chipDisabled:     { opacity: 0.4 },
-  chipText:         { fontSize: fontSize.md, color: colors.textDim },
-  chatContainer:    { flex: 1, backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: "hidden", minHeight: 400 },
-  messageList:      { flex: 1 },
-  messageListContent:{ padding: spacing.lg, gap: spacing.md },
-  emptyState:       { alignItems: "center", paddingVertical: 40, paddingHorizontal: 20, gap: spacing.md },
-  emptyTitle:       { fontSize: fontSize.lg, fontWeight: "600", color: colors.textDim },
-  emptyBody:        { fontSize: fontSize.md, color: colors.textMuted, textAlign: "center", lineHeight: 20 },
-  bubble:           { maxWidth: "88%", padding: spacing.md, borderRadius: radius.lg, borderWidth: 1 },
-  userBubble:       { alignSelf: "flex-end", backgroundColor: colors.primary + "25", borderColor: colors.primary + "40" },
-  aiBubble:         { alignSelf: "flex-start", backgroundColor: colors.bg, borderColor: colors.border },
-  bubbleMeta:       { fontSize: fontSize.xs, color: colors.textMuted, marginBottom: 4 },
-  bubbleText:       { fontSize: fontSize.md, color: colors.text, lineHeight: 20 },
-  loadingRow:       { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  loadingText:      { fontSize: fontSize.md, color: colors.textDim },
-  inputRow:         { flexDirection: "row", gap: spacing.sm, padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, alignItems: "flex-end" },
-  input:            { flex: 1, backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, color: colors.text, fontSize: fontSize.base, maxHeight: 100 },
-  sendBtn:          { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.ai, alignItems: "center", justifyContent: "center" },
-  sendBtnDisabled:  { backgroundColor: colors.border },
-});

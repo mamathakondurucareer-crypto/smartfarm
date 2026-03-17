@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
+import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
 import { Sprout, Truck, Activity, Leaf, Pencil } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import StatGrid      from "../components/ui/StatGrid";
 import Card          from "../components/ui/Card";
 import SectionHeader from "../components/ui/SectionHeader";
-import { colors, spacing, radius, fontSize } from "../config/theme";
+import { colors } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import { styles } from "./NurseryScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 export default function NurseryScreen() {
   const farm = useFarmStore((s) => s.farm);
@@ -148,22 +150,22 @@ export default function NurseryScreen() {
       {/* Edit Modal */}
       <Modal visible={modalVisible} animationType="fade" transparent onRequestClose={() => setModalVisible(false)}>
         <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-          <View style={styles.modalOverlay}>
+          <View style={cs.modalOverlay}>
             <TouchableWithoutFeedback>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>{getSectionTitle()}</Text>
+              <View style={cs.modalContent}>
+                <Text style={cs.modalTitle}>{getSectionTitle()}</Text>
 
-                <ScrollView style={styles.formScroll} showsVerticalScrollIndicator={false}>
+                <ScrollView style={cs.formScroll} showsVerticalScrollIndicator={false}>
                   {getFormFields()}
                 </ScrollView>
 
-                <View style={styles.modalButtonGroup}>
-                  <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                <View style={cs.modalButtonGroup}>
+                  <TouchableOpacity onPress={() => setModalVisible(false)} style={cs.cancelButton}>
+                    <Text style={cs.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-                    <Text style={styles.saveButtonText}>Save</Text>
+                  <TouchableOpacity onPress={handleSave} style={cs.saveButton}>
+                    <Text style={cs.saveButtonText}>Save</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -183,25 +185,3 @@ function InfoItem({ label, value }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  gap:              { height: spacing.lg },
-  sectionHeader:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm },
-  editButton:       { padding: spacing.xs },
-  row:              { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.border + "40" },
-  label:            { fontSize: fontSize.md, color: colors.textDim },
-  value:            { fontSize: fontSize.md, color: colors.text, fontWeight: "500", flexShrink: 1, textAlign: "right", marginLeft: spacing.sm },
-
-  modalOverlay:     { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContent:     { backgroundColor: colors.card, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg, maxHeight: "85%" },
-  modalTitle:       { fontSize: fontSize.lg, fontWeight: "700", color: colors.text, marginBottom: spacing.md },
-  formScroll:       { maxHeight: 350 },
-  formLabel:        { fontSize: fontSize.sm, fontWeight: "600", color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md },
-  input:            { backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, fontSize: fontSize.md, color: colors.text },
-
-  modalButtonGroup: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg },
-  cancelButton:     { flex: 1, backgroundColor: colors.border, borderRadius: radius.md, paddingVertical: spacing.sm, alignItems: "center" },
-  cancelButtonText: { fontSize: fontSize.md, color: colors.textDim, fontWeight: "600" },
-  saveButton:       { flex: 1, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: spacing.sm, alignItems: "center" },
-  saveButtonText:   { fontSize: fontSize.md, color: colors.bg, fontWeight: "600" },
-});

@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator,
+  ActivityIndicator,
 } from "react-native";
 import { ClipboardList, TrendingUp, DollarSign, BarChart3, Store } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
@@ -15,6 +15,8 @@ import Badge         from "../components/ui/Badge";
 import { colors, spacing, radius, fontSize } from "../config/theme";
 import { api }       from "../services/api";
 import useAuthStore  from "../store/useAuthStore";
+import { styles } from "./ReportsScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 const TABS = [
   { key: "sales",      label: "Sales" },
@@ -60,7 +62,7 @@ export default function ReportsScreen() {
         ))}
       </ScrollView>
 
-      {!!error && <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View>}
+      {!!error && <View style={cs.errorBox}><Text style={cs.errorText}>{error}</Text></View>}
 
       {loading ? <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} /> : (
         <>
@@ -68,7 +70,7 @@ export default function ReportsScreen() {
           {activeTab === "production" && data && <ProductionReport data={data} />}
           {activeTab === "financial" && data && <FinancialReport data={data} />}
           {activeTab === "store" && data && <StoreDailyReport data={data} />}
-          {!data && !loading && <Text style={styles.empty}>No report data available.</Text>}
+          {!data && !loading && <Text style={cs.empty}>No report data available.</Text>}
         </>
       )}
     </ScreenWrapper>
@@ -88,9 +90,9 @@ function SalesReport({ data }) {
       <Card>
         <SectionHeader Icon={TrendingUp} title="Top Products" color={colors.primary} />
         {(data.top_products ?? []).length === 0
-          ? <Text style={styles.empty}>No sales data yet.</Text>
+          ? <Text style={cs.empty}>No sales data yet.</Text>
           : (data.top_products ?? []).map((p, i) => (
-            <View key={i} style={styles.row}>
+            <View key={i} style={cs.row}>
               <Text style={[styles.cell, { flex: 3 }]}>{p.product_name ?? "N/A"}</Text>
               <Text style={[styles.cell, { flex: 1, textAlign: "right" }]}>{p.qty_sold ?? p.quantity ?? 0}</Text>
               <Text style={[styles.cell, { flex: 2, textAlign: "right", color: colors.primary }]}>₹{Number(p.revenue ?? 0).toLocaleString()}</Text>
@@ -127,9 +129,9 @@ function ProductionReport({ data }) {
       <Card>
         <SectionHeader Icon={BarChart3} title="By Category" color={colors.crop} />
         {!data.by_category || Object.keys(data.by_category).length === 0
-          ? <Text style={styles.empty}>No production data.</Text>
+          ? <Text style={cs.empty}>No production data.</Text>
           : Object.entries(data.by_category).map(([category, qty], i) => (
-            <View key={i} style={styles.row}>
+            <View key={i} style={cs.row}>
               <Text style={[styles.cell, { flex: 2 }]}>{category}</Text>
               <Text style={[styles.cell, { flex: 2, textAlign: "right", color: colors.primary }]}>{Number(qty ?? 0).toFixed(2)}</Text>
             </View>
@@ -153,7 +155,7 @@ function FinancialReport({ data }) {
         <Card>
           <SectionHeader Icon={TrendingUp} title="Revenue Streams" color={colors.primary} />
           {Object.entries(data.revenue_streams).map(([stream, total], i) => (
-            <View key={i} style={styles.row}>
+            <View key={i} style={cs.row}>
               <Text style={[styles.cell, { flex: 3 }]}>{stream}</Text>
               <Text style={[styles.cell, { flex: 2, textAlign: "right", color: colors.primary }]}>₹{(total ?? 0).toLocaleString()}</Text>
             </View>
@@ -190,7 +192,7 @@ function StoreDailyReport({ data }) {
         <Card>
           <SectionHeader Icon={DollarSign} title="Payment Breakdown" color={colors.accent} />
           {Object.entries(data.payment_breakdown).map(([mode, total], i) => (
-            <View key={i} style={styles.row}>
+            <View key={i} style={cs.row}>
               <Text style={[styles.cell, { flex: 2, textTransform: "capitalize" }]}>{mode}</Text>
               <Text style={[styles.cell, { flex: 2, textAlign: "right", color: colors.accent }]}>₹{Number(total ?? 0).toLocaleString()}</Text>
             </View>
@@ -201,16 +203,3 @@ function StoreDailyReport({ data }) {
   );
 }
 
-const styles = StyleSheet.create({
-  tabBar:          { flexGrow: 0, marginBottom: spacing.lg },
-  tabBarContent:   { gap: spacing.sm },
-  tab:             { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
-  tabActive:       { borderColor: colors.reports, backgroundColor: colors.reports + "20" },
-  tabText:         { fontSize: fontSize.md, color: colors.textDim, fontWeight: "600" },
-  tabTextActive:   { color: colors.reports },
-  errorBox:        { backgroundColor: colors.danger + "20", borderWidth: 1, borderColor: colors.danger + "40", borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
-  errorText:       { color: colors.danger, fontSize: fontSize.md },
-  empty:           { color: colors.textMuted, fontSize: fontSize.md, textAlign: "center", paddingVertical: 30 },
-  row:             { flexDirection: "row", paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border + "40", alignItems: "center" },
-  cell:            { fontSize: fontSize.md, color: colors.text },
-});

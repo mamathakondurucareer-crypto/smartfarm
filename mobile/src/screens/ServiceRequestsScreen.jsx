@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, TouchableOpacity, ScrollView, Modal, TextInput,
-  StyleSheet, ActivityIndicator,
+  ActivityIndicator,
 } from "react-native";
 import { Wrench, Plus, X, AlertTriangle } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
@@ -12,9 +12,11 @@ import Card          from "../components/ui/Card";
 import SectionHeader from "../components/ui/SectionHeader";
 import StatGrid      from "../components/ui/StatGrid";
 import Badge         from "../components/ui/Badge";
-import { colors, spacing, radius, fontSize } from "../config/theme";
+import { colors, spacing, fontSize } from "../config/theme";
 import { api }       from "../services/api";
 import useAuthStore  from "../store/useAuthStore";
+import { styles } from "./ServiceRequestsScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 const PRIORITY_COLORS = { urgent: colors.danger, high: colors.warn, medium: colors.info, low: colors.textDim };
 const STATUS_COLORS   = { open: colors.info, assigned: colors.accent, in_progress: colors.warn, pending_parts: colors.poultry, resolved: colors.primary, closed: colors.textMuted };
@@ -78,7 +80,7 @@ export default function ServiceRequestsScreen() {
         </TouchableOpacity>
       </View>
 
-      {!!error && <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View>}
+      {!!error && <View style={cs.errorBox}><Text style={cs.errorText}>{error}</Text></View>}
 
       {loading ? <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} /> : (
         <Card>
@@ -104,22 +106,22 @@ export default function ServiceRequestsScreen() {
 
       {/* Create Request Modal */}
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={() => setModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+        <View style={cs.modalOverlay}>
+          <View style={cs.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitleText}>New Service Request</Text>
               <TouchableOpacity onPress={() => setModal(false)}><X size={18} color={colors.textDim} /></TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              {!!formErr && <View style={styles.errorBox}><Text style={styles.errorText}>{formErr}</Text></View>}
+              {!!formErr && <View style={cs.errorBox}><Text style={cs.errorText}>{formErr}</Text></View>}
 
-              <Text style={styles.label}>Title *</Text>
-              <TextInput style={styles.input} value={form.title} onChangeText={(v) => setForm((f) => ({ ...f, title: v }))} placeholder="Brief title" placeholderTextColor={colors.textMuted} />
+              <Text style={cs.label}>Title *</Text>
+              <TextInput style={cs.input} value={form.title} onChangeText={(v) => setForm((f) => ({ ...f, title: v }))} placeholder="Brief title" placeholderTextColor={colors.textMuted} />
 
-              <Text style={styles.label}>Description *</Text>
-              <TextInput style={[styles.input, { minHeight: 80 }]} value={form.description} onChangeText={(v) => setForm((f) => ({ ...f, description: v }))} placeholder="Detailed description" placeholderTextColor={colors.textMuted} multiline />
+              <Text style={cs.label}>Description *</Text>
+              <TextInput style={[cs.input, { minHeight: 80 }]} value={form.description} onChangeText={(v) => setForm((f) => ({ ...f, description: v }))} placeholder="Detailed description" placeholderTextColor={colors.textMuted} multiline />
 
-              <Text style={styles.label}>Priority</Text>
+              <Text style={cs.label}>Priority</Text>
               <View style={styles.chipRow}>
                 {PRIORITIES.map((p) => (
                   <TouchableOpacity key={p} style={[styles.chip, form.priority === p && { borderColor: PRIORITY_COLORS[p], backgroundColor: PRIORITY_COLORS[p] + "15" }]} onPress={() => setForm((f) => ({ ...f, priority: p }))}>
@@ -128,7 +130,7 @@ export default function ServiceRequestsScreen() {
                 ))}
               </View>
 
-              <Text style={styles.label}>Category</Text>
+              <Text style={cs.label}>Category</Text>
               <View style={styles.chipRow}>
                 {CATEGORIES.map((c) => (
                   <TouchableOpacity key={c} style={[styles.chip, form.category === c && styles.chipActive]} onPress={() => setForm((f) => ({ ...f, category: c }))}>
@@ -137,7 +139,7 @@ export default function ServiceRequestsScreen() {
                 ))}
               </View>
 
-              <Text style={styles.label}>Department</Text>
+              <Text style={cs.label}>Department</Text>
               <View style={styles.chipRow}>
                 {DEPARTMENTS.map((d) => (
                   <TouchableOpacity key={d} style={[styles.chip, form.department === d && styles.chipActive]} onPress={() => setForm((f) => ({ ...f, department: d }))}>
@@ -146,11 +148,11 @@ export default function ServiceRequestsScreen() {
                 ))}
               </View>
 
-              <Text style={styles.label}>Location</Text>
-              <TextInput style={styles.input} value={form.location} onChangeText={(v) => setForm((f) => ({ ...f, location: v }))} placeholder="e.g. Pond A3, GH-1" placeholderTextColor={colors.textMuted} />
+              <Text style={cs.label}>Location</Text>
+              <TextInput style={cs.input} value={form.location} onChangeText={(v) => setForm((f) => ({ ...f, location: v }))} placeholder="e.g. Pond A3, GH-1" placeholderTextColor={colors.textMuted} />
 
-              <Text style={styles.label}>Affected Equipment</Text>
-              <TextInput style={styles.input} value={form.affected_equipment} onChangeText={(v) => setForm((f) => ({ ...f, affected_equipment: v }))} placeholder="e.g. Aerator #2" placeholderTextColor={colors.textMuted} />
+              <Text style={cs.label}>Affected Equipment</Text>
+              <TextInput style={cs.input} value={form.affected_equipment} onChangeText={(v) => setForm((f) => ({ ...f, affected_equipment: v }))} placeholder="e.g. Aerator #2" placeholderTextColor={colors.textMuted} />
 
               <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={handleCreate} disabled={saving} activeOpacity={0.85}>
                 {saving ? <ActivityIndicator size="small" color={colors.bg} /> : <Text style={styles.saveBtnText}>Submit Request</Text>}
@@ -162,28 +164,3 @@ export default function ServiceRequestsScreen() {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  topRow:        { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.md },
-  count:         { fontSize: fontSize.md, color: colors.textDim },
-  addBtn:        { flexDirection: "row", alignItems: "center", gap: spacing.xs, backgroundColor: colors.service, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  addBtnText:    { color: colors.bg, fontSize: fontSize.md, fontWeight: "700" },
-  errorBox:      { backgroundColor: colors.danger + "20", borderWidth: 1, borderColor: colors.danger + "40", borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md },
-  errorText:     { color: colors.danger, fontSize: fontSize.md },
-  empty:         { color: colors.textMuted, fontSize: fontSize.md, textAlign: "center", paddingVertical: 30 },
-  row:           { flexDirection: "row", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border + "40", alignItems: "center" },
-  reqTitle:      { fontSize: fontSize.md, color: colors.text, fontWeight: "600" },
-  reqMeta:       { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
-  // Modal
-  modalOverlay:  { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", padding: spacing.xl },
-  modalCard:     { backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: spacing.xl, width: "100%", maxWidth: 500, maxHeight: "90%" },
-  modalHeader:   { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.lg },
-  modalTitleText:{ fontSize: fontSize.lg, fontWeight: "700", color: colors.text },
-  label:         { fontSize: fontSize.md, color: colors.textDim, marginBottom: spacing.xs, marginTop: spacing.sm },
-  input:         { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, color: colors.text, fontSize: fontSize.base, marginBottom: spacing.xs },
-  chipRow:       { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
-  chip:          { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
-  chipActive:    { borderColor: colors.primary, backgroundColor: colors.primary + "15" },
-  saveBtn:       { backgroundColor: colors.service, borderRadius: radius.md, padding: spacing.md, alignItems: "center", marginTop: spacing.xl, height: 48, justifyContent: "center" },
-  saveBtnText:   { color: colors.bg, fontSize: fontSize.base, fontWeight: "700" },
-});

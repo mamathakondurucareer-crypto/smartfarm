@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
+import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
 import { Egg, Users, TrendingUp, Activity, Thermometer, AlertTriangle, Bug, Sprout, Pencil } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import Card          from "../components/ui/Card";
 import SectionHeader from "../components/ui/SectionHeader";
 import StatGrid      from "../components/ui/StatGrid";
-import { colors, spacing, radius, fontSize } from "../config/theme";
+import { colors } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import { styles } from "./PoultryScreen.styles";
+import { commonStyles as cs } from "../styles/common";
 
 export default function PoultryScreen() {
   const farm = useFarmStore((s) => s.farm);
@@ -115,58 +117,58 @@ export default function PoultryScreen() {
     if (editingSection === "poultry") {
       return (
         <>
-          <Text style={styles.label}>Active Hens</Text>
-          <TextInput style={styles.input} keyboardType="numeric" value={formData.hens} onChangeText={(text) => setFormData({ ...formData, hens: text })} placeholderTextColor={colors.textMuted} />
+          <Text style={cs.label}>Active Hens</Text>
+          <TextInput style={cs.input} keyboardType="numeric" value={formData.hens} onChangeText={(text) => setFormData({ ...formData, hens: text })} placeholderTextColor={colors.textMuted} />
 
-          <Text style={styles.label}>Lay Rate (%)</Text>
-          <TextInput style={styles.input} keyboardType="numeric" value={formData.layRate} onChangeText={(text) => setFormData({ ...formData, layRate: text })} placeholderTextColor={colors.textMuted} />
+          <Text style={cs.label}>Lay Rate (%)</Text>
+          <TextInput style={cs.input} keyboardType="numeric" value={formData.layRate} onChangeText={(text) => setFormData({ ...formData, layRate: text })} placeholderTextColor={colors.textMuted} />
 
-          <Text style={styles.label}>Eggs Today</Text>
-          <TextInput style={styles.input} keyboardType="numeric" value={formData.eggsToday} onChangeText={(text) => setFormData({ ...formData, eggsToday: text })} placeholderTextColor={colors.textMuted} />
+          <Text style={cs.label}>Eggs Today</Text>
+          <TextInput style={cs.input} keyboardType="numeric" value={formData.eggsToday} onChangeText={(text) => setFormData({ ...formData, eggsToday: text })} placeholderTextColor={colors.textMuted} />
 
-          <Text style={styles.label}>Eggs Broken</Text>
-          <TextInput style={styles.input} keyboardType="numeric" value={formData.eggsBroken} onChangeText={(text) => setFormData({ ...formData, eggsBroken: text })} placeholderTextColor={colors.textMuted} />
+          <Text style={cs.label}>Eggs Broken</Text>
+          <TextInput style={cs.input} keyboardType="numeric" value={formData.eggsBroken} onChangeText={(text) => setFormData({ ...formData, eggsBroken: text })} placeholderTextColor={colors.textMuted} />
 
-          <Text style={styles.label}>Feed Consumed (kg)</Text>
-          <TextInput style={styles.input} keyboardType="numeric" value={formData.feedConsumed} onChangeText={(text) => setFormData({ ...formData, feedConsumed: text })} placeholderTextColor={colors.textMuted} />
+          <Text style={cs.label}>Feed Consumed (kg)</Text>
+          <TextInput style={cs.input} keyboardType="numeric" value={formData.feedConsumed} onChangeText={(text) => setFormData({ ...formData, feedConsumed: text })} placeholderTextColor={colors.textMuted} />
 
-          <Text style={styles.label}>Mortality (%)</Text>
-          <TextInput style={styles.input} keyboardType="numeric" value={formData.mortality} onChangeText={(text) => setFormData({ ...formData, mortality: text })} placeholderTextColor={colors.textMuted} />
+          <Text style={cs.label}>Mortality (%)</Text>
+          <TextInput style={cs.input} keyboardType="numeric" value={formData.mortality} onChangeText={(text) => setFormData({ ...formData, mortality: text })} placeholderTextColor={colors.textMuted} />
 
-          <Text style={styles.label}>Water Usage (L)</Text>
-          <TextInput style={styles.input} keyboardType="numeric" value={formData.waterUsage} onChangeText={(text) => setFormData({ ...formData, waterUsage: text })} placeholderTextColor={colors.textMuted} />
+          <Text style={cs.label}>Water Usage (L)</Text>
+          <TextInput style={cs.input} keyboardType="numeric" value={formData.waterUsage} onChangeText={(text) => setFormData({ ...formData, waterUsage: text })} placeholderTextColor={colors.textMuted} />
         </>
       );
     } else if (editingSection === "ducks") {
       return (
         <>
-          <Text style={styles.label}>Duck Count</Text>
-          <TextInput style={styles.input} keyboardType="numeric" value={formData.count} onChangeText={(text) => setFormData({ ...formData, count: text })} placeholderTextColor={colors.textMuted} />
+          <Text style={cs.label}>Duck Count</Text>
+          <TextInput style={cs.input} keyboardType="numeric" value={formData.count} onChangeText={(text) => setFormData({ ...formData, count: text })} placeholderTextColor={colors.textMuted} />
 
-          <Text style={styles.label}>Eggs Today</Text>
-          <TextInput style={styles.input} keyboardType="numeric" value={formData.eggsToday} onChangeText={(text) => setFormData({ ...formData, eggsToday: text })} placeholderTextColor={colors.textMuted} />
+          <Text style={cs.label}>Eggs Today</Text>
+          <TextInput style={cs.input} keyboardType="numeric" value={formData.eggsToday} onChangeText={(text) => setFormData({ ...formData, eggsToday: text })} placeholderTextColor={colors.textMuted} />
 
-          <Text style={styles.label}>Pests Consumed</Text>
-          <TextInput style={styles.input} value={formData.pestsConsumed} onChangeText={(text) => setFormData({ ...formData, pestsConsumed: text })} placeholderTextColor={colors.textMuted} />
+          <Text style={cs.label}>Pests Consumed</Text>
+          <TextInput style={cs.input} value={formData.pestsConsumed} onChangeText={(text) => setFormData({ ...formData, pestsConsumed: text })} placeholderTextColor={colors.textMuted} />
 
-          <Text style={styles.label}>Area</Text>
-          <TextInput style={styles.input} value={formData.area} onChangeText={(text) => setFormData({ ...formData, area: text })} placeholderTextColor={colors.textMuted} />
+          <Text style={cs.label}>Area</Text>
+          <TextInput style={cs.input} value={formData.area} onChangeText={(text) => setFormData({ ...formData, area: text })} placeholderTextColor={colors.textMuted} />
         </>
       );
     } else if (editingSection === "bees") {
       return (
         <>
-          <Text style={styles.label}>Hives</Text>
-          <TextInput style={styles.input} keyboardType="numeric" value={formData.hives} onChangeText={(text) => setFormData({ ...formData, hives: text })} placeholderTextColor={colors.textMuted} />
+          <Text style={cs.label}>Hives</Text>
+          <TextInput style={cs.input} keyboardType="numeric" value={formData.hives} onChangeText={(text) => setFormData({ ...formData, hives: text })} placeholderTextColor={colors.textMuted} />
 
-          <Text style={styles.label}>Honey Stored (kg)</Text>
-          <TextInput style={styles.input} keyboardType="numeric" value={formData.honeyStored} onChangeText={(text) => setFormData({ ...formData, honeyStored: text })} placeholderTextColor={colors.textMuted} />
+          <Text style={cs.label}>Honey Stored (kg)</Text>
+          <TextInput style={cs.input} keyboardType="numeric" value={formData.honeyStored} onChangeText={(text) => setFormData({ ...formData, honeyStored: text })} placeholderTextColor={colors.textMuted} />
 
-          <Text style={styles.label}>Active Foragers</Text>
-          <TextInput style={styles.input} value={formData.activeForagers} onChangeText={(text) => setFormData({ ...formData, activeForagers: text })} placeholderTextColor={colors.textMuted} />
+          <Text style={cs.label}>Active Foragers</Text>
+          <TextInput style={cs.input} value={formData.activeForagers} onChangeText={(text) => setFormData({ ...formData, activeForagers: text })} placeholderTextColor={colors.textMuted} />
 
-          <Text style={styles.label}>Last Inspection</Text>
-          <TextInput style={styles.input} value={formData.lastInspection} onChangeText={(text) => setFormData({ ...formData, lastInspection: text })} placeholderTextColor={colors.textMuted} />
+          <Text style={cs.label}>Last Inspection</Text>
+          <TextInput style={cs.input} value={formData.lastInspection} onChangeText={(text) => setFormData({ ...formData, lastInspection: text })} placeholderTextColor={colors.textMuted} />
         </>
       );
     }
@@ -224,22 +226,22 @@ export default function PoultryScreen() {
       {/* Edit Modal */}
       <Modal visible={modalVisible} animationType="fade" transparent onRequestClose={() => setModalVisible(false)}>
         <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-          <View style={styles.modalOverlay}>
+          <View style={cs.modalOverlay}>
             <TouchableWithoutFeedback>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>{getSectionTitle()}</Text>
+              <View style={cs.modalContent}>
+                <Text style={cs.modalTitle}>{getSectionTitle()}</Text>
 
-                <ScrollView style={styles.formScroll} showsVerticalScrollIndicator={false}>
+                <ScrollView style={cs.formScroll} showsVerticalScrollIndicator={false}>
                   {getFormFields()}
                 </ScrollView>
 
-                <View style={styles.modalButtonGroup}>
-                  <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                <View style={cs.modalButtonGroup}>
+                  <TouchableOpacity onPress={() => setModalVisible(false)} style={cs.cancelButton}>
+                    <Text style={cs.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-                    <Text style={styles.saveButtonText}>Save</Text>
+                  <TouchableOpacity onPress={handleSave} style={cs.saveButton}>
+                    <Text style={cs.saveButtonText}>Save</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -250,25 +252,3 @@ export default function PoultryScreen() {
     </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  gap:              { height: spacing.lg },
-  sectionHeader:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm },
-  editButton:       { padding: spacing.xs },
-  infoBox:          { backgroundColor: colors.bg, borderRadius: radius.md, padding: spacing.md, marginTop: spacing.md },
-  infoText:         { fontSize: fontSize.md, color: colors.textDim, lineHeight: 20 },
-  bold:             { fontWeight: "600", color: colors.text },
-
-  modalOverlay:     { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContent:     { backgroundColor: colors.card, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg, maxHeight: "85%" },
-  modalTitle:       { fontSize: fontSize.lg, fontWeight: "700", color: colors.text, marginBottom: spacing.md },
-  formScroll:       { maxHeight: 350 },
-  label:            { fontSize: fontSize.sm, fontWeight: "600", color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md },
-  input:            { backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, fontSize: fontSize.md, color: colors.text },
-
-  modalButtonGroup: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg },
-  cancelButton:     { flex: 1, backgroundColor: colors.border, borderRadius: radius.md, paddingVertical: spacing.sm, alignItems: "center" },
-  cancelButtonText: { fontSize: fontSize.md, color: colors.textDim, fontWeight: "600" },
-  saveButton:       { flex: 1, backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: spacing.sm, alignItems: "center" },
-  saveButtonText:   { fontSize: fontSize.md, color: colors.bg, fontWeight: "600" },
-});
