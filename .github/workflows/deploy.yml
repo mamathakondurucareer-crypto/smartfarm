@@ -1,0 +1,109 @@
+name: Deploy SmartFarm
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - test
+          - prod
+      branch:
+        description: "Branch to deploy (leave blank for default: develop→test, main→prod)"
+        required: false
+        default: ""
+
+# Prevent concurrent deploys to the same environment
+concurrency:
+  group: deploy-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment }}
+    runs-on: self-hosted          # your Mac registered as a GitHub Actions runner
+    environment: ${{ github.event.inputs.environment }}   # uses environment-scoped secrets
+
+    steps:
+      # ── 1. Determine branch ─────────────────────────────────────────────────
+      - name: Resolve branch
+        id: branch
+        run: |
+          INPUT="${{ github.event.inputs.branch }}"
+          if [ -n "$INPUT" ]; then
+            echo "ref=$INPUT" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.inputs.environment }}" = "prod" ]; then
+            echo "ref=main" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=develop" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── 2. Checkout ─────────────────────────────────────────────────────────
+      - name: Checkout ${{ steps.branch.outputs.ref }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.branch.outputs.ref }}
+
+      # ── 3. Write .env file from GitHub environment secrets ───────────────────
+      - name: Write .env.${{ github.event.inputs.environment }}
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          cat > ".env.${ENV}" <<EOF
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}
+          ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+          ADMIN_USERNAME=${{ secrets.ADMIN_USERNAME }}
+          ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+          DEBUG=false
+          EOF
+
+      # ── 4. Deploy ────────────────────────────────────────────────────────────
+      - name: Deploy ${{ github.event.inputs.environment }}
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          docker compose \
+            -f "docker-compose.${ENV}.yml" \
+            --env-file ".env.${ENV}" \
+            -p "smartfarm_${ENV}" \
+            up -d --build --remove-orphans
+
+      # ── 5. Health check ──────────────────────────────────────────────────────
+      - name: Wait for backend health
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          PORT=$( [ "$ENV" = "prod" ] && echo "8002" || echo "8003" )
+          echo "Waiting for backend on port $PORT..."
+          for i in $(seq 1 30); do
+            if curl -sf "http://localhost:${PORT}/api/health" > /dev/null 2>&1; then
+              echo "Backend is healthy."
+              exit 0
+            fi
+            echo "  attempt $i/30 — sleeping 5s"
+            sleep 5
+          done
+          echo "ERROR: Backend did not become healthy in time."
+          docker compose -f "docker-compose.${ENV}.yml" -p "smartfarm_${ENV}" logs backend
+          exit 1
+
+      # ── 6. Cleanup temp .env ─────────────────────────────────────────────────
+      - name: Remove .env file
+        if: always()
+        run: rm -f ".env.${{ github.event.inputs.environment }}"
+
+      # ── 7. Summary ───────────────────────────────────────────────────────────
+      - name: Deployment summary
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          PORT=$( [ "$ENV" = "prod" ] && echo "8083" || echo "8084" )
+          BACKEND=$( [ "$ENV" = "prod" ] && echo "8002" || echo "8003" )
+          echo "### Deployed to $ENV" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Service  | URL |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------|-----|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Frontend | http://localhost:${PORT} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend  | http://localhost:${BACKEND}/docs |" >> "$GITHUB_STEP_SUMMARY"
