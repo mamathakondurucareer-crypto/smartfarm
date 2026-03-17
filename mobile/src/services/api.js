@@ -28,6 +28,7 @@ async function request(method, path, body, token, formEncoded = false) {
     method,
     headers,
     body: bodyStr,
+    cache: "no-store",
   });
 
   const data = await res.json().catch(() => ({}));
@@ -152,6 +153,54 @@ export const api = {
     storeDaily:   (token)              => request("GET", "/api/reports/store-daily",               null, token),
     stockMovement:(token, params = "") => request("GET", `/api/reports/stock-movement${params}`,   null, token),
     inventory:    (token)              => request("GET", "/api/reports/inventory-valuation",       null, token),
+  },
+
+  // ─── Sensors & IoT ───────────────────────────────────────────
+  sensors: {
+    devices:      (token, params = "")  => request("GET",  `/api/sensors/devices${params}`,          null, token),
+    bulkIngest:   (token, readings)     => request("POST", "/api/sensors/readings/bulk",              { readings }, token),
+    latestAll:    (token)               => request("GET",  "/api/sensors/latest-all",                 null, token),
+    latestByZone: (zone, token)         => request("GET",  `/api/sensors/latest-by-zone/${zone}`,     null, token),
+    waterSummary: (token)               => request("GET",  "/api/sensors/water-summary",              null, token),
+    energySummary:(token)               => request("GET",  "/api/sensors/energy-summary",             null, token),
+    alerts:       (token, params = "")  => request("GET",  `/api/sensors/alerts${params}`,            null, token),
+    ackAlert:     (id, token)           => request("PUT",  `/api/sensors/alerts/${id}/acknowledge`,   null, token),
+    resolveAlert: (id, token)           => request("PUT",  `/api/sensors/alerts/${id}/resolve`,       null, token),
+  },
+
+  // ─── Automation ───────────────────────────────────────────────
+  automation: {
+    status:     (token)           => request("GET", "/api/automation/status",             null, token),
+    rules:      (token)           => request("GET", "/api/automation/rules",              null, token),
+    toggleRule: (id, token)       => request("PUT", `/api/automation/rules/${id}/toggle`, null, token),
+    logs:       (token, params="")=> request("GET", `/api/automation/logs${params}`,      null, token),
+  },
+
+  // ─── Aquaculture ──────────────────────────────────────────────
+  aquaculture: {
+    ponds:      (token, params = "") => request("GET", `/api/aquaculture/ponds${params}`, null, token),
+    summary:    (token)              => request("GET", "/api/aquaculture/summary",         null, token),
+    batches:    (token)              => request("GET", "/api/aquaculture/batches",          null, token),
+  },
+
+  // ─── Crops (Greenhouse / Vertical Farm) ───────────────────────
+  crops: {
+    greenhouse:  (token)           => request("GET",  "/api/crops/greenhouse",    null, token),
+    verticalFarm:(token)           => request("GET",  "/api/crops/vertical-farm", null, token),
+  },
+
+  // ─── Poultry ──────────────────────────────────────────────────
+  poultry: {
+    flocks: (token) => request("GET", "/api/poultry/flocks", null, token),
+    ducks:  (token) => request("GET", "/api/poultry/ducks",  null, token),
+    bees:   (token) => request("GET", "/api/poultry/bees",   null, token),
+  },
+
+  // ─── Dashboard ────────────────────────────────────────────────
+  dashboard: {
+    kpis:             (token, params = "") => request("GET", `/api/dashboard/kpis${params}`,              null, token),
+    revenueByStream:  (token, params = "") => request("GET", `/api/dashboard/revenue-by-stream${params}`,  null, token),
+    monthlyPnl:       (token, params = "") => request("GET", `/api/dashboard/monthly-pnl${params}`,        null, token),
   },
 
   // ─── Activity Log ─────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
 import { Fish, Activity, Thermometer, Droplets, AlertTriangle, BarChart3, Plus, Pencil, Trash2 } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
@@ -10,6 +10,8 @@ import Badge         from "../components/ui/Badge";
 import LineChartCard from "../components/charts/LineChartCard";
 import { colors, spacing, fontSize, radius } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import useAuthStore  from "../store/useAuthStore";
+import { api } from "../services/api";
 import { styles } from "./AquacultureScreen.styles";
 import { commonStyles as cs } from "../styles/common";
 
@@ -25,8 +27,35 @@ export default function AquacultureScreen() {
   const addPond = useFarmStore((s) => s.addPond);
   const updatePond = useFarmStore((s) => s.updatePond);
   const removePond = useFarmStore((s) => s.removePond);
+  const token = useAuthStore((s) => s.token);
 
   const s    = farm.sensors;
+
+  const [apiSummary, setApiSummary] = useState(null);
+  const [apiPonds, setApiPonds]     = useState(null);
+
+  useEffect(() => {
+    if (!token) return;
+    api.aquaculture.summary(token).then(setApiSummary).catch(() => {});
+    api.aquaculture.ponds(token)
+      .then((rows) => {
+        if (rows && rows.length > 0) {
+          // Map backend PondOut to display shape
+          const mapped = rows.map((p) => ({
+            id:        p.pond_code || String(p.id),
+            species:   p.fish_species || "—",
+            stock:     p.current_stock ?? 0,
+            avgWeight: p.avg_weight_kg ?? 0,
+            fcr:       p.fcr ?? 0,
+            do:        s.dissolvedO2,
+            feedToday: p.today_feed_kg ?? 0,
+            mortality: p.mortality_pct ?? 0,
+          }));
+          setApiPonds(mapped);
+        }
+      })
+      .catch(() => {});
+  }, [token]);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingPond, setEditingPond] = useState(null);
@@ -41,20 +70,24 @@ export default function AquacultureScreen() {
     mortality: "",
   });
 
-  const totalStock   = farm.ponds.reduce((sum, p) => sum + p.stock, 0);
-  const totalBiomass = farm.ponds.reduce((sum, p) => sum + p.stock * p.avgWeight, 0);
+  const displayPonds = apiPonds ?? farm.ponds;
+  const totalStock   = apiSummary?.total_stock    ?? displayPonds.reduce((sum, p) => sum + (p.stock ?? 0), 0);
+  const totalBiomass = apiSummary?.total_biomass_kg != null
+    ? apiSummary.total_biomass_kg * 1000
+    : displayPonds.reduce((sum, p) => sum + (p.stock ?? 0) * (p.avgWeight ?? 0), 0);
+  const pondCount    = apiSummary?.active_ponds    ?? displayPonds.length;
 
   const summaryStats = [
-    { Icon: Fish,          label: "Total Stock",  value: totalStock.toLocaleString(), color: colors.fish,    sub: `${farm.ponds.length} ponds` },
+    { Icon: Fish,          label: "Total Stock",  value: totalStock.toLocaleString(),          color: colors.fish,    sub: `${pondCount} ponds` },
     { Icon: Activity,      label: "Biomass",      value: `${(totalBiomass / 1000).toFixed(1)}T`, color: colors.primary },
-    { Icon: Thermometer,   label: "Water Temp",   value: s.waterTemp,  unit: "°C",    color: colors.info },
+    { Icon: Thermometer,   label: "Water Temp",   value: s.waterTemp,   unit: "°C",   color: colors.info },
     { Icon: Droplets,      label: "Avg DO",       value: s.dissolvedO2, unit: "mg/L", color: s.dissolvedO2 < 5 ? colors.danger : colors.water },
     { Icon: Activity,      label: "pH",           value: s.ph,                        color: colors.primary },
-    { Icon: AlertTriangle, label: "Ammonia",      value: s.ammonia,    unit: "mg/L",  color: s.ammonia > 0.05 ? colors.danger : colors.primary },
+    { Icon: AlertTriangle, label: "Ammonia",      value: s.ammonia,     unit: "mg/L", color: s.ammonia > 0.05 ? colors.danger : colors.primary },
   ];
 
   const tableHeaders = ["Pond", "Species", "Stock", "Wt (kg)", "FCR", "DO", "Feed (kg)", "Mort %", ""];
-  const tableRows    = farm.ponds.map((p) => [
+  const tableRows    = displayPonds.map((p) => [
     <Text style={{ fontWeight: "700", color: colors.fish }}>{p.id}</Text>,
     p.species,
     p.stock.toLocaleString(),

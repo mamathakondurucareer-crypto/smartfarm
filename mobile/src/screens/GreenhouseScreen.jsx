@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
 import { Leaf, Thermometer, Droplets, Activity, Sun, Plus, Pencil, Trash2 } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
@@ -9,6 +9,8 @@ import Badge         from "../components/ui/Badge";
 import ProgressBar   from "../components/ui/ProgressBar";
 import { colors, spacing, radius, fontSize } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import useAuthStore  from "../store/useAuthStore";
+import { api } from "../services/api";
 import { styles } from "./GreenhouseScreen.styles";
 import { commonStyles as cs } from "../styles/common";
 
@@ -27,8 +29,33 @@ export default function GreenhouseScreen() {
   const addGreenhouse = useFarmStore((s) => s.addGreenhouse);
   const updateGreenhouse = useFarmStore((s) => s.updateGreenhouse);
   const removeGreenhouse = useFarmStore((s) => s.removeGreenhouse);
+  const token = useAuthStore((s) => s.token);
 
   const s    = farm.sensors;
+
+  const [apiCrops, setApiCrops] = useState(null);
+
+  useEffect(() => {
+    if (!token) return;
+    api.crops.greenhouse(token)
+      .then((rows) => {
+        if (rows && rows.length > 0) {
+          const mapped = rows.map((c) => ({
+            id:          c.id,
+            crop:        c.crop_name || c.crop_code,
+            stage:       c.growth_stage || "Vegetative",
+            daysPlanted: c.days_planted ?? 0,
+            health:      c.health_score ?? 0,
+            yieldKg:     c.actual_yield_kg ?? 0,
+            targetKg:    c.target_yield_kg ?? 0,
+          }));
+          setApiCrops(mapped);
+        }
+      })
+      .catch(() => {});
+  }, [token]);
+
+  const displayCrops = apiCrops ?? farm.greenhouse;
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCrop, setEditingCrop] = useState(null);
@@ -123,7 +150,7 @@ export default function GreenhouseScreen() {
           </TouchableOpacity>
         </View>
 
-        {farm.greenhouse.map((crop) => (
+        {displayCrops.map((crop) => (
           <View key={crop.id} style={styles.cropCard}>
             <View style={styles.cropHeader}>
               <View style={styles.cropTitleRow}>

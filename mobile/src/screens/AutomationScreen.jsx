@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text } from "react-native";
 import { Droplets, Fish, Egg, RefreshCw, Thermometer, Wind } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
@@ -7,6 +7,8 @@ import SectionHeader from "../components/ui/SectionHeader";
 import Badge         from "../components/ui/Badge";
 import { colors, spacing, radius, fontSize } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import useAuthStore  from "../store/useAuthStore";
+import { api } from "../services/api";
 import { styles } from "./AutomationScreen.styles";
 import { commonStyles as cs } from "../styles/common";
 
@@ -37,12 +39,48 @@ function systemDetails(key, data) {
   return details[key] ?? [];
 }
 
+// Map backend system names → frontend store keys
+const BACKEND_KEY_MAP = {
+  irrigation:  "irrigation",
+  fish_feeder: "fishFeeder",
+  egg_belt:    "eggBelt",
+  gh_climate:  "ghClimate",
+};
+
 export default function AutomationScreen() {
   const automation = useFarmStore((s) => s.farm.automation);
+  const token      = useAuthStore((s) => s.token);
+
+  const [apiStatus, setApiStatus] = useState({});
+
+  useEffect(() => {
+    if (!token) return;
+    api.automation.status(token)
+      .then((data) => {
+        // Remap backend keys to frontend keys
+        const mapped = {};
+        Object.entries(data).forEach(([backendKey, info]) => {
+          const frontendKey = BACKEND_KEY_MAP[backendKey];
+          if (frontendKey) {
+            mapped[frontendKey] = info.enabled > 0 ? "Active" : info.total > 0 ? "Disabled" : "Idle";
+          }
+        });
+        setApiStatus(mapped);
+      })
+      .catch(() => {});
+  }, [token]);
+
+  // Merge API status into local automation data
+  const mergedAutomation = Object.fromEntries(
+    Object.entries(automation).map(([key, data]) => [
+      key,
+      apiStatus[key] ? { ...data, status: apiStatus[key] } : data,
+    ])
+  );
 
   return (
     <ScreenWrapper title="Automation">
-      {Object.entries(automation).map(([key, data]) => {
+      {Object.entries(mergedAutomation).map(([key, data]) => {
         const meta = SYSTEM_META[key];
         if (!meta) return null;
 

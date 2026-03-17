@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { Droplets, Database, Sun, Fish, Sprout, RefreshCw, CloudRain, Activity, ChevronRight, BarChart3 } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
@@ -8,6 +8,8 @@ import SectionHeader from "../components/ui/SectionHeader";
 import BarChartCard  from "../components/charts/BarChartCard";
 import { colors, spacing, radius, fontSize } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import useAuthStore  from "../store/useAuthStore";
+import { api } from "../services/api";
 import { styles } from "./WaterScreen.styles";
 import { commonStyles as cs } from "../styles/common";
 
@@ -32,14 +34,25 @@ const FLOW_STAGES = [
 ];
 
 export default function WaterScreen() {
-  const farm = useFarmStore((s) => s.farm);
-  const s    = farm.sensors;
+  const farm  = useFarmStore((s) => s.farm);
+  const token = useAuthStore((s) => s.token);
+  const s     = farm.sensors;
+
+  const [apiWater, setApiWater] = useState(null);
+
+  useEffect(() => {
+    if (!token) return;
+    api.sensors.waterSummary(token).then(setApiWater).catch(() => {});
+  }, [token]);
+
+  const reservoirLevel  = apiWater?.reservoirLevel  ?? s.reservoirLevel;
+  const headerTankLevel = apiWater?.headerTankLevel ?? s.headerTankLevel;
 
   const summaryStats = [
-    { Icon: Database, label: "Reservoir",     value: `${s.reservoirLevel}%`, color: colors.water, sub: "~7.8M litres" },
-    { Icon: Droplets, label: "Header Tank",   value: `${s.headerTankLevel}%`, color: colors.info, sub: "30,000L cap" },
-    { Icon: CloudRain,label: "Rainfall",      value: s.rainfall, unit: "mm", color: colors.water },
-    { Icon: Activity, label: "Daily Usage",   value: "43,500",   unit: "L",  color: colors.textDim },
+    { Icon: Database, label: "Reservoir",   value: `${reservoirLevel}%`,  color: colors.water, sub: "~7.8M litres" },
+    { Icon: Droplets, label: "Header Tank", value: `${headerTankLevel}%`, color: colors.info,  sub: "30,000L cap" },
+    { Icon: CloudRain,label: "Rainfall",    value: s.rainfall, unit: "mm", color: colors.water },
+    { Icon: Activity, label: "Daily Usage", value: "43,500",   unit: "L",  color: colors.textDim },
   ];
 
   return (

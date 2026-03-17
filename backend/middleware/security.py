@@ -39,4 +39,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Remove server fingerprinting header if present
         if "server" in response.headers:
             del response.headers["server"]
+        # Prevent browsers from caching API responses
+        if request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-store"
         return response

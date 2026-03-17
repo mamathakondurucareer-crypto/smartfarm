@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import {
   DollarSign, TrendingUp, Fish, Egg, Sun, Droplets,
@@ -12,33 +12,87 @@ import AlertDot     from "../components/ui/AlertDot";
 import PieChartCard from "../components/charts/PieChartCard";
 import { colors, spacing, radius, fontSize } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import useAuthStore  from "../store/useAuthStore";
+import { api } from "../services/api";
 import { styles } from "./DashboardScreen.styles";
 import { commonStyles as cs } from "../styles/common";
 
-// Revenue breakdown for the donut chart
-const REVENUE_SEGMENTS = [
-  { name: "Aquaculture",   value: 101.4, color: colors.fish },
-  { name: "Greenhouse",    value: 19.05, color: colors.crop },
-  { name: "Vertical Farm", value: 25,    color: colors.verticalFarm },
-  { name: "Field Crops",   value: 60,    color: colors.accent },
-  { name: "Poultry/Duck",  value: 33.8,  color: colors.poultry },
-  { name: "Nursery",       value: 56.7,  color: colors.primary },
-];
+const STREAM_COLORS = {
+  aquaculture:   colors.fish,
+  greenhouse:    colors.crop,
+  vertical_farm: colors.verticalFarm,
+  field_crops:   colors.accent,
+  poultry:       colors.poultry,
+  nursery:       colors.primary,
+};
 
 export default function DashboardScreen({ navigation }) {
-  const farm = useFarmStore((s) => s.farm);
-  const s    = farm.sensors;
-  const f    = farm.financial;
+  const farm  = useFarmStore((s) => s.farm);
+  const token = useAuthStore((s) => s.token);
+  const s     = farm.sensors;
 
-  const totalFishStock = farm.ponds.reduce((sum, p) => sum + p.stock, 0);
+  const [kpis, setKpis] = useState(null);
+  const [revenueSegments, setRevenueSegments] = useState([]);
+  const [apiAlerts, setApiAlerts] = useState([]);
+
+  useEffect(() => {
+    if (!token) return;
+    const now = new Date();
+    const start = `${now.getFullYear()}-01-01`;
+    const end   = now.toISOString().slice(0, 10);
+    api.dashboard.kpis(token, `?start_date=${start}&end_date=${end}`)
+      .then(setKpis)
+      .catch(() => {});
+    api.dashboard.revenueByStream(token, `?start_date=${start}&end_date=${end}`)
+      .then((rows) => {
+        const segs = rows.map((r) => ({
+          name:  r.stream.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+          value: +(r.total / 100000).toFixed(2),
+          color: STREAM_COLORS[r.stream] || colors.textDim,
+        }));
+        if (segs.length) setRevenueSegments(segs);
+      })
+      .catch(() => {});
+    api.sensors.alerts(token, "?resolved=false&limit=5")
+      .then((rows) => {
+        const mapped = rows.map((a) => ({
+          id:     a.id,
+          type:   a.alert_type,
+          msg:    a.message,
+          time:   new Date(a.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          system: a.source_system || a.category,
+        }));
+        setApiAlerts(mapped);
+      })
+      .catch(() => {});
+  }, [token]);
+
+  // Use API alerts when available, fall back to simulated local alerts
+  const displayAlerts = apiAlerts.length > 0 ? apiAlerts : farm.alerts.slice(0, 5);
+
+  const revenue    = kpis ? (kpis.financial.revenue   / 100000).toFixed(1) : "—";
+  const profit     = kpis ? (kpis.financial.profit    / 100000).toFixed(1) : "—";
+  const margin     = kpis ? kpis.financial.margin_pct : null;
+  const fishStock  = kpis ? kpis.aquaculture.total_stock : null;
+  const activePonds= kpis ? kpis.aquaculture.active_ponds : null;
+  const eggsToday  = kpis ? kpis.poultry.eggs_today : null;
+  const layRate    = kpis ? kpis.poultry.lay_rate_pct : null;
 
   const kpiStats = [
-    { Icon: DollarSign, label: "YTD Revenue",  value: `₹${f.ytdRevenue}L`,  color: colors.primary,  sub: "+12.4% vs target" },
-    { Icon: TrendingUp, label: "YTD Profit",   value: `₹${f.ytdProfit}L`,   color: colors.accent,   sub: "65.1% margin" },
-    { Icon: Fish,       label: "Fish Stock",   value: `${(totalFishStock / 1000).toFixed(1)}K`, color: colors.fish, sub: "6 ponds active" },
-    { Icon: Egg,        label: "Eggs Today",   value: s.eggCount,            color: colors.poultry,  sub: `${farm.poultry.layRate}% lay rate` },
+    { Icon: DollarSign, label: "YTD Revenue",  value: `₹${revenue}L`,  color: colors.primary,
+      sub: margin !== null ? `${margin}% margin` : "no data yet" },
+    { Icon: TrendingUp, label: "YTD Profit",   value: `₹${profit}L`,   color: colors.accent,
+      sub: margin !== null ? `${margin}% margin` : "no data yet" },
+    { Icon: Fish,       label: "Fish Stock",
+      value: fishStock !== null ? fishStock >= 1000 ? `${(fishStock/1000).toFixed(1)}K` : String(fishStock) : "—",
+      color: colors.fish,
+      sub: activePonds !== null ? `${activePonds} ponds active` : "no ponds" },
+    { Icon: Egg,        label: "Eggs Today",
+      value: eggsToday !== null ? String(eggsToday) : "—",
+      color: colors.poultry,
+      sub: layRate ? `${layRate}% lay rate` : "no flock" },
     { Icon: Sun,        label: "Solar Gen.",   value: `${s.solarGeneration}kW`, color: colors.solar, sub: `${s.gridExport}kW exported` },
-    { Icon: Droplets,   label: "Reservoir",    value: `${s.reservoirLevel}%`, color: colors.water,  sub: "~7.8M litres" },
+    { Icon: Droplets,   label: "Reservoir",    value: `${s.reservoirLevel}%`,   color: colors.water, sub: "~7.8M litres" },
   ];
 
   const envStats = [
@@ -65,21 +119,23 @@ export default function DashboardScreen({ navigation }) {
 
       <View style={cs.gap} />
 
-      <PieChartCard
-        Icon={BarChart3}
-        title="Revenue Mix (Annual Target)"
-        color={colors.accent}
-        segments={REVENUE_SEGMENTS}
-        valuePrefix="₹"
-        valueSuffix="L"
-      />
+      {revenueSegments.length > 0 && (
+        <PieChartCard
+          Icon={BarChart3}
+          title="Revenue Mix (YTD)"
+          color={colors.accent}
+          segments={revenueSegments}
+          valuePrefix="₹"
+          valueSuffix="L"
+        />
+      )}
 
       <View style={cs.gap} />
 
       {/* Alerts */}
       <Card style={cs.cardGap}>
         <SectionHeader Icon={AlertTriangle} title="Recent Alerts" color={colors.warn} />
-        {farm.alerts.slice(0, 5).map((a) => (
+        {displayAlerts.map((a) => (
           <View key={a.id} style={styles.alertRow}>
             <AlertDot type={a.type} />
             <View style={styles.alertBody}>
