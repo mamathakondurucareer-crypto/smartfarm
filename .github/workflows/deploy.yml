@@ -11,7 +11,7 @@ on:
           - test
           - prod
       branch:
-        description: "Branch to deploy (leave blank for default: develop→test, main→prod)"
+        description: "Branch for test (leave blank for main). Ignored for prod — prod always deploys main."
         required: false
         default: ""
 
@@ -27,17 +27,18 @@ jobs:
     environment: ${{ github.event.inputs.environment }}   # uses environment-scoped secrets
 
     steps:
-      # ── 1. Determine branch ─────────────────────────────────────────────────
+      # ── 1. Determine branch — prod is always locked to main ─────────────────
       - name: Resolve branch
         id: branch
         run: |
+          ENV="${{ github.event.inputs.environment }}"
           INPUT="${{ github.event.inputs.branch }}"
-          if [ -n "$INPUT" ]; then
-            echo "ref=$INPUT" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event.inputs.environment }}" = "prod" ]; then
+          if [ "$ENV" = "prod" ]; then
             echo "ref=main" >> "$GITHUB_OUTPUT"
+          elif [ -n "$INPUT" ]; then
+            echo "ref=$INPUT" >> "$GITHUB_OUTPUT"
           else
-            echo "ref=develop" >> "$GITHUB_OUTPUT"
+            echo "ref=main" >> "$GITHUB_OUTPUT"
           fi
 
       # ── 2. Checkout ─────────────────────────────────────────────────────────
