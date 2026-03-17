@@ -139,6 +139,12 @@ def update_batch_weight(
     batch = db.query(FishBatch).filter(FishBatch.id == batch_id).first()
     if not batch:
         raise HTTPException(404, "Batch not found")
+    if avg_weight_g <= 0:
+        raise HTTPException(400, "avg_weight_g must be positive")
+    if mortality_count < 0:
+        raise HTTPException(400, "mortality_count cannot be negative")
+    if mortality_count > batch.current_count:
+        raise HTTPException(400, f"mortality_count ({mortality_count}) exceeds current stock ({batch.current_count})")
     batch.current_avg_weight_g = avg_weight_g
     if mortality_count > 0:
         batch.mortality_count += mortality_count
@@ -147,7 +153,10 @@ def update_batch_weight(
         FeedLog.pond_id == batch.pond_id
     ).scalar()
     biomass_gain = (batch.current_count * batch.current_avg_weight_g - batch.initial_count * batch.initial_avg_weight_g) / 1000
-    batch.fcr = round(float(total_feed) / biomass_gain, 2) if biomass_gain > 0 else 0
+    if biomass_gain > 0 and float(total_feed) > 0:
+        batch.fcr = round(float(total_feed) / biomass_gain, 2)
+    else:
+        batch.fcr = None  # FCR undefined when no biomass gain or no feed data
     db.commit()
     return {"message": "Batch updated", "current_count": batch.current_count, "fcr": batch.fcr}
 

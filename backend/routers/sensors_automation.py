@@ -10,8 +10,12 @@ from backend.database import get_db
 from backend.models.sensor import SensorDevice, SensorReading, Alert
 from backend.models.automation import AutomationRule, AutomationLog
 from backend.models.drone import DroneFlightLog
+from backend.models.user import User
+from backend.routers.auth import get_current_user
 from backend.schemas import SensorReadingCreate, SensorReadingBulk, SensorDeviceOut, AlertOut
 from backend.services.alert_service import check_threshold
+
+_MGMT_ROLES = ("admin", "manager", "supervisor")
 
 sensors_router = APIRouter(prefix="/api/sensors", tags=["Sensors & IoT"])
 automation_router = APIRouter(prefix="/api/automation", tags=["Automation"])
@@ -103,19 +107,19 @@ def list_alerts(
 
 
 @sensors_router.put("/alerts/{alert_id}/acknowledge")
-def acknowledge_alert(alert_id: int, user: str, db: Session = Depends(get_db)):
+def acknowledge_alert(alert_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     alert = db.query(Alert).filter(Alert.id == alert_id).first()
     if not alert:
         raise HTTPException(404, "Alert not found")
     alert.acknowledged = True
-    alert.acknowledged_by = user
+    alert.acknowledged_by = current_user.username
     alert.acknowledged_at = datetime.now(timezone.utc)
     db.commit()
     return {"message": "Alert acknowledged"}
 
 
 @sensors_router.put("/alerts/{alert_id}/resolve")
-def resolve_alert(alert_id: int, notes: str = None, db: Session = Depends(get_db)):
+def resolve_alert(alert_id: int, notes: str = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     alert = db.query(Alert).filter(Alert.id == alert_id).first()
     if not alert:
         raise HTTPException(404, "Alert not found")
@@ -138,7 +142,9 @@ def list_rules(system: Optional[str] = None, enabled: Optional[bool] = None, db:
 
 
 @automation_router.put("/rules/{rule_id}/toggle")
-def toggle_rule(rule_id: int, db: Session = Depends(get_db)):
+def toggle_rule(rule_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role.name not in _MGMT_ROLES:
+        raise HTTPException(403, "Manager or supervisor role required to toggle automation rules")
     rule = db.query(AutomationRule).filter(AutomationRule.id == rule_id).first()
     if not rule:
         raise HTTPException(404, "Rule not found")

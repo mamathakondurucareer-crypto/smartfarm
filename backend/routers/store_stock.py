@@ -176,7 +176,12 @@ def receive_stock_from_transfer(
     if not product:
         raise HTTPException(404, "Product in transfer not found")
 
-    stock = _get_or_create_stock(db, product)
+    # Lock the stock row to prevent concurrent receive race conditions
+    existing_stock = db.query(StoreStock).filter(StoreStock.product_id == product.id).with_for_update().first()
+    if existing_stock:
+        stock = existing_stock
+    else:
+        stock = _get_or_create_stock(db, product)
     qty = transfer.quantity_transferred
 
     # Weighted-average cost update

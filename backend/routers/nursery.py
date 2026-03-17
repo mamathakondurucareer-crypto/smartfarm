@@ -120,7 +120,7 @@ def update_batch(batch_id: int, data: NurseryBatchUpdate, db: Session = Depends(
 
 @router.delete("/batches/{batch_id}", status_code=204)
 def delete_batch(batch_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    obj = db.query(NurseryBatch).filter(NurseryBatch.id == batch_id).first()
+    obj = db.query(NurseryBatch).filter(NurseryBatch.id == batch_id, NurseryBatch.is_active == True).first()
     if not obj:
         raise HTTPException(404, "Batch not found")
     obj.is_active = False

@@ -1,6 +1,7 @@
 """Point-of-Sale router — sessions, checkout, transactions, barcode lookup."""
 from datetime import datetime, timezone, date
 from typing import Optional, List
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session, joinedload
 
@@ -25,22 +26,19 @@ CASHIER_ROLES = ("admin", "manager", "store_manager", "cashier")
 ADMIN_ROLES = ("admin", "store_manager")
 
 
-def _session_code(db: Session) -> str:
-    count = db.query(POSSession).count()
+def _session_code() -> str:
     ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    return f"SES-{ts}-{count + 1:04d}"
+    return f"SES-{ts}-{uuid.uuid4().hex[:6].upper()}"
 
 
-def _txn_code(db: Session) -> str:
-    count = db.query(POSTransaction).count()
+def _txn_code() -> str:
     ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    return f"TXN-{ts}-{count + 1:04d}"
+    return f"TXN-{ts}-{uuid.uuid4().hex[:6].upper()}"
 
 
-def _invoice_number(db: Session) -> str:
-    count = db.query(Invoice).count()
+def _invoice_number() -> str:
     ts = datetime.now(timezone.utc).strftime("%Y%m%d")
-    return f"INV-POS-{ts}-{count + 1:04d}"
+    return f"INV-POS-{ts}-{uuid.uuid4().hex[:6].upper()}"
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -65,7 +63,7 @@ def open_session(
         raise HTTPException(400, "You already have an open POS session")
 
     session = POSSession(
-        session_code=_session_code(db),
+        session_code=_session_code(),
         cashier_id=current_user.id,
         opened_at=datetime.now(timezone.utc),
         opening_cash=data.opening_cash,
@@ -168,14 +166,14 @@ def checkout(
     tax_total = 0.0
     txn_items: List[POSTransactionItem] = []
 
-    # Pre-validate all items and lock stock
+    # Pre-validate all items and lock stock rows (pessimistic lock)
     stock_deductions: dict[int, float] = {}
     for item_in in data.items:
         product = db.query(ProductCatalog).filter(ProductCatalog.id == item_in.product_id).first()
         if not product or not product.is_active:
             raise HTTPException(404, f"Product id={item_in.product_id} not found or inactive")
 
-        stock = db.query(StoreStock).filter(StoreStock.product_id == item_in.product_id).first()
+        stock = db.query(StoreStock).filter(StoreStock.product_id == item_in.product_id).with_for_update().first()
         if not stock:
             raise HTTPException(400, f"No stock record for product '{product.name}'")
         needed = stock_deductions.get(item_in.product_id, 0) + item_in.quantity
@@ -219,7 +217,7 @@ def checkout(
 
     # Create the POS transaction
     txn = POSTransaction(
-        transaction_code=_txn_code(db),
+        transaction_code=_txn_code(),
         session_id=session.id,
         customer_id=data.customer_id,
         cashier_id=current_user.id,
@@ -242,16 +240,16 @@ def checkout(
         item.transaction_id = txn.id
         db.add(item)
 
-    # Deduct stock
+    # Deduct stock (already locked above; re-fetch by same product_id to get locked row)
     for product_id, qty in stock_deductions.items():
-        stock = db.query(StoreStock).filter(StoreStock.product_id == product_id).first()
+        stock = db.query(StoreStock).filter(StoreStock.product_id == product_id).with_for_update().first()
         stock.current_qty = round(stock.current_qty - qty, 4)
         stock.updated_at = now
 
     # Create Invoice record
     invoice_date_val = date.today()
     invoice = Invoice(
-        invoice_number=_invoice_number(db),
+        invoice_number=_invoice_number(),
         invoice_type="sales",
         customer_id=data.customer_id,
         invoice_date=invoice_date_val,

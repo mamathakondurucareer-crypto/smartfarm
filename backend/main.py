@@ -1,5 +1,6 @@
 """SmartFarm OS — Main FastAPI Application."""
 
+import time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,9 +9,10 @@ from fastapi.responses import FileResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy import text
 
 from backend.config import get_settings
-from backend.database import init_db
+from backend.database import init_db, SessionLocal
 from backend.middleware.security import SecurityHeadersMiddleware
 
 settings = get_settings()
@@ -19,10 +21,26 @@ settings = get_settings()
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 
+def _wait_for_db(retries: int = 10, delay: float = 3.0) -> None:
+    """Block until the database is reachable (self-healing startup)."""
+    for attempt in range(1, retries + 1):
+        try:
+            db = SessionLocal()
+            db.execute(text("SELECT 1"))
+            db.close()
+            return
+        except Exception as exc:
+            print(f"[startup] DB not ready (attempt {attempt}/{retries}): {exc}")
+            if attempt < retries:
+                time.sleep(delay)
+    raise RuntimeError("Database unreachable after retries — aborting startup")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Validate secret key on startup
     settings.effective_secret_key()
+    _wait_for_db()
     init_db()
     db_display = settings.database_url.split("@")[-1] if "@" in settings.database_url else settings.database_url
     print(f"SmartFarm OS v{settings.app_version} starting — DB: {db_display}")
@@ -115,10 +133,24 @@ app.include_router(compliance_router)
 app.include_router(nursery_router)
 
 
-# ── Health Check (public — no sensitive data) ──
+# ── Health Check (public — includes DB ping for self-healing probes) ──
 @app.get("/api/health")
 def health():
-    return {"status": "healthy", "app": settings.app_name, "version": settings.app_version}
+    db_ok = False
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        db_ok = True
+    except Exception:
+        pass
+    status = "healthy" if db_ok else "degraded"
+    return {
+        "status": status,
+        "app": settings.app_name,
+        "version": settings.app_version,
+        "database": "ok" if db_ok else "unreachable",
+    }
 
 
 # ── API Info (public — no sensitive data) ──

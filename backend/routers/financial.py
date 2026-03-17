@@ -8,7 +8,8 @@ from sqlalchemy import func
 
 from backend.database import get_db
 from backend.models.financial import RevenueEntry, ExpenseEntry, SalaryRecord, Invoice, InvoiceItem, Budget
-from backend.models.user import Employee, Attendance, LeaveRequest
+from backend.models.user import Employee, Attendance, LeaveRequest, User
+from backend.routers.auth import get_current_user
 from backend.schemas import (
     RevenueCreate, ExpenseCreate, SalaryRecordCreate, SalaryRecordOut,
     InvoiceCreate, EmployeeCreate, EmployeeOut, AttendanceCreate, LeaveRequestCreate,
@@ -17,10 +18,15 @@ from backend.utils.helpers import generate_code
 
 router = APIRouter(prefix="/api/financial", tags=["Financial & HR"])
 
+FINANCE_ROLES = ("admin", "manager", "accountant")
+HR_ROLES = ("admin", "manager", "hr")
+
 
 # ═══════ REVENUE ═══════
 @router.post("/revenue", status_code=201)
-def add_revenue(data: RevenueCreate, db: Session = Depends(get_db)):
+def add_revenue(data: RevenueCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role.name not in FINANCE_ROLES:
+        raise HTTPException(403, "Finance role required")
     entry = RevenueEntry(**data.model_dump())
     db.add(entry)
     db.commit()
@@ -34,7 +40,12 @@ def list_revenue(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    if current_user.role.name not in FINANCE_ROLES:
+        raise HTTPException(403, "Finance role required")
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(400, "start_date must be before end_date")
     q = db.query(RevenueEntry)
     if stream:
         q = q.filter(RevenueEntry.stream == stream)
@@ -47,7 +58,9 @@ def list_revenue(
 
 # ═══════ EXPENSES ═══════
 @router.post("/expenses", status_code=201)
-def add_expense(data: ExpenseCreate, db: Session = Depends(get_db)):
+def add_expense(data: ExpenseCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role.name not in FINANCE_ROLES:
+        raise HTTPException(403, "Finance role required")
     entry = ExpenseEntry(**data.model_dump())
     db.add(entry)
     db.commit()
@@ -62,7 +75,12 @@ def list_expenses(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    if current_user.role.name not in FINANCE_ROLES:
+        raise HTTPException(403, "Finance role required")
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(400, "start_date must be before end_date")
     q = db.query(ExpenseEntry)
     if category:
         q = q.filter(ExpenseEntry.category == category)
@@ -77,7 +95,11 @@ def list_expenses(
 
 # ═══════ P&L SUMMARY ═══════
 @router.get("/pnl-summary")
-def pnl_summary(start_date: date = Query(...), end_date: date = Query(...), db: Session = Depends(get_db)):
+def pnl_summary(start_date: date = Query(...), end_date: date = Query(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role.name not in FINANCE_ROLES:
+        raise HTTPException(403, "Finance role required")
+    if start_date > end_date:
+        raise HTTPException(400, "start_date must be before end_date")
     revenue = db.query(func.coalesce(func.sum(RevenueEntry.total_amount), 0)).filter(
         RevenueEntry.entry_date.between(start_date, end_date)).scalar()
     expense = db.query(func.coalesce(func.sum(ExpenseEntry.total_amount), 0)).filter(
@@ -101,7 +123,9 @@ def pnl_summary(start_date: date = Query(...), end_date: date = Query(...), db: 
 
 # ═══════ INVOICES ═══════
 @router.post("/invoices", status_code=201)
-def create_invoice(data: InvoiceCreate, db: Session = Depends(get_db)):
+def create_invoice(data: InvoiceCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role.name not in FINANCE_ROLES:
+        raise HTTPException(403, "Finance role required")
     count = db.query(func.count(Invoice.id)).scalar()
     prefix = "INV" if data.invoice_type == "sales" else "BILL"
     inv = Invoice(
@@ -142,7 +166,9 @@ def create_invoice(data: InvoiceCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/invoices")
-def list_invoices(invoice_type: Optional[str] = None, status: Optional[str] = None, db: Session = Depends(get_db)):
+def list_invoices(invoice_type: Optional[str] = None, status: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role.name not in FINANCE_ROLES:
+        raise HTTPException(403, "Finance role required")
     q = db.query(Invoice)
     if invoice_type:
         q = q.filter(Invoice.invoice_type == invoice_type)
@@ -153,7 +179,9 @@ def list_invoices(invoice_type: Optional[str] = None, status: Optional[str] = No
 
 # ═══════ EMPLOYEES / HR ═══════
 @router.get("/employees", response_model=list[EmployeeOut])
-def list_employees(department: Optional[str] = None, db: Session = Depends(get_db)):
+def list_employees(department: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role.name not in HR_ROLES:
+        raise HTTPException(403, "HR role required")
     q = db.query(Employee).filter(Employee.is_active == True)
     if department:
         q = q.filter(Employee.department == department)
@@ -161,7 +189,9 @@ def list_employees(department: Optional[str] = None, db: Session = Depends(get_d
 
 
 @router.post("/employees", response_model=EmployeeOut, status_code=201)
-def create_employee(data: EmployeeCreate, db: Session = Depends(get_db)):
+def create_employee(data: EmployeeCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role.name not in HR_ROLES:
+        raise HTTPException(403, "HR role required")
     emp = Employee(**data.model_dump())
     db.add(emp)
     db.commit()
@@ -170,7 +200,9 @@ def create_employee(data: EmployeeCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/employees/{emp_id}")
-def get_employee(emp_id: int, db: Session = Depends(get_db)):
+def get_employee(emp_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role.name not in HR_ROLES:
+        raise HTTPException(403, "HR role required")
     emp = db.query(Employee).filter(Employee.id == emp_id).first()
     if not emp:
         raise HTTPException(404, "Employee not found")
@@ -179,7 +211,9 @@ def get_employee(emp_id: int, db: Session = Depends(get_db)):
 
 # ═══════ ATTENDANCE ═══════
 @router.post("/attendance", status_code=201)
-def mark_attendance(data: AttendanceCreate, db: Session = Depends(get_db)):
+def mark_attendance(data: AttendanceCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role.name not in HR_ROLES:
+        raise HTTPException(403, "HR role required")
     existing = db.query(Attendance).filter(
         Attendance.employee_id == data.employee_id, Attendance.date == data.date
     ).first()
@@ -197,7 +231,12 @@ def list_attendance(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    if current_user.role.name not in HR_ROLES:
+        raise HTTPException(403, "HR role required")
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(400, "start_date must be before end_date")
     q = db.query(Attendance)
     if employee_id:
         q = q.filter(Attendance.employee_id == employee_id)
@@ -210,7 +249,9 @@ def list_attendance(
 
 # ═══════ SALARY ═══════
 @router.post("/salary/process", status_code=201)
-def process_salary(data: SalaryRecordCreate, db: Session = Depends(get_db)):
+def process_salary(data: SalaryRecordCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role.name not in HR_ROLES:
+        raise HTTPException(403, "HR role required")
     emp = db.query(Employee).filter(Employee.id == data.employee_id).first()
     if not emp:
         raise HTTPException(404, "Employee not found")
@@ -249,7 +290,10 @@ def list_salary(
     month: Optional[int] = None,
     year: Optional[int] = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    if current_user.role.name not in HR_ROLES:
+        raise HTTPException(403, "HR role required")
     q = db.query(SalaryRecord)
     if employee_id:
         q = q.filter(SalaryRecord.employee_id == employee_id)
@@ -262,7 +306,7 @@ def list_salary(
 
 # ═══════ LEAVE ═══════
 @router.post("/leave-requests", status_code=201)
-def submit_leave(data: LeaveRequestCreate, db: Session = Depends(get_db)):
+def submit_leave(data: LeaveRequestCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     lr = LeaveRequest(**data.model_dump())
     db.add(lr)
     db.commit()
@@ -270,7 +314,9 @@ def submit_leave(data: LeaveRequestCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/leave-requests/{lr_id}/approve")
-def approve_leave(lr_id: int, approved_by: int, db: Session = Depends(get_db)):
+def approve_leave(lr_id: int, approved_by: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role.name not in HR_ROLES:
+        raise HTTPException(403, "HR role required")
     lr = db.query(LeaveRequest).filter(LeaveRequest.id == lr_id).first()
     if not lr:
         raise HTTPException(404, "Leave request not found")
