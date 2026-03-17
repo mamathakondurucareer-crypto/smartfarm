@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 import { Sun, Zap, TrendingUp, DollarSign, BarChart3 } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
@@ -6,6 +6,8 @@ import StatGrid      from "../components/ui/StatGrid";
 import LineChartCard from "../components/charts/LineChartCard";
 import { colors, spacing } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import useAuthStore  from "../store/useAuthStore";
+import { api } from "../services/api";
 import { styles } from "./EnergyScreen.styles";
 import { commonStyles as cs } from "../styles/common";
 
@@ -26,14 +28,26 @@ function buildHourlyProfile() {
 
 export default function EnergyScreen() {
   const farm    = useFarmStore((s) => s.farm);
+  const token   = useAuthStore((s) => s.token);
   const s       = farm.sensors;
   const hourly  = useMemo(buildHourlyProfile, []);
 
+  const [apiEnergy, setApiEnergy] = useState(null);
+
+  useEffect(() => {
+    if (!token) return;
+    api.sensors.energySummary(token).then(setApiEnergy).catch(() => {});
+  }, [token]);
+
+  const solarGeneration = apiEnergy?.solarGeneration ?? s.solarGeneration;
+  const farmConsumption = apiEnergy?.farmConsumption ?? s.farmConsumption;
+  const gridExport      = apiEnergy?.gridExport      ?? s.gridExport;
+
   const kpiStats = [
-    { Icon: Sun,       label: "Current Gen",   value: s.solarGeneration, unit: "kW", color: colors.solar, sub: "of 120 kWp capacity" },
-    { Icon: Zap,       label: "Consumption",   value: s.farmConsumption, unit: "kW", color: colors.info },
-    { Icon: TrendingUp,label: "Grid Export",   value: s.gridExport,      unit: "kW", color: colors.primary },
-    { Icon: DollarSign,label: "Today Revenue", value: "₹1,234",                      color: colors.accent, sub: "Grid export earnings" },
+    { Icon: Sun,       label: "Current Gen",   value: solarGeneration, unit: "kW", color: colors.solar, sub: "of 120 kWp capacity" },
+    { Icon: Zap,       label: "Consumption",   value: farmConsumption, unit: "kW", color: colors.info },
+    { Icon: TrendingUp,label: "Grid Export",   value: gridExport,      unit: "kW", color: colors.primary },
+    { Icon: DollarSign,label: "Today Revenue", value: "₹1,234",                    color: colors.accent, sub: "Grid export earnings" },
   ];
 
   return (

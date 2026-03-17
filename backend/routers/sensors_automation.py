@@ -90,6 +90,81 @@ def latest_by_zone(zone: str, db: Session = Depends(get_db)):
     return result
 
 
+# ═══════ SUMMARY ENDPOINTS ═══════
+@sensors_router.get("/latest-all")
+def latest_all(db: Session = Depends(get_db)):
+    """Return the latest reading for each parameter per zone."""
+    subq = (
+        db.query(
+            SensorReading.device_id,
+            SensorReading.parameter,
+            func.max(SensorReading.recorded_at).label("max_at"),
+        )
+        .group_by(SensorReading.device_id, SensorReading.parameter)
+        .subquery()
+    )
+    rows = (
+        db.query(SensorReading, SensorDevice.zone)
+        .join(
+            subq,
+            (SensorReading.device_id == subq.c.device_id)
+            & (SensorReading.parameter == subq.c.parameter)
+            & (SensorReading.recorded_at == subq.c.max_at),
+        )
+        .join(SensorDevice, SensorDevice.id == SensorReading.device_id)
+        .all()
+    )
+    result: dict = {}
+    for reading, zone in rows:
+        zone_data = result.setdefault(zone, {})
+        zone_data[reading.parameter] = {
+            "value": reading.value,
+            "unit": reading.unit,
+            "at": reading.recorded_at.isoformat(),
+        }
+    return result
+
+
+@sensors_router.get("/water-summary")
+def water_summary(db: Session = Depends(get_db)):
+    """Return latest reservoir and header-tank levels."""
+    device = db.query(SensorDevice).filter(SensorDevice.device_id == "SFDEV-RESERVOIR").first()
+    result = {"reservoirLevel": None, "headerTankLevel": None}
+    if device:
+        for param, key in [("water_level", "reservoirLevel"), ("header_tank_level", "headerTankLevel")]:
+            latest = (
+                db.query(SensorReading)
+                .filter(SensorReading.device_id == device.id, SensorReading.parameter == param)
+                .order_by(SensorReading.recorded_at.desc())
+                .first()
+            )
+            if latest:
+                result[key] = latest.value
+    return result
+
+
+@sensors_router.get("/energy-summary")
+def energy_summary(db: Session = Depends(get_db)):
+    """Return latest solar generation, consumption and grid export."""
+    device = db.query(SensorDevice).filter(SensorDevice.device_id == "SFDEV-ENERGY").first()
+    result = {"solarGeneration": None, "farmConsumption": None, "gridExport": None}
+    if device:
+        for param, key in [
+            ("solar_generation", "solarGeneration"),
+            ("consumption", "farmConsumption"),
+            ("grid_export", "gridExport"),
+        ]:
+            latest = (
+                db.query(SensorReading)
+                .filter(SensorReading.device_id == device.id, SensorReading.parameter == param)
+                .order_by(SensorReading.recorded_at.desc())
+                .first()
+            )
+            if latest:
+                result[key] = latest.value
+    return result
+
+
 # ═══════ ALERTS ═══════
 @sensors_router.get("/alerts", response_model=list[AlertOut])
 def list_alerts(
@@ -159,6 +234,22 @@ def list_auto_logs(rule_id: Optional[int] = None, limit: int = 50, db: Session =
     if rule_id:
         q = q.filter(AutomationLog.rule_id == rule_id)
     return q.order_by(AutomationLog.executed_at.desc()).limit(limit).all()
+
+
+@automation_router.get("/status")
+def automation_status(db: Session = Depends(get_db)):
+    """Return automation system status summary grouped by system."""
+    rules = db.query(AutomationRule).filter(AutomationRule.is_active == True).all()
+    status: dict = {}
+    for rule in rules:
+        entry = status.setdefault(rule.system, {"enabled": 0, "disabled": 0, "total": 0, "rules": []})
+        entry["total"] += 1
+        if rule.enabled:
+            entry["enabled"] += 1
+        else:
+            entry["disabled"] += 1
+        entry["rules"].append({"id": rule.id, "name": rule.name, "enabled": rule.enabled})
+    return status
 
 
 @automation_router.get("/drone-flights")

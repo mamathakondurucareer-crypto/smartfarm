@@ -9,13 +9,52 @@
 import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { defaultFarmState } from "../data/defaultState";
+import { api } from "../services/api";
+import useAuthStore from "./useAuthStore";
 
-const STORAGE_KEY = "smartfarm-data-v2";
+const STORAGE_KEY = "smartfarm-data-v3";
+
+// Map simulated sensor state to backend bulk-ingest readings.
+// Device IDs match seeds/seed_prod.py SENSOR_DEVICES list.
+function buildSensorReadings(s) {
+  const now = new Date().toISOString();
+  return [
+    { device_id: 1,  parameter: "water_temp",       value: s.waterTemp,       unit: "°C",      recorded_at: now },
+    { device_id: 1,  parameter: "dissolved_oxygen",  value: s.dissolvedO2,     unit: "mg/L",    recorded_at: now },
+    { device_id: 1,  parameter: "ph",                value: s.ph,              unit: "pH",      recorded_at: now },
+    { device_id: 1,  parameter: "ammonia",           value: s.ammonia,         unit: "mg/L",    recorded_at: now },
+    { device_id: 7,  parameter: "air_temp",          value: s.ambientTemp,     unit: "°C",      recorded_at: now },
+    { device_id: 7,  parameter: "humidity",          value: s.humidity,        unit: "%",       recorded_at: now },
+    { device_id: 7,  parameter: "wind_speed",        value: s.windSpeed,       unit: "km/h",    recorded_at: now },
+    { device_id: 7,  parameter: "solar_radiation",   value: s.solarRad,        unit: "W/m²",    recorded_at: now },
+    { device_id: 8,  parameter: "air_temp",          value: s.ghTemp,          unit: "°C",      recorded_at: now },
+    { device_id: 8,  parameter: "humidity",          value: s.ghHumidity,      unit: "%",       recorded_at: now },
+    { device_id: 8,  parameter: "co2",               value: s.ghCO2,           unit: "ppm",     recorded_at: now },
+    { device_id: 8,  parameter: "light_par",         value: s.ghLight,         unit: "μmol/m²s",recorded_at: now },
+    { device_id: 10, parameter: "air_temp",          value: s.vfTemp,          unit: "°C",      recorded_at: now },
+    { device_id: 10, parameter: "humidity",          value: s.vfHumidity,      unit: "%",       recorded_at: now },
+    { device_id: 10, parameter: "nutrient_ec",       value: s.vfNutrientEC,    unit: "mS/cm",   recorded_at: now },
+    { device_id: 10, parameter: "ph",                value: s.vfPH,            unit: "pH",      recorded_at: now },
+    { device_id: 11, parameter: "solar_generation",  value: s.solarGeneration, unit: "kW",      recorded_at: now },
+    { device_id: 11, parameter: "consumption",       value: s.farmConsumption, unit: "kW",      recorded_at: now },
+    { device_id: 11, parameter: "grid_export",       value: s.gridExport,      unit: "kW",      recorded_at: now },
+    { device_id: 12, parameter: "water_level",       value: s.reservoirLevel,  unit: "%",       recorded_at: now },
+    { device_id: 12, parameter: "header_tank_level", value: s.headerTankLevel, unit: "%",       recorded_at: now },
+    { device_id: 13, parameter: "egg_count",         value: s.eggCount,        unit: "count",   recorded_at: now },
+    { device_id: 13, parameter: "feed_level",        value: s.feedLevel,       unit: "%",       recorded_at: now },
+    { device_id: 13, parameter: "air_temp",          value: s.poultryTemp,     unit: "°C",      recorded_at: now },
+    { device_id: 13, parameter: "ammonia_air",       value: s.poultryAmmonia,  unit: "ppm",     recorded_at: now },
+    { device_id: 14, parameter: "soil_moisture",     value: s.soilMoisture,    unit: "%",       recorded_at: now },
+    { device_id: 14, parameter: "soil_temp",         value: s.soilTemp,        unit: "°C",      recorded_at: now },
+    { device_id: 14, parameter: "soil_ec",           value: s.soilEC,          unit: "mS/cm",   recorded_at: now },
+  ].filter((r) => r.value !== null && r.value !== undefined && r.value !== 0 || r.parameter === "ph");
+}
 
 const useFarmStore = create((set, get) => ({
   farm:       defaultFarmState(),
   simRunning: false,
   isLoaded:   false,
+  tickCount:  0,
 
   // ─── Storage ───────────────────────────────────────────────────
   loadFromStorage: async () => {
@@ -37,6 +76,7 @@ const useFarmStore = create((set, get) => ({
   toggleSimulation: () => set((s) => ({ simRunning: !s.simRunning })),
 
   tickSensors: () => {
+    let updatedSensors = null;
     set((state) => {
       const s = { ...state.farm.sensors };
 
@@ -65,10 +105,24 @@ const useFarmStore = create((set, get) => ({
           msg: `High temperature in Greenhouse: ${s.ghTemp}°C — fan+pad activated` });
       }
 
+      updatedSensors = s;
+      const newTickCount = (state.tickCount || 0) + 1;
       return {
         farm: { ...state.farm, sensors: s, alerts: alerts.slice(0, 20), lastUpdated: Date.now() },
+        tickCount: newTickCount,
       };
     });
+
+    // Persist readings to backend every 20 ticks (~60 seconds at 3s interval)
+    const tickCount = get().tickCount;
+    if (tickCount % 20 === 0 && updatedSensors) {
+      const token = useAuthStore.getState().token;
+      if (token) {
+        const readings = buildSensorReadings(updatedSensors);
+        api.sensors.bulkIngest(token, readings).catch(() => {});
+      }
+    }
+
     get().persistToStorage();
   },
 

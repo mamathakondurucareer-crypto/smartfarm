@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
 import { Egg, Users, TrendingUp, Activity, Thermometer, AlertTriangle, Bug, Sprout, Pencil } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
@@ -7,6 +7,8 @@ import SectionHeader from "../components/ui/SectionHeader";
 import StatGrid      from "../components/ui/StatGrid";
 import { colors } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import useAuthStore  from "../store/useAuthStore";
+import { api } from "../services/api";
 import { styles } from "./PoultryScreen.styles";
 import { commonStyles as cs } from "../styles/common";
 
@@ -15,30 +17,78 @@ export default function PoultryScreen() {
   const updatePoultry = useFarmStore((s) => s.updatePoultry);
   const updateDucks = useFarmStore((s) => s.updateDucks);
   const updateBees = useFarmStore((s) => s.updateBees);
+  const token = useAuthStore((s) => s.token);
 
   const { poultry: p, ducks: d, bees, sensors: s } = farm;
+
+  const [apiPoultry, setApiPoultry] = useState(null);
+  const [apiDucks, setApiDucks]     = useState(null);
+  const [apiBees, setApiBees]       = useState(null);
+
+  useEffect(() => {
+    if (!token) return;
+    api.poultry.flocks(token)
+      .then((rows) => {
+        if (rows && rows.length > 0) {
+          // Aggregate all flocks
+          const totalHens  = rows.reduce((sum, f) => sum + (f.current_count ?? 0), 0);
+          const avgLayRate = rows.reduce((sum, f) => sum + (f.lay_rate_pct ?? 0), 0) / rows.length;
+          const totalEggs  = rows.reduce((sum, f) => sum + (f.total_eggs_produced ?? 0), 0);
+          setApiPoultry({ hens: totalHens, layRate: +avgLayRate.toFixed(1), eggsToday: totalEggs });
+        }
+      })
+      .catch(() => {});
+    api.poultry.ducks(token)
+      .then((rows) => {
+        if (rows && rows.length > 0) {
+          const first = rows[0];
+          setApiDucks({
+            count:      first.current_count ?? 0,
+            eggsToday:  first.eggs_today ?? 0,
+            area:       first.deployment_area ?? d.area,
+          });
+        }
+      })
+      .catch(() => {});
+    api.poultry.bees(token)
+      .then((rows) => {
+        if (rows && rows.length > 0) {
+          const totalHoney = rows.reduce((sum, h) => sum + (h.total_honey_harvested_kg ?? 0), 0);
+          setApiBees({
+            hives:          rows.length,
+            honeyStored:    +totalHoney.toFixed(1),
+            lastInspection: rows[0].last_inspection_date ?? bees.lastInspection,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [token]);
+
+  const henData  = apiPoultry ?? p;
+  const duckData = apiDucks   ?? d;
+  const beeData  = apiBees    ?? bees;
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingSection, setEditingSection] = useState(null);
   const [formData, setFormData] = useState({});
 
   const henStats = [
-    { Icon: Users,         label: "Active Hens",  value: p.hens,          color: colors.poultry, compact: true },
-    { Icon: Egg,           label: "Eggs Today",   value: p.eggsToday,     color: colors.accent,  compact: true, sub: `${p.eggsBroken} broken` },
-    { Icon: TrendingUp,    label: "Lay Rate",     value: `${p.layRate}%`, color: colors.primary, compact: true },
-    { Icon: Activity,      label: "Feed Used",    value: `${p.feedConsumed}kg`, color: colors.poultry, compact: true },
-    { Icon: Thermometer,   label: "Shed Temp",    value: s.poultryTemp,   unit: "°C", color: colors.info,    compact: true },
-    { Icon: AlertTriangle, label: "NH₃ Level",    value: s.poultryAmmonia, unit: "ppm", color: s.poultryAmmonia > 20 ? colors.danger : colors.primary, compact: true },
+    { Icon: Users,         label: "Active Hens",  value: henData.hens,               color: colors.poultry, compact: true },
+    { Icon: Egg,           label: "Eggs Today",   value: henData.eggsToday,          color: colors.accent,  compact: true, sub: `${p.eggsBroken} broken` },
+    { Icon: TrendingUp,    label: "Lay Rate",     value: `${henData.layRate}%`,      color: colors.primary, compact: true },
+    { Icon: Activity,      label: "Feed Used",    value: `${p.feedConsumed}kg`,      color: colors.poultry, compact: true },
+    { Icon: Thermometer,   label: "Shed Temp",    value: s.poultryTemp,              unit: "°C",   color: colors.info,    compact: true },
+    { Icon: AlertTriangle, label: "NH₃ Level",    value: s.poultryAmmonia,           unit: "ppm",  color: s.poultryAmmonia > 20 ? colors.danger : colors.primary, compact: true },
   ];
 
   const duckStats = [
-    { Icon: Users, label: "Ducks Active", value: d.count,      color: colors.info,   compact: true },
-    { Icon: Egg,   label: "Duck Eggs",    value: d.eggsToday,  color: colors.accent, compact: true },
+    { Icon: Users, label: "Ducks Active", value: duckData.count,     color: colors.info,   compact: true },
+    { Icon: Egg,   label: "Duck Eggs",    value: duckData.eggsToday, color: colors.accent, compact: true },
   ];
 
   const beeStats = [
-    { Icon: Sprout,   label: "Bee Hives",     value: bees.hives,       color: colors.accent, compact: true },
-    { Icon: Activity, label: "Honey Stored",  value: `${bees.honeyStored}kg`, color: colors.accent, compact: true },
+    { Icon: Sprout,   label: "Bee Hives",    value: beeData.hives,                    color: colors.accent, compact: true },
+    { Icon: Activity, label: "Honey Stored", value: `${beeData.honeyStored}kg`,       color: colors.accent, compact: true },
   ];
 
   const openEditPoultry = () => {
@@ -200,7 +250,7 @@ export default function PoultryScreen() {
         <StatGrid stats={duckStats} />
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
-            <Text style={styles.bold}>Pest Control:</Text> {d.pestsConsumed} activity at {d.area}
+            <Text style={styles.bold}>Pest Control:</Text> {duckData.pestsConsumed ?? d.pestsConsumed} activity at {duckData.area ?? d.area}
           </Text>
         </View>
       </Card>
@@ -218,7 +268,7 @@ export default function PoultryScreen() {
         <StatGrid stats={beeStats} />
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>Forager activity: {bees.activeForagers}</Text>
-          <Text style={styles.infoText}>Last inspection: {bees.lastInspection}</Text>
+          <Text style={styles.infoText}>Last inspection: {beeData.lastInspection ?? bees.lastInspection}</Text>
           <Text style={styles.infoText}>Pollination boost: +18% greenhouse yield</Text>
         </View>
       </Card>
