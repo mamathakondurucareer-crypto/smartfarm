@@ -69,3 +69,46 @@ class Alert(Base, TimestampMixin):
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     resolution_notes: Mapped[Optional[str]] = mapped_column(Text)
     auto_action_taken: Mapped[Optional[str]] = mapped_column(Text)
+
+
+class SensorCalibrationLog(Base, TimestampMixin):
+    """Calibration record for an IoT sensor device."""
+    __tablename__ = "sensor_calibration_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sensor_id: Mapped[int] = mapped_column(Integer, ForeignKey("sensor_devices.id"), nullable=False, index=True)
+    calibration_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    next_calibration_due: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    variance_before: Mapped[Optional[float]] = mapped_column(Float)   # drift measured
+    variance_after: Mapped[Optional[float]] = mapped_column(Float)    # after correction
+    calibration_standard: Mapped[Optional[str]] = mapped_column(String(100))  # reference standard used
+    technician: Mapped[str] = mapped_column(String(100), nullable=False)
+    passed: Mapped[bool] = mapped_column(Boolean, default=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+
+
+class BatteryReplacementLog(Base, TimestampMixin):
+    """Battery replacement record for sensor devices."""
+    __tablename__ = "battery_replacement_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sensor_id: Mapped[int] = mapped_column(Integer, ForeignKey("sensor_devices.id"), nullable=False, index=True)
+    replacement_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    battery_type: Mapped[Optional[str]] = mapped_column(String(50))
+    next_replacement_due: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    replaced_by: Mapped[str] = mapped_column(String(100), nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+
+
+class CameraFirmwareLog(Base, TimestampMixin):
+    """Firmware update log for camera / edge devices."""
+    __tablename__ = "camera_firmware_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sensor_id: Mapped[int] = mapped_column(Integer, ForeignKey("sensor_devices.id"), nullable=False, index=True)
+    update_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    previous_version: Mapped[Optional[str]] = mapped_column(String(20))
+    new_version: Mapped[str] = mapped_column(String(20), nullable=False)
+    update_method: Mapped[Optional[str]] = mapped_column(String(50))  # OTA | manual | USB
+    updated_by: Mapped[str] = mapped_column(String(100), nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text)

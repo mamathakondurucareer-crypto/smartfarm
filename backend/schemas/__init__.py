@@ -1120,3 +1120,1461 @@ class ActivityLogOut(OrmBase):
     ip_address: Optional[str] = None
     status: str
     error_message: Optional[str] = None
+
+
+# ═══════════════════════════════════════════════════════════════
+# COLD CHAIN & LOGISTICS
+# ═══════════════════════════════════════════════════════════════
+class VehicleCreate(BaseModel):
+    vehicle_number: str = Field(min_length=3, max_length=20)
+    vehicle_type: str = "tempo"
+    make: Optional[str] = None
+    model: Optional[str] = None
+    year: Optional[int] = None
+    capacity_kg: float = 0
+    refrigerated: bool = False
+    temp_min_c: Optional[float] = None
+    temp_max_c: Optional[float] = None
+    insurance_expiry: Optional[datetime] = None
+    last_service_date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+class VehicleOut(OrmBase):
+    id: int
+    vehicle_number: str
+    vehicle_type: str
+    make: Optional[str] = None
+    model: Optional[str] = None
+    year: Optional[int] = None
+    capacity_kg: float
+    refrigerated: bool
+    temp_min_c: Optional[float] = None
+    temp_max_c: Optional[float] = None
+    insurance_expiry: Optional[datetime] = None
+    last_service_date: Optional[datetime] = None
+    is_active: bool
+    notes: Optional[str] = None
+    created_at: datetime
+
+class ShipmentLotItem(BaseModel):
+    lot_id: str
+    product: str
+    quantity_kg: float
+
+class ColdChainShipmentCreate(BaseModel):
+    vehicle_id: Optional[int] = None
+    driver_employee_id: Optional[int] = None
+    origin_city: str = "Rajapalayam Farm"
+    destination_city: str
+    delivery_address: Optional[str] = None
+    product_category: str   # fish | vegetables | dairy | poultry_products | eggs | honey
+    product_lots: Optional[List[ShipmentLotItem]] = None
+    total_weight_kg: float = 0
+    required_temp_min_c: Optional[float] = None
+    required_temp_max_c: Optional[float] = None
+    dispatch_time: Optional[datetime] = None
+    eta: Optional[datetime] = None
+    notes: Optional[str] = None
+
+class ColdChainShipmentOut(OrmBase):
+    id: int
+    shipment_code: str
+    vehicle_id: Optional[int] = None
+    driver_employee_id: Optional[int] = None
+    origin_city: str
+    destination_city: str
+    delivery_address: Optional[str] = None
+    product_category: str
+    product_lots: Optional[list] = None
+    total_weight_kg: float
+    required_temp_min_c: Optional[float] = None
+    required_temp_max_c: Optional[float] = None
+    dispatch_time: Optional[datetime] = None
+    eta: Optional[datetime] = None
+    actual_arrival: Optional[datetime] = None
+    status: str
+    has_temperature_breach: bool
+    notes: Optional[str] = None
+    created_at: datetime
+
+class TemperatureLogCreate(BaseModel):
+    temperature_c: float
+    humidity_pct: Optional[float] = None
+    location: Optional[str] = None
+    recorded_by: Optional[str] = None
+
+class TemperatureLogOut(OrmBase):
+    id: int
+    shipment_id: int
+    recorded_at: datetime
+    temperature_c: float
+    humidity_pct: Optional[float] = None
+    location: Optional[str] = None
+    is_breach: bool
+    breach_threshold_c: Optional[float] = None
+    recorded_by: Optional[str] = None
+
+class DeliveryConfirmationCreate(BaseModel):
+    recipient_name: str
+    recipient_phone: Optional[str] = None
+    photo_url: Optional[str] = None
+    delivered_weight_kg: float
+    temperature_at_delivery_c: Optional[float] = None
+    notes: Optional[str] = None
+
+class DeliveryConfirmationOut(OrmBase):
+    id: int
+    shipment_id: int
+    confirmed_at: datetime
+    recipient_name: str
+    recipient_phone: Optional[str] = None
+    photo_url: Optional[str] = None
+    delivered_weight_kg: float
+    temperature_at_delivery_c: Optional[float] = None
+    is_temperature_compliant: bool
+    notes: Optional[str] = None
+
+class RejectionCreate(BaseModel):
+    rejection_reason: str
+    rejected_quantity_kg: float
+    accepted_quantity_kg: float = 0
+    credit_note_number: Optional[str] = None
+    credit_note_amount: float = 0
+    photo_url: Optional[str] = None
+    customer_name: Optional[str] = None
+    notes: Optional[str] = None
+
+class RejectionOut(OrmBase):
+    id: int
+    shipment_id: int
+    rejected_at: datetime
+    rejection_reason: str
+    rejected_quantity_kg: float
+    accepted_quantity_kg: float
+    credit_note_number: Optional[str] = None
+    credit_note_amount: float
+    photo_url: Optional[str] = None
+    customer_name: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+
+# ── HR & Payroll ──────────────────────────────────────────────────────────────
+
+class LeaveRequestCreate(BaseModel):
+    employee_id: int
+    leave_type: str  # casual | sick | earned | unpaid
+    start_date: date
+    end_date: date
+    days: int
+    reason: Optional[str] = None
+
+class LeaveRequestOut(OrmBase):
+    id: int
+    employee_id: int
+    leave_type: str
+    start_date: date
+    end_date: date
+    days: int
+    reason: Optional[str] = None
+    status: str
+    approved_by: Optional[int] = None
+    created_at: datetime
+
+class LeaveApprovalUpdate(BaseModel):
+    status: str  # approved | rejected
+
+class AttendanceCreate(BaseModel):
+    employee_id: int
+    date: date
+    status: str  # present | absent | half_day | leave | holiday
+    check_in: Optional[datetime] = None
+    check_out: Optional[datetime] = None
+    overtime_hours: float = 0
+    notes: Optional[str] = None
+
+class AttendanceOut(OrmBase):
+    id: int
+    employee_id: int
+    date: date
+    status: str
+    check_in: Optional[datetime] = None
+    check_out: Optional[datetime] = None
+    overtime_hours: float
+    notes: Optional[str] = None
+    created_at: datetime
+
+class LeaveBalanceOut(OrmBase):
+    id: int
+    employee_id: int
+    year: int
+    leave_type: str
+    entitled_days: int
+    taken_days: float
+    remaining_days: float = 0
+
+    @classmethod
+    def from_orm_with_remaining(cls, obj):
+        data = cls.model_validate(obj)
+        data.remaining_days = max(0.0, obj.entitled_days - obj.taken_days)
+        return data
+
+class PayrollRunCreate(BaseModel):
+    employee_id: int
+    month: int
+    year: int
+    other_allowances: float = 0
+    tds: float = 0
+    other_deductions: float = 0
+    notes: Optional[str] = None
+
+class PayrollRunOut(OrmBase):
+    id: int
+    employee_id: int
+    month: int
+    year: int
+    basic_salary: float
+    hra: float
+    other_allowances: float
+    overtime_hours: float
+    ot_pay: float
+    gross_salary: float
+    pf_employee: float
+    pf_employer: float
+    esi_employee: float
+    esi_employer: float
+    tds: float
+    other_deductions: float
+    total_deductions: float
+    net_pay: float
+    working_days: int
+    present_days: float
+    absent_days: float
+    leave_days: float
+    status: str
+    payslip_url: Optional[str] = None
+    processed_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class PerformanceReviewCreate(BaseModel):
+    employee_id: int
+    review_period: str  # e.g. Q1_2025
+    review_date: date
+    productivity_score: float
+    quality_score: float
+    punctuality_score: float
+    teamwork_score: float
+    strengths: Optional[str] = None
+    areas_for_improvement: Optional[str] = None
+    recommended_increment_pct: float = 0
+    notes: Optional[str] = None
+
+class PerformanceReviewOut(OrmBase):
+    id: int
+    employee_id: int
+    review_period: str
+    review_date: date
+    productivity_score: float
+    quality_score: float
+    punctuality_score: float
+    teamwork_score: float
+    overall_score: float
+    strengths: Optional[str] = None
+    areas_for_improvement: Optional[str] = None
+    recommended_increment_pct: float
+    status: str
+    reviewed_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class TrainingRecordCreate(BaseModel):
+    employee_id: int
+    training_name: str
+    training_type: str  # safety | technical | compliance | soft_skills | on_the_job | external
+    conducted_by: Optional[str] = None
+    start_date: date
+    end_date: date
+    hours: float
+    score: Optional[float] = None
+    certificate_url: Optional[str] = None
+    notes: Optional[str] = None
+
+class TrainingRecordOut(OrmBase):
+    id: int
+    employee_id: int
+    training_name: str
+    training_type: str
+    conducted_by: Optional[str] = None
+    start_date: date
+    end_date: date
+    hours: float
+    score: Optional[float] = None
+    certificate_url: Optional[str] = None
+    status: str
+    notes: Optional[str] = None
+    created_at: datetime
+
+
+# ── Vaccination & Disease Protocol ───────────────────────────────────────────
+
+class VaccinationScheduleCreate(BaseModel):
+    species: str
+    vaccine_name: str
+    disease_target: str
+    dose_ml: float = 0
+    route: Optional[str] = None
+    age_days_start: Optional[int] = None
+    repeat_interval_days: Optional[int] = None
+    booster_required: bool = False
+    withdrawal_period_days: int = 0
+    notes: Optional[str] = None
+
+class VaccinationScheduleOut(OrmBase):
+    id: int
+    species: str
+    vaccine_name: str
+    disease_target: str
+    dose_ml: float
+    route: Optional[str] = None
+    age_days_start: Optional[int] = None
+    repeat_interval_days: Optional[int] = None
+    booster_required: bool
+    withdrawal_period_days: int
+    notes: Optional[str] = None
+    created_at: datetime
+
+class VaccinationRecordCreate(BaseModel):
+    schedule_id: int
+    species: str
+    batch_or_flock_id: int
+    batch_or_flock_ref: str
+    vaccination_date: date
+    dose_given_ml: float = 0
+    animals_vaccinated: int
+    lot_number: Optional[str] = None
+    manufacturer: Optional[str] = None
+    expiry_date: Optional[date] = None
+    adverse_reactions: Optional[str] = None
+    notes: Optional[str] = None
+
+class VaccinationRecordOut(OrmBase):
+    id: int
+    schedule_id: int
+    species: str
+    batch_or_flock_id: int
+    batch_or_flock_ref: str
+    vaccination_date: date
+    dose_given_ml: float
+    animals_vaccinated: int
+    vaccinated_by: Optional[int] = None
+    next_due_date: Optional[date] = None
+    lot_number: Optional[str] = None
+    manufacturer: Optional[str] = None
+    expiry_date: Optional[date] = None
+    adverse_reactions: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class DiseaseAlertCreate(BaseModel):
+    species: str
+    batch_or_flock_ref: str
+    alert_date: date
+    disease_name: str
+    symptoms: Optional[str] = None
+    affected_count: int = 0
+    severity: str = "moderate"
+    lab_test_requested: bool = False
+    notes: Optional[str] = None
+
+class DiseaseAlertOut(OrmBase):
+    id: int
+    species: str
+    batch_or_flock_ref: str
+    alert_date: date
+    disease_name: str
+    symptoms: Optional[str] = None
+    affected_count: int
+    mortality_count: int
+    severity: str
+    status: str
+    lab_test_requested: bool
+    lab_result: Optional[str] = None
+    quarantine_applied: bool
+    reported_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class DiseaseAlertUpdate(BaseModel):
+    status: Optional[str] = None
+    lab_result: Optional[str] = None
+    quarantine_applied: Optional[bool] = None
+    mortality_count: Optional[int] = None
+
+class TreatmentLogCreate(BaseModel):
+    disease_alert_id: int
+    treatment_date: date
+    drug_name: str
+    dosage: str
+    route: Optional[str] = None
+    animals_treated: int
+    duration_days: int = 1
+    withdrawal_period_days: int = 0
+    cost: float = 0
+    vet_name: Optional[str] = None
+    notes: Optional[str] = None
+
+class TreatmentLogOut(OrmBase):
+    id: int
+    disease_alert_id: int
+    treatment_date: date
+    drug_name: str
+    dosage: str
+    route: Optional[str] = None
+    animals_treated: int
+    duration_days: int
+    withdrawal_period_days: int
+    withdrawal_end_date: Optional[date] = None
+    cost: float
+    outcome: Optional[str] = None
+    administered_by: Optional[int] = None
+    vet_name: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class MortalityLogCreate(BaseModel):
+    species: str
+    batch_or_flock_ref: str
+    log_date: date
+    count: int
+    cause: Optional[str] = None
+    disease_alert_id: Optional[int] = None
+    disposed_by: Optional[str] = None
+    notes: Optional[str] = None
+
+class MortalityLogOut(OrmBase):
+    id: int
+    species: str
+    batch_or_flock_ref: str
+    log_date: date
+    count: int
+    cause: Optional[str] = None
+    disease_alert_id: Optional[int] = None
+    disposed_by: Optional[str] = None
+    recorded_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+
+# ── Water System ─────────────────────────────────────────────────────────────
+
+class WaterSourceCreate(BaseModel):
+    name: str
+    source_type: str
+    capacity_liters: Optional[float] = None
+    depth_meters: Optional[float] = None
+    pump_hp: Optional[float] = None
+    location_description: Optional[str] = None
+    notes: Optional[str] = None
+
+class WaterSourceOut(OrmBase):
+    id: int
+    name: str
+    source_type: str
+    capacity_liters: Optional[float] = None
+    depth_meters: Optional[float] = None
+    pump_hp: Optional[float] = None
+    location_description: Optional[str] = None
+    is_active: bool
+    notes: Optional[str] = None
+    created_at: datetime
+
+class WaterStorageTankCreate(BaseModel):
+    name: str
+    tank_type: Optional[str] = None
+    capacity_liters: float
+    current_level_liters: float = 0
+    source_id: Optional[int] = None
+    location: Optional[str] = None
+    has_sensor: bool = False
+    sensor_device_id: Optional[int] = None
+    notes: Optional[str] = None
+
+class WaterStorageTankOut(OrmBase):
+    id: int
+    name: str
+    tank_type: Optional[str] = None
+    capacity_liters: float
+    current_level_liters: float
+    source_id: Optional[int] = None
+    location: Optional[str] = None
+    has_sensor: bool
+    sensor_device_id: Optional[int] = None
+    is_active: bool
+    notes: Optional[str] = None
+    created_at: datetime
+
+class IrrigationZoneCreate(BaseModel):
+    name: str
+    zone_type: Optional[str] = None
+    area_sq_meters: Optional[float] = None
+    crop_or_section: Optional[str] = None
+    tank_id: Optional[int] = None
+    flow_rate_lpm: Optional[float] = None
+    is_automated: bool = False
+    notes: Optional[str] = None
+
+class IrrigationZoneOut(OrmBase):
+    id: int
+    name: str
+    zone_type: Optional[str] = None
+    area_sq_meters: Optional[float] = None
+    crop_or_section: Optional[str] = None
+    tank_id: Optional[int] = None
+    flow_rate_lpm: Optional[float] = None
+    is_automated: bool
+    is_active: bool
+    notes: Optional[str] = None
+    created_at: datetime
+
+class IrrigationLogCreate(BaseModel):
+    zone_id: int
+    irrigation_date: date
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    duration_minutes: float = 0
+    volume_liters: float = 0
+    method: Optional[str] = None
+    trigger: str = "manual"
+    fertilizer_injected: bool = False
+    fertilizer_type: Optional[str] = None
+    fertilizer_dose_ml: Optional[float] = None
+    notes: Optional[str] = None
+
+class IrrigationLogOut(OrmBase):
+    id: int
+    zone_id: int
+    irrigation_date: date
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    duration_minutes: float
+    volume_liters: float
+    method: Optional[str] = None
+    trigger: str
+    fertilizer_injected: bool
+    fertilizer_type: Optional[str] = None
+    fertilizer_dose_ml: Optional[float] = None
+    recorded_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class WaterUsageLogCreate(BaseModel):
+    source_id: int
+    log_date: date
+    volume_liters: float
+    purpose: Optional[str] = None
+    energy_kwh: Optional[float] = None
+    notes: Optional[str] = None
+
+class WaterUsageLogOut(OrmBase):
+    id: int
+    source_id: int
+    log_date: date
+    volume_liters: float
+    purpose: Optional[str] = None
+    energy_kwh: Optional[float] = None
+    recorded_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class WaterQualityTestCreate(BaseModel):
+    source_id: int
+    test_date: date
+    ph: Optional[float] = None
+    tds_ppm: Optional[float] = None
+    ec_ms_cm: Optional[float] = None
+    turbidity_ntu: Optional[float] = None
+    hardness_ppm: Optional[float] = None
+    chlorine_ppm: Optional[float] = None
+    nitrate_ppm: Optional[float] = None
+    coliform_detected: Optional[bool] = None
+    is_potable: Optional[bool] = None
+    lab_name: Optional[str] = None
+    notes: Optional[str] = None
+
+class WaterQualityTestOut(OrmBase):
+    id: int
+    source_id: int
+    test_date: date
+    ph: Optional[float] = None
+    tds_ppm: Optional[float] = None
+    ec_ms_cm: Optional[float] = None
+    turbidity_ntu: Optional[float] = None
+    hardness_ppm: Optional[float] = None
+    chlorine_ppm: Optional[float] = None
+    nitrate_ppm: Optional[float] = None
+    coliform_detected: Optional[bool] = None
+    is_potable: Optional[bool] = None
+    lab_name: Optional[str] = None
+    tested_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+
+# ── Solar & Energy ────────────────────────────────────────────────────────────
+
+class SolarArrayCreate(BaseModel):
+    name: str
+    location: Optional[str] = None
+    panel_count: int = 0
+    panel_wattage_wp: float = 0
+    total_capacity_kwp: float = 0
+    tilt_degrees: Optional[float] = None
+    azimuth_degrees: Optional[float] = None
+    commissioned_date: Optional[date] = None
+    notes: Optional[str] = None
+
+class SolarArrayOut(OrmBase):
+    id: int
+    name: str
+    location: Optional[str] = None
+    panel_count: int
+    panel_wattage_wp: float
+    total_capacity_kwp: float
+    tilt_degrees: Optional[float] = None
+    azimuth_degrees: Optional[float] = None
+    commissioned_date: Optional[date] = None
+    is_active: bool
+    notes: Optional[str] = None
+    created_at: datetime
+
+class InverterCreate(BaseModel):
+    name: str
+    solar_array_id: Optional[int] = None
+    make: Optional[str] = None
+    model: Optional[str] = None
+    rated_kva: float = 0
+    inverter_type: str = "grid_tie"
+    installation_date: Optional[date] = None
+    notes: Optional[str] = None
+
+class InverterOut(OrmBase):
+    id: int
+    name: str
+    solar_array_id: Optional[int] = None
+    make: Optional[str] = None
+    model: Optional[str] = None
+    rated_kva: float
+    inverter_type: str
+    installation_date: Optional[date] = None
+    last_service_date: Optional[date] = None
+    is_active: bool
+    notes: Optional[str] = None
+    created_at: datetime
+
+class EnergyGenerationLogCreate(BaseModel):
+    solar_array_id: int
+    log_date: date
+    units_generated_kwh: float
+    peak_power_kw: Optional[float] = None
+    sunshine_hours: Optional[float] = None
+    inverter_efficiency_pct: Optional[float] = None
+    notes: Optional[str] = None
+
+class EnergyGenerationLogOut(OrmBase):
+    id: int
+    solar_array_id: int
+    log_date: date
+    units_generated_kwh: float
+    peak_power_kw: Optional[float] = None
+    sunshine_hours: Optional[float] = None
+    inverter_efficiency_pct: Optional[float] = None
+    recorded_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class EnergyConsumptionLogCreate(BaseModel):
+    log_date: date
+    section: str
+    units_consumed_kwh: float
+    source: str = "solar"
+    tariff_per_kwh: Optional[float] = None
+    cost: Optional[float] = None
+    meter_reading_start: Optional[float] = None
+    meter_reading_end: Optional[float] = None
+    notes: Optional[str] = None
+
+class EnergyConsumptionLogOut(OrmBase):
+    id: int
+    log_date: date
+    section: str
+    units_consumed_kwh: float
+    source: str
+    tariff_per_kwh: Optional[float] = None
+    cost: Optional[float] = None
+    meter_reading_start: Optional[float] = None
+    meter_reading_end: Optional[float] = None
+    recorded_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class BatteryBankCreate(BaseModel):
+    name: str
+    battery_type: Optional[str] = None
+    capacity_kwh: float
+    commissioned_date: Optional[date] = None
+    notes: Optional[str] = None
+
+class BatteryBankOut(OrmBase):
+    id: int
+    name: str
+    battery_type: Optional[str] = None
+    capacity_kwh: float
+    current_soc_pct: float
+    cycles_completed: int
+    commissioned_date: Optional[date] = None
+    is_active: bool
+    notes: Optional[str] = None
+    created_at: datetime
+
+class GridEventCreate(BaseModel):
+    event_date: date
+    event_type: str
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    duration_minutes: Optional[float] = None
+    affected_sections: Optional[str] = None
+    backup_used: bool = False
+    backup_type: Optional[str] = None
+    notes: Optional[str] = None
+
+class GridEventOut(OrmBase):
+    id: int
+    event_date: date
+    event_type: str
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    duration_minutes: Optional[float] = None
+    affected_sections: Optional[str] = None
+    backup_used: bool
+    backup_type: Optional[str] = None
+    reported_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+
+# ── Audit & Reporting Calendar ────────────────────────────────────────────────
+
+class AuditLogOut(OrmBase):
+    id: int
+    timestamp: datetime
+    user_id: Optional[int] = None
+    username: Optional[str] = None
+    action: str
+    resource: str
+    resource_id: Optional[str] = None
+    detail: Optional[str] = None
+    ip_address: Optional[str] = None
+
+class ReportScheduleCreate(BaseModel):
+    name: str
+    report_type: str
+    frequency: str
+    next_run_date: date
+    recipients: Optional[str] = None
+    output_format: str = "pdf"
+    notes: Optional[str] = None
+
+class ReportScheduleOut(OrmBase):
+    id: int
+    name: str
+    report_type: str
+    frequency: str
+    next_run_date: date
+    recipients: Optional[str] = None
+    output_format: str
+    is_active: bool
+    created_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class ReportExecutionCreate(BaseModel):
+    schedule_id: Optional[int] = None
+    report_type: str
+    parameters: Optional[str] = None  # JSON string
+
+class ReportExecutionOut(OrmBase):
+    id: int
+    schedule_id: Optional[int] = None
+    report_type: str
+    triggered_by: str
+    started_at: datetime
+    completed_at: Optional[datetime] = None
+    status: str
+    file_url: Optional[str] = None
+    error_message: Optional[str] = None
+    requested_by: Optional[int] = None
+    parameters: Optional[str] = None
+    created_at: datetime
+
+
+# ── Agri-Tourism ──────────────────────────────────────────────────────────────
+
+class VisitPackageCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    package_type: str
+    duration_hours: float
+    max_group_size: int = 20
+    price_per_person: float
+    min_age_years: Optional[int] = None
+    includes_meal: bool = False
+    includes_activity: Optional[str] = None
+    available_days: Optional[str] = None
+    slots_per_day: int = 2
+    is_active: bool = True
+    notes: Optional[str] = None
+
+class VisitPackageOut(OrmBase):
+    id: int
+    name: str
+    description: Optional[str] = None
+    package_type: str
+    duration_hours: float
+    max_group_size: int
+    price_per_person: float
+    min_age_years: Optional[int] = None
+    includes_meal: bool
+    includes_activity: Optional[str] = None
+    available_days: Optional[str] = None
+    slots_per_day: int
+    is_active: bool
+    notes: Optional[str] = None
+    created_at: datetime
+
+class VisitorGroupCreate(BaseModel):
+    group_name: str
+    group_type: str
+    contact_person: str
+    contact_phone: str
+    contact_email: Optional[str] = None
+    city: Optional[str] = None
+    notes: Optional[str] = None
+
+class VisitorGroupOut(OrmBase):
+    id: int
+    group_name: str
+    group_type: str
+    contact_person: str
+    contact_phone: str
+    contact_email: Optional[str] = None
+    city: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class VisitBookingCreate(BaseModel):
+    package_id: int
+    visitor_group_id: Optional[int] = None
+    visit_date: date
+    time_slot: Optional[str] = None
+    pax_count: int
+    guide_assigned: Optional[str] = None
+    advance_paid: float = 0.0
+    payment_mode: Optional[str] = None
+    notes: Optional[str] = None
+
+class VisitBookingOut(OrmBase):
+    id: int
+    package_id: int
+    visitor_group_id: Optional[int] = None
+    visit_date: date
+    time_slot: Optional[str] = None
+    pax_count: int
+    guide_assigned: Optional[str] = None
+    price_per_person: float
+    total_amount: float
+    advance_paid: float
+    balance_due: float
+    payment_mode: Optional[str] = None
+    status: str
+    feedback_rating: Optional[int] = None
+    feedback_comment: Optional[str] = None
+    confirmed_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class TourRevenueEntryCreate(BaseModel):
+    booking_id: int
+    entry_date: date
+    amount_received: float
+    payment_mode: str
+    notes: Optional[str] = None
+
+class TourRevenueEntryOut(OrmBase):
+    id: int
+    booking_id: int
+    entry_date: date
+    amount_received: float
+    payment_mode: str
+    received_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+
+# ── Contract Farming & Consulting ─────────────────────────────────────────────
+
+class NeighbouringFarmCreate(BaseModel):
+    farm_name: str
+    owner_name: str
+    contact_phone: str
+    contact_email: Optional[str] = None
+    village: Optional[str] = None
+    district: Optional[str] = None
+    land_acres: Optional[float] = None
+    current_crops: Optional[str] = None
+    notes: Optional[str] = None
+
+class NeighbouringFarmOut(OrmBase):
+    id: int
+    farm_name: str
+    owner_name: str
+    contact_phone: str
+    contact_email: Optional[str] = None
+    village: Optional[str] = None
+    district: Optional[str] = None
+    land_acres: Optional[float] = None
+    current_crops: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class ConsultingContractCreate(BaseModel):
+    contract_number: str
+    neighbouring_farm_id: Optional[int] = None
+    client_name: str
+    contract_type: str
+    scope: Optional[str] = None
+    start_date: date
+    end_date: Optional[date] = None
+    contract_value: float
+    payment_terms: Optional[str] = None
+    status: str = "active"
+    notes: Optional[str] = None
+
+class ConsultingContractOut(OrmBase):
+    id: int
+    contract_number: str
+    neighbouring_farm_id: Optional[int] = None
+    client_name: str
+    contract_type: str
+    scope: Optional[str] = None
+    start_date: date
+    end_date: Optional[date] = None
+    contract_value: float
+    payment_terms: Optional[str] = None
+    status: str
+    total_billed: float
+    total_received: float
+    created_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class ServiceDeliveryLogCreate(BaseModel):
+    contract_id: int
+    service_date: date
+    service_type: str
+    description: Optional[str] = None
+    hours_spent: Optional[float] = None
+    materials_cost: float = 0.0
+    service_charge: float = 0.0
+    outcome: Optional[str] = None
+    notes: Optional[str] = None
+
+class ServiceDeliveryLogOut(OrmBase):
+    id: int
+    contract_id: int
+    service_date: date
+    service_type: str
+    description: Optional[str] = None
+    hours_spent: Optional[float] = None
+    materials_cost: float
+    service_charge: float
+    outcome: Optional[str] = None
+    delivered_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class ConsultingInvoiceCreate(BaseModel):
+    invoice_number: str
+    contract_id: int
+    invoice_date: date
+    due_date: Optional[date] = None
+    amount: float
+    tax_amount: float = 0.0
+    total_amount: float
+    description: Optional[str] = None
+    notes: Optional[str] = None
+
+class ConsultingInvoiceOut(OrmBase):
+    id: int
+    invoice_number: str
+    contract_id: int
+    invoice_date: date
+    due_date: Optional[date] = None
+    amount: float
+    tax_amount: float
+    total_amount: float
+    status: str
+    amount_received: float
+    payment_date: Optional[date] = None
+    payment_mode: Optional[str] = None
+    description: Optional[str] = None
+    created_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+
+# ── Government Subsidies ──────────────────────────────────────────────────────
+
+class SubsidySchemeCreate(BaseModel):
+    scheme_code: str
+    name: str
+    ministry: str
+    category: str
+    subsidy_pct: Optional[float] = None
+    max_amount: Optional[float] = None
+    description: Optional[str] = None
+    eligibility: Optional[str] = None
+    apply_url: Optional[str] = None
+    is_active: bool = True
+    valid_till: Optional[date] = None
+    notes: Optional[str] = None
+
+class SubsidySchemeOut(OrmBase):
+    id: int
+    scheme_code: str
+    name: str
+    ministry: str
+    category: str
+    subsidy_pct: Optional[float] = None
+    max_amount: Optional[float] = None
+    description: Optional[str] = None
+    eligibility: Optional[str] = None
+    apply_url: Optional[str] = None
+    is_active: bool
+    valid_till: Optional[date] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class SubsidyApplicationCreate(BaseModel):
+    scheme_id: int
+    application_number: Optional[str] = None
+    applied_date: date
+    project_description: Optional[str] = None
+    project_cost: float
+    claimed_subsidy_amount: float
+    documents_submitted: Optional[str] = None
+    notes: Optional[str] = None
+
+class SubsidyApplicationOut(OrmBase):
+    id: int
+    scheme_id: int
+    application_number: Optional[str] = None
+    applied_date: date
+    project_description: Optional[str] = None
+    project_cost: float
+    claimed_subsidy_amount: float
+    status: str
+    approved_amount: Optional[float] = None
+    approval_date: Optional[date] = None
+    rejection_reason: Optional[str] = None
+    documents_submitted: Optional[str] = None
+    submitted_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class DisbursementRecordCreate(BaseModel):
+    application_id: int
+    disbursement_date: date
+    amount_received: float
+    payment_mode: Optional[str] = None
+    reference_number: Optional[str] = None
+    bank_account: Optional[str] = None
+    notes: Optional[str] = None
+
+class DisbursementRecordOut(OrmBase):
+    id: int
+    application_id: int
+    disbursement_date: date
+    amount_received: float
+    payment_mode: Optional[str] = None
+    reference_number: Optional[str] = None
+    bank_account: Optional[str] = None
+    recorded_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+
+# ── Expansion Planning ────────────────────────────────────────────────────────
+
+class ExpansionPhaseCreate(BaseModel):
+    name: str
+    year: int
+    description: Optional[str] = None
+    planned_start: Optional[date] = None
+    planned_end: Optional[date] = None
+    total_budget: float = 0.0
+    notes: Optional[str] = None
+
+class ExpansionPhaseOut(OrmBase):
+    id: int
+    name: str
+    year: int
+    description: Optional[str] = None
+    planned_start: Optional[date] = None
+    planned_end: Optional[date] = None
+    actual_start: Optional[date] = None
+    actual_end: Optional[date] = None
+    total_budget: float
+    total_spent: float
+    status: str
+    notes: Optional[str] = None
+    created_at: datetime
+
+class ExpansionMilestoneCreate(BaseModel):
+    phase_id: int
+    title: str
+    description: Optional[str] = None
+    due_date: Optional[date] = None
+    owner: Optional[str] = None
+    priority: str = "medium"
+    sort_order: int = 0
+
+class ExpansionMilestoneOut(OrmBase):
+    id: int
+    phase_id: int
+    title: str
+    description: Optional[str] = None
+    due_date: Optional[date] = None
+    completed_date: Optional[date] = None
+    is_completed: bool
+    completion_notes: Optional[str] = None
+    owner: Optional[str] = None
+    priority: str
+    sort_order: int
+    completed_by: Optional[int] = None
+    created_at: datetime
+
+class ExpansionCapexCreate(BaseModel):
+    phase_id: int
+    item_name: str
+    category: str
+    budgeted_amount: float
+    actual_amount: float = 0.0
+    vendor: Optional[str] = None
+    purchase_date: Optional[date] = None
+    invoice_ref: Optional[str] = None
+    subsidy_applied: bool = False
+    subsidy_amount: float = 0.0
+    notes: Optional[str] = None
+
+class ExpansionCapexOut(OrmBase):
+    id: int
+    phase_id: int
+    item_name: str
+    category: str
+    budgeted_amount: float
+    actual_amount: float
+    vendor: Optional[str] = None
+    purchase_date: Optional[date] = None
+    invoice_ref: Optional[str] = None
+    subsidy_applied: bool
+    subsidy_amount: float
+    net_cost: float
+    notes: Optional[str] = None
+    created_at: datetime
+
+
+# ── Seasonal Calendar ─────────────────────────────────────────────────────────
+
+class SeasonalTaskCreate(BaseModel):
+    month: int
+    week: Optional[int] = None
+    category: str
+    title: str
+    description: Optional[str] = None
+    assigned_to: Optional[str] = None
+    is_active: bool = True
+    notes: Optional[str] = None
+
+class SeasonalTaskOut(OrmBase):
+    id: int
+    month: int
+    week: Optional[int] = None
+    category: str
+    title: str
+    description: Optional[str] = None
+    assigned_to: Optional[str] = None
+    is_active: bool
+    notes: Optional[str] = None
+    created_at: datetime
+
+class SeasonalTaskCompletionCreate(BaseModel):
+    task_id: int
+    year: int
+    completion_date: date
+    outcome: Optional[str] = None
+    notes: Optional[str] = None
+
+class SeasonalTaskCompletionOut(OrmBase):
+    id: int
+    task_id: int
+    year: int
+    completion_date: date
+    outcome: Optional[str] = None
+    completed_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class CropRotationPlanCreate(BaseModel):
+    field_or_zone: str
+    year: int
+    crop_name: str
+    variety: Optional[str] = None
+    sowing_month: int
+    harvest_month: int
+    area_sq_meters: Optional[float] = None
+    expected_yield_kg: Optional[float] = None
+    notes: Optional[str] = None
+
+class CropRotationPlanOut(OrmBase):
+    id: int
+    field_or_zone: str
+    year: int
+    crop_name: str
+    variety: Optional[str] = None
+    sowing_month: int
+    harvest_month: int
+    area_sq_meters: Optional[float] = None
+    expected_yield_kg: Optional[float] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+
+# ── Sensor Calibration ────────────────────────────────────────────────────────
+
+class SensorCalibrationLogCreate(BaseModel):
+    sensor_id: int
+    calibration_date: datetime
+    next_calibration_due: Optional[datetime] = None
+    variance_before: Optional[float] = None
+    variance_after: Optional[float] = None
+    calibration_standard: Optional[str] = None
+    technician: str
+    passed: bool = True
+    notes: Optional[str] = None
+
+class SensorCalibrationLogOut(OrmBase):
+    id: int
+    sensor_id: int
+    calibration_date: datetime
+    next_calibration_due: Optional[datetime] = None
+    variance_before: Optional[float] = None
+    variance_after: Optional[float] = None
+    calibration_standard: Optional[str] = None
+    technician: str
+    passed: bool
+    notes: Optional[str] = None
+    created_at: datetime
+
+class BatteryReplacementLogCreate(BaseModel):
+    sensor_id: int
+    replacement_date: datetime
+    battery_type: Optional[str] = None
+    next_replacement_due: Optional[datetime] = None
+    replaced_by: str
+    notes: Optional[str] = None
+
+class BatteryReplacementLogOut(OrmBase):
+    id: int
+    sensor_id: int
+    replacement_date: datetime
+    battery_type: Optional[str] = None
+    next_replacement_due: Optional[datetime] = None
+    replaced_by: str
+    notes: Optional[str] = None
+    created_at: datetime
+
+class CameraFirmwareLogCreate(BaseModel):
+    sensor_id: int
+    update_date: datetime
+    previous_version: Optional[str] = None
+    new_version: str
+    update_method: Optional[str] = None
+    updated_by: str
+    notes: Optional[str] = None
+
+class CameraFirmwareLogOut(OrmBase):
+    id: int
+    sensor_id: int
+    update_date: datetime
+    previous_version: Optional[str] = None
+    new_version: str
+    update_method: Optional[str] = None
+    updated_by: str
+    notes: Optional[str] = None
+    created_at: datetime
+
+# ── Environmental Monitoring (Ops Manual §17.2) ───────────────────────────────
+
+class WaterOutletLogCreate(BaseModel):
+    log_date: date
+    outlet_id: str
+    location: str
+    bod_mg_l: Optional[float] = None
+    tss_mg_l: Optional[float] = None
+    ph: Optional[float] = None
+    turbidity_ntu: Optional[float] = None
+    do_mg_l: Optional[float] = None
+    temperature_c: Optional[float] = None
+    compliant: Optional[bool] = None
+    notes: Optional[str] = None
+
+class WaterOutletLogOut(OrmBase):
+    id: int
+    log_date: date
+    outlet_id: str
+    location: str
+    bod_mg_l: Optional[float] = None
+    tss_mg_l: Optional[float] = None
+    ph: Optional[float] = None
+    turbidity_ntu: Optional[float] = None
+    do_mg_l: Optional[float] = None
+    temperature_c: Optional[float] = None
+    compliant: Optional[bool] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class SoilCarbonLogCreate(BaseModel):
+    log_date: date
+    field_id: str
+    field_name: str
+    location: Optional[str] = None
+    soc_pct: float
+    sampling_depth_cm: Optional[int] = None
+    bulk_density: Optional[float] = None
+    lab_ref: Optional[str] = None
+    notes: Optional[str] = None
+
+class SoilCarbonLogOut(OrmBase):
+    id: int
+    log_date: date
+    field_id: str
+    field_name: str
+    location: Optional[str] = None
+    soc_pct: float
+    sampling_depth_cm: Optional[int] = None
+    bulk_density: Optional[float] = None
+    lab_ref: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class PesticideApplicationLogCreate(BaseModel):
+    application_date: date
+    field_id: str
+    field_name: str
+    active_ingredient: str
+    product_name: str
+    quantity_kg: float
+    area_ha: float
+    crop_type: Optional[str] = None
+    pest_target: Optional[str] = None
+    applied_by: Optional[str] = None
+    notes: Optional[str] = None
+
+class PesticideApplicationLogOut(OrmBase):
+    id: int
+    application_date: date
+    field_id: str
+    field_name: str
+    active_ingredient: str
+    product_name: str
+    quantity_kg: float
+    area_ha: float
+    ai_per_ha: Optional[float] = None
+    crop_type: Optional[str] = None
+    pest_target: Optional[str] = None
+    applied_by: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class WasteDiversionLogCreate(BaseModel):
+    log_date: date
+    total_waste_kg: float
+    diverted_kg: float
+    landfill_kg: float
+    compost_kg: Optional[float] = None
+    biogas_kg: Optional[float] = None
+    recycled_kg: Optional[float] = None
+    reused_kg: Optional[float] = None
+    notes: Optional[str] = None
+
+class WasteDiversionLogOut(OrmBase):
+    id: int
+    log_date: date
+    total_waste_kg: float
+    diverted_kg: float
+    landfill_kg: float
+    compost_kg: Optional[float] = None
+    biogas_kg: Optional[float] = None
+    recycled_kg: Optional[float] = None
+    reused_kg: Optional[float] = None
+    diversion_rate_pct: Optional[float] = None
+    meets_target: Optional[bool] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class BiodiversityLogCreate(BaseModel):
+    survey_date: date
+    survey_type: str
+    location: str
+    species_count: Optional[int] = None
+    individual_count: Optional[int] = None
+    indicator_species_present: Optional[bool] = None
+    surveyor: Optional[str] = None
+    weather_conditions: Optional[str] = None
+    species_detail: Optional[dict] = None
+    notes: Optional[str] = None
+
+class BiodiversityLogOut(OrmBase):
+    id: int
+    survey_date: date
+    survey_type: str
+    location: str
+    species_count: Optional[int] = None
+    individual_count: Optional[int] = None
+    indicator_species_present: Optional[bool] = None
+    surveyor: Optional[str] = None
+    weather_conditions: Optional[str] = None
+    species_detail: Optional[dict] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class SolarNetSurplusLogCreate(BaseModel):
+    log_date: date
+    generation_kwh: float
+    consumption_kwh: float
+    grid_export_kwh: Optional[float] = None
+    grid_import_kwh: Optional[float] = None
+    notes: Optional[str] = None
+
+class SolarNetSurplusLogOut(OrmBase):
+    id: int
+    log_date: date
+    generation_kwh: float
+    consumption_kwh: float
+    net_surplus_kwh: Optional[float] = None
+    grid_export_kwh: Optional[float] = None
+    grid_import_kwh: Optional[float] = None
+    carbon_offset_kg: Optional[float] = None
+    notes: Optional[str] = None
+    created_at: datetime

@@ -425,5 +425,1087 @@ def seed():
     print("   • 1 store config, 15 product catalog entries, 15 store stock records")
 
 
+def seed_new_modules():
+    """Seed extended modules: cold chain, HR, vaccination, water, energy, audit, subsidies, contracts, agritourism, expansion, seasonal, sensors, environmental, compliance."""
+    init_db()
+    db = SessionLocal()
+
+    try:
+        # Guard: skip if subsidy schemes already seeded
+        if db.query(SubsidyScheme).count() > 0:
+            print("New modules already seeded. Skipping.")
+            db.close()
+            return
+
+        today = date.today()
+
+        # ─────────────────────────────────────────────────────────────
+        # 1. COLD CHAIN SHIPMENTS
+        # ─────────────────────────────────────────────────────────────
+        cold_chain_shipments = [
+            ColdChainShipment(
+                shipment_code="CCS-001",
+                origin_city="Nellore Farm",
+                destination_city="Hyderabad Central Market",
+                delivery_address="Bowenpally Wholesale Market, Hyderabad",
+                product_category="fish",
+                product_lots=[{"lot_id": "LOT-001", "product": "Murrel Fish", "quantity_kg": 120}],
+                total_weight_kg=120,
+                required_temp_min_c=2.0,
+                required_temp_max_c=8.0,
+                status="pending",
+                notes="Fresh murrel shipment to Hyderabad market"
+            ),
+            ColdChainShipment(
+                shipment_code="CCS-002",
+                origin_city="Nellore Farm",
+                destination_city="Chennai Koyambedu Market",
+                delivery_address="Koyambedu Mandi, Chennai",
+                product_category="fish",
+                product_lots=[{"lot_id": "LOT-002", "product": "Murrel Fish", "quantity_kg": 150}],
+                total_weight_kg=150,
+                required_temp_min_c=2.0,
+                required_temp_max_c=8.0,
+                status="pending",
+                notes="Premium murrel batch for Chennai"
+            ),
+        ]
+        db.add_all(cold_chain_shipments)
+        db.flush()
+
+        # ─────────────────────────────────────────────────────────────
+        # 2. EMPLOYEES (additional, linked to users)
+        # ─────────────────────────────────────────────────────────────
+        # Get existing users (admin=1, manager=2)
+        additional_employees = [
+            Employee(
+                employee_code="EMP-006",
+                full_name="Meera Kumar",
+                department="aquaculture",
+                designation="Aquaculture Technician",
+                date_of_joining=today - timedelta(days=200),
+                phone="9876543228",
+                base_salary=20000,
+                hra=3500,
+            ),
+            Employee(
+                employee_code="EMP-007",
+                full_name="Pradeep Singh",
+                department="crops",
+                designation="Field Manager",
+                date_of_joining=today - timedelta(days=150),
+                phone="9876543229",
+                base_salary=28000,
+                hra=5000,
+            ),
+            Employee(
+                employee_code="EMP-008",
+                full_name="Divya Sharma",
+                department="poultry",
+                designation="Poultry Manager",
+                date_of_joining=today - timedelta(days=120),
+                phone="9876543230",
+                base_salary=26000,
+                hra=4500,
+            ),
+            Employee(
+                employee_code="EMP-009",
+                full_name="Ramakrishna",
+                department="logistics",
+                designation="Logistics Coordinator",
+                date_of_joining=today - timedelta(days=100),
+                phone="9876543231",
+                base_salary=18000,
+                hra=3000,
+            ),
+        ]
+        db.add_all(additional_employees)
+        db.flush()
+
+        # ─────────────────────────────────────────────────────────────
+        # 3. VACCINATION SCHEDULES & RECORDS
+        # ─────────────────────────────────────────────────────────────
+        vax_schedules = [
+            VaccinationSchedule(
+                species="hen",
+                vaccine_name="Newcastle Disease Vaccine",
+                disease_target="Newcastle",
+                dose_ml=0.5,
+                route="ocular",
+                age_days_start=7,
+                repeat_interval_days=180,
+                withdrawal_period_days=0,
+                notes="Live attenuated vaccine, cool chain required"
+            ),
+            VaccinationSchedule(
+                species="duck",
+                vaccine_name="Duck Plague Vaccine",
+                disease_target="Duck Plague",
+                dose_ml=0.5,
+                route="injectable",
+                age_days_start=14,
+                repeat_interval_days=365,
+                withdrawal_period_days=0,
+                notes="Inactivated oil adjuvant vaccine"
+            ),
+            VaccinationSchedule(
+                species="hen",
+                vaccine_name="Ranikhet Disease Vaccine",
+                disease_target="Ranikhet",
+                dose_ml=0.5,
+                route="nasal",
+                age_days_start=21,
+                repeat_interval_days=365,
+                withdrawal_period_days=0,
+                notes="Protective against viral infection"
+            ),
+        ]
+        db.add_all(vax_schedules)
+        db.flush()
+
+        vax_records = [
+            VaccinationRecord(
+                schedule_id=vax_schedules[0].id,
+                species="hen",
+                batch_or_flock_id=db.query(PoultryFlock).first().id,
+                batch_or_flock_ref="PLT-001",
+                vaccination_date=today - timedelta(days=40),
+                dose_given_ml=400.0,
+                animals_vaccinated=800,
+                next_due_date=today + timedelta(days=140),
+                lot_number="ND-001-2025",
+                manufacturer="VPCI Hyderabad",
+                expiry_date=today + timedelta(days=120),
+                notes="Successful vaccination, no adverse reactions"
+            ),
+            VaccinationRecord(
+                schedule_id=vax_schedules[1].id,
+                species="duck",
+                batch_or_flock_id=db.query(DuckFlock).first().id,
+                batch_or_flock_ref="DCK-001",
+                vaccination_date=today - timedelta(days=180),
+                dose_given_ml=200.0,
+                animals_vaccinated=400,
+                next_due_date=today + timedelta(days=185),
+                lot_number="DP-002-2024",
+                manufacturer="Indian Immunologicals",
+                expiry_date=today + timedelta(days=250),
+                notes="Annual booster scheduled"
+            ),
+        ]
+        db.add_all(vax_records)
+        db.flush()
+
+        # ─────────────────────────────────────────────────────────────
+        # 4. WATER SYSTEM
+        # ─────────────────────────────────────────────────────────────
+        water_sources = [
+            WaterSource(
+                name="Borewell-01",
+                source_type="borewell",
+                capacity_liters=100000,
+                depth_meters=45,
+                pump_hp=2,
+                location_description="Near main office",
+                is_active=True
+            ),
+            WaterSource(
+                name="Canal-East",
+                source_type="canal",
+                capacity_liters=500000,
+                depth_meters=3,
+                pump_hp=5,
+                location_description="Eastern field boundary",
+                is_active=True
+            ),
+        ]
+        db.add_all(water_sources)
+        db.flush()
+
+        water_tanks = [
+            WaterStorageTank(
+                name="Overhead Tank-1",
+                tank_type="overhead",
+                capacity_liters=50000,
+                current_level_liters=45000,
+                source_id=water_sources[0].id,
+                location="Main office rooftop",
+                has_sensor=True
+            ),
+            WaterStorageTank(
+                name="Field Sump-1",
+                tank_type="field_reservoir",
+                capacity_liters=100000,
+                current_level_liters=80000,
+                source_id=water_sources[1].id,
+                location="Field crop zone",
+                has_sensor=False
+            ),
+        ]
+        db.add_all(water_tanks)
+        db.flush()
+
+        irrigation_zones = [
+            IrrigationZone(
+                name="Greenhouse Zone-1",
+                zone_type="drip",
+                area_sq_meters=2000,
+                crop_or_section="Greenhouse 1 & 2",
+                tank_id=water_tanks[0].id,
+                flow_rate_lpm=150,
+                is_automated=True
+            ),
+            IrrigationZone(
+                name="Field Crop Zone-1",
+                zone_type="drip",
+                area_sq_meters=3000,
+                crop_or_section="Turmeric & Ginger",
+                tank_id=water_tanks[1].id,
+                flow_rate_lpm=200,
+                is_automated=False
+            ),
+            IrrigationZone(
+                name="Field Crop Zone-2",
+                zone_type="sprinkler",
+                area_sq_meters=2500,
+                crop_or_section="Seasonal crops",
+                tank_id=water_tanks[1].id,
+                flow_rate_lpm=180,
+                is_automated=True
+            ),
+        ]
+        db.add_all(irrigation_zones)
+
+        # ─────────────────────────────────────────────────────────────
+        # 5. ENERGY / SOLAR
+        # ─────────────────────────────────────────────────────────────
+        solar_array = SolarArray(
+            name="Main Rooftop Array",
+            location="Main Roof",
+            panel_count=150,
+            panel_wattage_wp=400,
+            total_capacity_kwp=60,
+            tilt_degrees=15,
+            azimuth_degrees=180,
+            commissioned_date=today - timedelta(days=500),
+            is_active=True
+        )
+        db.add(solar_array)
+        db.flush()
+
+        inverter = Inverter(
+            name="Main Inverter-1",
+            solar_array_id=solar_array.id,
+            make="Sungrow",
+            model="SG50KTL",
+            rated_kva=50,
+            inverter_type="grid_tie",
+            installation_date=today - timedelta(days=500),
+            is_active=True
+        )
+        db.add(inverter)
+        db.flush()
+
+        energy_gen_logs = []
+        for i in range(5):
+            log_date = today - timedelta(days=i)
+            energy_gen_logs.append(
+                EnergyGenerationLog(
+                    solar_array_id=solar_array.id,
+                    log_date=log_date,
+                    units_generated_kwh=48 + random.uniform(-5, 5),
+                    peak_power_kw=52,
+                    sunshine_hours=6.5 + random.uniform(-1, 1),
+                    inverter_efficiency_pct=96.5
+                )
+            )
+        db.add_all(energy_gen_logs)
+
+        energy_cons_logs = []
+        sections = ["greenhouse", "aquaculture", "packhouse", "irrigation", "total"]
+        for i in range(5):
+            log_date = today - timedelta(days=i)
+            for section in sections:
+                energy_cons_logs.append(
+                    EnergyConsumptionLog(
+                        log_date=log_date,
+                        section=section,
+                        units_consumed_kwh=random.uniform(28, 42) if section != "total" else random.uniform(140, 180),
+                        source="solar",
+                        tariff_per_kwh=5.5,
+                        cost=random.uniform(150, 250)
+                    )
+                )
+        db.add_all(energy_cons_logs)
+
+        # ─────────────────────────────────────────────────────────────
+        # 6. AUDIT / REPORT SCHEDULES
+        # ─────────────────────────────────────────────────────────────
+        report_schedules = [
+            ReportSchedule(
+                name="Monthly Farm Financial Report",
+                report_type="financial_monthly",
+                frequency="monthly",
+                next_run_date=today.replace(day=1),
+                output_format="pdf",
+                is_active=True
+            ),
+            ReportSchedule(
+                name="Monthly Water Usage Report",
+                report_type="water_monthly",
+                frequency="monthly",
+                next_run_date=today.replace(day=5),
+                output_format="pdf",
+                is_active=True
+            ),
+            ReportSchedule(
+                name="Monthly Energy Report",
+                report_type="energy_monthly",
+                frequency="monthly",
+                next_run_date=today.replace(day=5),
+                output_format="xlsx",
+                is_active=True
+            ),
+            ReportSchedule(
+                name="Quarterly Compliance Audit",
+                report_type="compliance_quarterly",
+                frequency="quarterly",
+                next_run_date=today + timedelta(days=45),
+                output_format="pdf",
+                is_active=True
+            ),
+            ReportSchedule(
+                name="Quarterly Investor Report",
+                report_type="investor_quarterly",
+                frequency="quarterly",
+                next_run_date=today + timedelta(days=30),
+                output_format="pdf",
+                is_active=True
+            ),
+            ReportSchedule(
+                name="Annual Environmental Audit",
+                report_type="environmental_annual",
+                frequency="quarterly",
+                next_run_date=today + timedelta(days=200),
+                output_format="pdf",
+                is_active=True
+            ),
+            ReportSchedule(
+                name="Annual Licence Renewal Check",
+                report_type="compliance_annual",
+                frequency="quarterly",
+                next_run_date=today + timedelta(days=180),
+                output_format="pdf",
+                is_active=True
+            ),
+            ReportSchedule(
+                name="Production Report",
+                report_type="production_monthly",
+                frequency="monthly",
+                next_run_date=today.replace(day=10),
+                output_format="xlsx",
+                is_active=True
+            ),
+            ReportSchedule(
+                name="Harvest Summary",
+                report_type="harvest_monthly",
+                frequency="monthly",
+                next_run_date=today.replace(day=15),
+                output_format="pdf",
+                is_active=True
+            ),
+            ReportSchedule(
+                name="Safety & Incident Report",
+                report_type="safety_monthly",
+                frequency="monthly",
+                next_run_date=today.replace(day=20),
+                output_format="pdf",
+                is_active=True
+            ),
+            ReportSchedule(
+                name="Disease & Health Alert",
+                report_type="health_weekly",
+                frequency="monthly",
+                next_run_date=today + timedelta(days=7),
+                output_format="pdf",
+                is_active=True
+            ),
+            ReportSchedule(
+                name="Marketing & Sales Report",
+                report_type="sales_monthly",
+                frequency="monthly",
+                next_run_date=today.replace(day=25),
+                output_format="xlsx",
+                is_active=True
+            ),
+        ]
+        db.add_all(report_schedules)
+
+        # ─────────────────────────────────────────────────────────────
+        # 7. SUBSIDIES
+        # ─────────────────────────────────────────────────────────────
+        subsidy_schemes = [
+            SubsidyScheme(
+                scheme_code="PMKSY",
+                name="Pradhan Mantri Krishi Sinchai Yojana",
+                ministry="Department of Agriculture & Cooperation",
+                category="irrigation",
+                subsidy_pct=55.0,
+                max_amount=2500000,
+                description="Micro-irrigation and water conservation",
+                eligibility="Farm size 0.5-50 hectares",
+                apply_url="https://pmksy.gov.in"
+            ),
+            SubsidyScheme(
+                scheme_code="RKVY",
+                name="Rashtriya Krishi Vikas Yojana",
+                ministry="Department of Agriculture & Cooperation",
+                category="general",
+                subsidy_pct=50.0,
+                max_amount=5000000,
+                description="Agricultural infrastructure development",
+                eligibility="All farmers including tenant farmers"
+            ),
+            SubsidyScheme(
+                scheme_code="NABARD",
+                name="NABARD Rural Infrastructure Development",
+                ministry="Department of Rural Development",
+                category="infrastructure",
+                subsidy_pct=40.0,
+                max_amount=10000000,
+                description="Rural infrastructure creation",
+                eligibility="Community, NGO, SHG"
+            ),
+            SubsidyScheme(
+                scheme_code="NLM",
+                name="National Livestock Mission",
+                ministry="Department of Animal Husbandry",
+                category="poultry",
+                subsidy_pct=50.0,
+                max_amount=2500000,
+                description="Livestock rearing and dairy",
+                eligibility="Individual and group farmers"
+            ),
+            SubsidyScheme(
+                scheme_code="MNRE",
+                name="MNRE Solar Rooftop Initiative",
+                ministry="Ministry of New and Renewable Energy",
+                category="solar",
+                subsidy_pct=30.0,
+                max_amount=1500000,
+                description="Grid-connected rooftop solar",
+                eligibility="Agriculture, residential consumers"
+            ),
+        ]
+        db.add_all(subsidy_schemes)
+        db.flush()
+
+        subsidy_apps = [
+            SubsidyApplication(
+                scheme_id=subsidy_schemes[0].id,
+                application_number="PMKSY-2025-001",
+                applied_date=today - timedelta(days=60),
+                project_description="Drip irrigation for greenhouse and field crops",
+                project_cost=3000000,
+                claimed_subsidy_amount=1650000,
+                status="approved",
+                approved_amount=1650000,
+                approval_date=today - timedelta(days=15),
+                documents_submitted="Project report, land documents, quotations"
+            ),
+            SubsidyApplication(
+                scheme_id=subsidy_schemes[1].id,
+                application_number="RKVY-2025-002",
+                applied_date=today - timedelta(days=30),
+                project_description="Cold chain development for fish logistics",
+                project_cost=5000000,
+                claimed_subsidy_amount=2500000,
+                status="submitted",
+                documents_submitted="Feasibility report, technical drawings"
+            ),
+        ]
+        db.add_all(subsidy_apps)
+
+        # ─────────────────────────────────────────────────────────────
+        # 8. CONTRACT FARMING
+        # ─────────────────────────────────────────────────────────────
+        neighbouring_farms = [
+            NeighbouringFarm(
+                farm_name="Raju Farm",
+                owner_name="Raju Reddy",
+                contact_phone="9876543240",
+                contact_email="raju@farm.in",
+                village="Sullurpet",
+                district="Nellore",
+                land_acres=5,
+                current_crops="Paddy, Cotton"
+            ),
+            NeighbouringFarm(
+                farm_name="Venkat Agro",
+                owner_name="Venkat Rao",
+                contact_phone="9876543241",
+                contact_email="venkat@agro.in",
+                village="Kaviti",
+                district="Nellore",
+                land_acres=8,
+                current_crops="Sugarcane, Turmeric"
+            ),
+        ]
+        db.add_all(neighbouring_farms)
+        db.flush()
+
+        consulting_contracts = [
+            ConsultingContract(
+                contract_number="CC-001-2025",
+                neighbouring_farm_id=neighbouring_farms[0].id,
+                client_name="Raju Reddy",
+                contract_type="agri_consulting",
+                scope="Paddy crop optimization and soil health",
+                start_date=today - timedelta(days=90),
+                end_date=today + timedelta(days=270),
+                contract_value=150000,
+                payment_terms="Monthly ₹12,500",
+                status="active",
+                total_billed=75000,
+                total_received=75000
+            ),
+            ConsultingContract(
+                contract_number="CC-002-2024",
+                neighbouring_farm_id=neighbouring_farms[1].id,
+                client_name="Venkat Rao",
+                contract_type="contract_farming",
+                scope="Organic turmeric production contract",
+                start_date=today - timedelta(days=300),
+                end_date=today - timedelta(days=30),
+                contract_value=200000,
+                payment_terms="On harvest completion",
+                status="completed",
+                total_billed=200000,
+                total_received=200000
+            ),
+        ]
+        db.add_all(consulting_contracts)
+
+        # ─────────────────────────────────────────────────────────────
+        # 9. AGRI-TOURISM
+        # ─────────────────────────────────────────────────────────────
+        visit_packages = [
+            VisitPackage(
+                name="Half Day Farm Tour",
+                description="Morning or afternoon visit with guide, farm walk, product sampling",
+                package_type="farm_tour",
+                duration_hours=4,
+                max_group_size=20,
+                price_per_person=500,
+                includes_meal=False,
+                includes_activity="Farm walk, fish feeding, poultry shed visit",
+                available_days="Mon,Tue,Wed,Thu,Fri,Sat,Sun",
+                slots_per_day=2
+            ),
+            VisitPackage(
+                name="Full Day Farm Experience",
+                description="Complete farm tour with lunch and hands-on activities",
+                package_type="farm_tour",
+                duration_hours=8,
+                max_group_size=25,
+                price_per_person=1200,
+                includes_meal=True,
+                includes_activity="Aquaculture training, greenhouse work, organic farming",
+                available_days="Sat,Sun",
+                slots_per_day=1
+            ),
+            VisitPackage(
+                name="Overnight Stay Package",
+                description="Farm stay with meals, training, night nature walk",
+                package_type="agri_camp",
+                duration_hours=24,
+                max_group_size=15,
+                price_per_person=3500,
+                includes_meal=True,
+                includes_activity="Hands-on farming, solar power workshop, sustainability talk",
+                available_days="Fri,Sat",
+                slots_per_day=1
+            ),
+        ]
+        db.add_all(visit_packages)
+        db.flush()
+
+        visitor_groups = [
+            VisitorGroup(
+                group_name="Nellore Agricultural College",
+                group_type="college",
+                contact_person="Dr. Ramesh Kumar",
+                contact_phone="9876543250",
+                contact_email="agri@nac.edu",
+                city="Nellore"
+            ),
+            VisitorGroup(
+                group_name="Eco-tourism SHG",
+                group_type="ngo",
+                contact_person="Lakshmi Reddy",
+                contact_phone="9876543251",
+                contact_email="eco@ngo.in",
+                city="Hyderabad"
+            ),
+        ]
+        db.add_all(visitor_groups)
+        db.flush()
+
+        visit_bookings = [
+            VisitBooking(
+                package_id=visit_packages[0].id,
+                visitor_group_id=visitor_groups[0].id,
+                visit_date=today + timedelta(days=10),
+                time_slot="09:00",
+                pax_count=18,
+                guide_assigned="Meera Kumar",
+                price_per_person=500,
+                total_amount=9000,
+                advance_paid=4500,
+                balance_due=4500,
+                payment_mode="bank_transfer",
+                status="confirmed"
+            ),
+            VisitBooking(
+                package_id=visit_packages[1].id,
+                visitor_group_id=visitor_groups[1].id,
+                visit_date=today - timedelta(days=5),
+                time_slot="08:00",
+                pax_count=15,
+                guide_assigned="Pradeep Singh",
+                price_per_person=1200,
+                total_amount=18000,
+                advance_paid=18000,
+                balance_due=0,
+                payment_mode="cash",
+                status="completed"
+            ),
+            VisitBooking(
+                package_id=visit_packages[2].id,
+                visitor_group_id=None,
+                visit_date=today + timedelta(days=20),
+                time_slot="15:00",
+                pax_count=12,
+                price_per_person=3500,
+                total_amount=42000,
+                advance_paid=21000,
+                balance_due=21000,
+                payment_mode="upi",
+                status="pending"
+            ),
+        ]
+        db.add_all(visit_bookings)
+
+        # ─────────────────────────────────────────────────────────────
+        # 10. EXPANSION PLANNING
+        # ─────────────────────────────────────────────────────────────
+        expansion_phase = ExpansionPhase(
+            name="Phase 5 - Scale to 50 Acres",
+            year=2028,
+            description="Doubling farm size with GH3, additional aquaculture, poultry expansion",
+            planned_start=date(2027, 6, 1),
+            planned_end=date(2028, 12, 31),
+            total_budget=15000000,
+            total_spent=0,
+            status="planned"
+        )
+        db.add(expansion_phase)
+        db.flush()
+
+        expansion_milestones = [
+            ExpansionMilestone(
+                phase_id=expansion_phase.id,
+                title="Land Acquisition",
+                description="Purchase additional 15 acres adjacent land",
+                due_date=date(2027, 9, 30),
+                owner="Ravi Kumar",
+                priority="high",
+                sort_order=1
+            ),
+            ExpansionMilestone(
+                phase_id=expansion_phase.id,
+                title="Infrastructure Build",
+                description="Construct GH3, water systems, solar array 2, cold storage",
+                due_date=date(2028, 6, 30),
+                owner="Pradeep Singh",
+                priority="high",
+                sort_order=2
+            ),
+            ExpansionMilestone(
+                phase_id=expansion_phase.id,
+                title="Operations Launch",
+                description="Recruit staff, train team, start operations",
+                due_date=date(2028, 9, 30),
+                owner="Ravi Kumar",
+                priority="medium",
+                sort_order=3
+            ),
+        ]
+        db.add_all(expansion_milestones)
+        db.flush()
+
+        expansion_capex = [
+            ExpansionCapex(
+                phase_id=expansion_phase.id,
+                item_name="Land Purchase",
+                category="land",
+                budgeted_amount=7500000,
+                actual_amount=0,
+                subsidy_applied=False,
+                subsidy_amount=0
+            ),
+            ExpansionCapex(
+                phase_id=expansion_phase.id,
+                item_name="Greenhouse 3 Construction",
+                category="civil_works",
+                budgeted_amount=4500000,
+                actual_amount=0,
+                subsidy_applied=True,
+                subsidy_amount=1350000
+            ),
+            ExpansionCapex(
+                phase_id=expansion_phase.id,
+                item_name="Solar Array 2 (40 kW)",
+                category="solar",
+                budgeted_amount=2400000,
+                actual_amount=0,
+                subsidy_applied=True,
+                subsidy_amount=720000
+            ),
+        ]
+        db.add_all(expansion_capex)
+
+        # ─────────────────────────────────────────────────────────────
+        # 11. SEASONAL CALENDAR (12 TASKS)
+        # ─────────────────────────────────────────────────────────────
+        seasonal_tasks = [
+            SeasonalTask(month=1, category="aquaculture", title="Stocking fingerlings", description="Pond preparation and fish stocking season"),
+            SeasonalTask(month=2, category="soil_prep", title="Soil preparation Field 1", description="Ploughing and composting"),
+            SeasonalTask(month=3, category="crops", title="Kharif crop sowing", description="Monsoon crop planning and sowing"),
+            SeasonalTask(month=4, category="poultry", title="Q1 vaccination checks", description="Quarterly poultry health review"),
+            SeasonalTask(month=5, category="irrigation", title="Drip system maintenance", description="Seasonal irrigation system maintenance"),
+            SeasonalTask(month=6, category="aquaculture", title="Monsoon pond management", description="Water level and aeration management"),
+            SeasonalTask(month=7, category="crops", title="Paddy transplanting", description="Rice crop transplanting in field zones"),
+            SeasonalTask(month=8, category="harvest", title="Murrel batch harvest", description="Harvesting first aquaculture batch"),
+            SeasonalTask(month=9, category="marketing", title="Market price survey", description="Weekly market analysis and pricing"),
+            SeasonalTask(month=10, category="compliance", title="Licence renewals", description="Government licence compliance checks"),
+            SeasonalTask(month=11, category="crops", title="Rabi crop sowing", description="Winter crop sowing and planning"),
+            SeasonalTask(month=12, category="maintenance", title="Annual inventory audit", description="Year-end stock and asset verification"),
+        ]
+        db.add_all(seasonal_tasks)
+
+        # ─────────────────────────────────────────────────────────────
+        # 12. SENSOR CALIBRATION & MAINTENANCE
+        # ─────────────────────────────────────────────────────────────
+        sensor_count = db.query(SensorDevice).count()
+        if sensor_count > 0:
+            # Get first two sensors
+            sensors = db.query(SensorDevice).limit(2).all()
+
+            if len(sensors) >= 1:
+                calib_logs = [
+                    SensorCalibrationLog(
+                        sensor_id=sensors[0].id,
+                        calibration_date=datetime.now(timezone.utc) - timedelta(days=15),
+                        next_calibration_due=datetime.now(timezone.utc) + timedelta(days=75),
+                        variance_before=0.8,
+                        variance_after=0.1,
+                        calibration_standard="pH 7.0 buffer solution",
+                        technician="Suresh Reddy",
+                        passed=True,
+                        notes="Successfully calibrated, within tolerance"
+                    ),
+                ]
+                if len(sensors) >= 2:
+                    calib_logs.append(
+                        SensorCalibrationLog(
+                            sensor_id=sensors[1].id,
+                            calibration_date=datetime.now(timezone.utc) - timedelta(days=5),
+                            next_calibration_due=datetime.now(timezone.utc) + timedelta(days=85),
+                            variance_before=1.5,
+                            variance_after=1.2,
+                            calibration_standard="Standard solution 1000 ppm",
+                            technician="Lakshmi Devi",
+                            passed=False,
+                            notes="Drift detected, recalibration needed"
+                        )
+                    )
+                db.add_all(calib_logs)
+
+                battery_logs = [
+                    BatteryReplacementLog(
+                        sensor_id=sensors[0].id,
+                        replacement_date=datetime.now(timezone.utc) - timedelta(days=30),
+                        battery_type="AA Lithium 3.6V",
+                        next_replacement_due=datetime.now(timezone.utc) + timedelta(days=330),
+                        replaced_by="Suresh Reddy",
+                        notes="Low battery alert, proactive replacement"
+                    ),
+                ]
+                if len(sensors) >= 2:
+                    battery_logs.append(
+                        BatteryReplacementLog(
+                            sensor_id=sensors[1].id,
+                            replacement_date=datetime.now(timezone.utc) - timedelta(days=60),
+                            battery_type="AA Lithium 3.6V",
+                            next_replacement_due=datetime.now(timezone.utc) + timedelta(days=300),
+                            replaced_by="Lakshmi Devi"
+                        )
+                    )
+                db.add_all(battery_logs)
+
+                if len(sensors) >= 1:
+                    firmware_log = CameraFirmwareLog(
+                        sensor_id=sensors[0].id,
+                        update_date=datetime.now(timezone.utc) - timedelta(days=10),
+                        previous_version="2.3.1",
+                        new_version="2.4.0",
+                        update_method="OTA",
+                        updated_by="Pradeep Singh",
+                        notes="Firmware update successful, improved stability"
+                    )
+                    db.add(firmware_log)
+
+        # ─────────────────────────────────────────────────────────────
+        # 13. ENVIRONMENTAL MONITORING
+        # ─────────────────────────────────────────────────────────────
+        water_outlet_logs = []
+        for i in range(4):
+            log_date = today - timedelta(weeks=i)
+            water_outlet_logs.append(
+                WaterOutletLog(
+                    log_date=log_date,
+                    outlet_id="OUT-001",
+                    location="Main discharge point",
+                    bod_mg_l=30 + random.uniform(-5, 5),
+                    tss_mg_l=45 + random.uniform(-10, 10),
+                    ph=7.2 + random.uniform(-0.3, 0.3),
+                    turbidity_ntu=8 + random.uniform(-2, 2),
+                    do_mg_l=6.5 + random.uniform(-1, 1),
+                    temperature_c=28 + random.uniform(-2, 2),
+                    compliant=True,
+                    notes="Within regulatory compliance"
+                )
+            )
+        db.add_all(water_outlet_logs)
+
+        soil_carbon_logs = [
+            SoilCarbonLog(
+                log_date=today - timedelta(days=60),
+                field_id="F-001",
+                field_name="Main Field 1",
+                location="North zone",
+                soc_pct=1.8,
+                sampling_depth_cm=30,
+                lab_ref="LAB-2024-156"
+            ),
+            SoilCarbonLog(
+                log_date=today - timedelta(days=30),
+                field_id="F-001",
+                field_name="Main Field 1",
+                location="North zone",
+                soc_pct=1.95,
+                sampling_depth_cm=30,
+                lab_ref="LAB-2025-045"
+            ),
+            SoilCarbonLog(
+                log_date=today,
+                field_id="F-001",
+                field_name="Main Field 1",
+                location="North zone",
+                soc_pct=2.1,
+                sampling_depth_cm=30,
+                lab_ref="LAB-2025-089"
+            ),
+        ]
+        db.add_all(soil_carbon_logs)
+
+        pesticide_logs = [
+            PesticideApplicationLog(
+                application_date=today - timedelta(days=45),
+                field_id="GH1",
+                field_name="Greenhouse 1",
+                active_ingredient="Neem Oil",
+                product_name="PureNeem 3% EC",
+                quantity_kg=2.5,
+                area_ha=0.2,
+                ai_per_ha=12.5,
+                crop_type="Green Chilli",
+                pest_target="Mites, Whiteflies",
+                applied_by="Lakshmi Devi"
+            ),
+            PesticideApplicationLog(
+                application_date=today - timedelta(days=20),
+                field_id="FC-TUR",
+                field_name="Turmeric Field",
+                active_ingredient="Carbendazim",
+                product_name="Bavistin 50% WP",
+                quantity_kg=1.0,
+                area_ha=0.5,
+                ai_per_ha=2.0,
+                crop_type="Turmeric",
+                pest_target="Leaf Spot",
+                applied_by="Pradeep Singh"
+            ),
+            PesticideApplicationLog(
+                application_date=today - timedelta(days=5),
+                field_id="P1",
+                field_name="Aquaculture P1",
+                active_ingredient="Potassium Permanganate",
+                product_name="KMnO4",
+                quantity_kg=0.5,
+                area_ha=0.0375,
+                ai_per_ha=13.3,
+                crop_type="Murrel Fish",
+                pest_target="Water disinfection",
+                applied_by="Suresh Reddy"
+            ),
+        ]
+        db.add_all(pesticide_logs)
+
+        waste_diversion_logs = []
+        for month_offset in range(3):
+            log_date = today.replace(day=1) - timedelta(days=month_offset*30)
+            waste_diversion_logs.append(
+                WasteDiversionLog(
+                    log_date=log_date,
+                    total_waste_kg=500,
+                    diverted_kg=490,
+                    landfill_kg=10,
+                    compost_kg=300,
+                    biogas_kg=150,
+                    recycled_kg=40,
+                    reused_kg=0,
+                    diversion_rate_pct=98.0,
+                    meets_target=True,
+                    notes="Excellent waste management, >95% target met"
+                )
+            )
+        db.add_all(waste_diversion_logs)
+
+        biodiversity_logs = [
+            BiodiversityLog(
+                survey_date=today - timedelta(days=30),
+                survey_type="bird",
+                location="Farm perimeter",
+                species_count=12,
+                individual_count=45,
+                indicator_species_present=True,
+                surveyor="Ramakrishna",
+                weather_conditions="Partly cloudy, 28°C",
+                species_detail=[
+                    {"name": "Spotted Dove", "count": 8},
+                    {"name": "Indian Roller", "count": 6},
+                    {"name": "White Wagtail", "count": 12}
+                ],
+                notes="Healthy bird populations, good habitat"
+            ),
+            BiodiversityLog(
+                survey_date=today - timedelta(days=15),
+                survey_type="pollinator",
+                location="Flowering zones",
+                species_count=8,
+                individual_count=120,
+                indicator_species_present=True,
+                surveyor="Lakshmi Devi",
+                weather_conditions="Sunny, 32°C",
+                species_detail=[
+                    {"name": "Honey Bee", "count": 80},
+                    {"name": "Butterfly (Mixed)", "count": 30},
+                    {"name": "Beetle", "count": 10}
+                ]
+            ),
+        ]
+        db.add_all(biodiversity_logs)
+
+        solar_net_surplus_logs = []
+        for i in range(30):
+            log_date = today - timedelta(days=i)
+            solar_net_surplus_logs.append(
+                SolarNetSurplusLog(
+                    log_date=log_date,
+                    generation_kwh=48 + random.uniform(-5, 5),
+                    consumption_kwh=35 + random.uniform(-5, 5),
+                    net_surplus_kwh=max(0, (48 - 35) + random.uniform(-3, 3)),
+                    grid_export_kwh=random.uniform(8, 15),
+                    grid_import_kwh=random.uniform(0, 5),
+                    carbon_offset_kg=(max(0, (48 - 35) + random.uniform(-3, 3))) * 0.82,
+                    notes="Daily renewable energy surplus tracking"
+                )
+            )
+        db.add_all(solar_net_surplus_logs)
+
+        # ─────────────────────────────────────────────────────────────
+        # 14. COMPLIANCE LICENCES (18 records)
+        # ─────────────────────────────────────────────────────────────
+        licence_data = [
+            ("PCB Consent to Operate", "environmental", "Andhra Pradesh Pollution Control Board", "PCB/2023/001", today + timedelta(days=200)),
+            ("FSSAI Food Business", "food_safety", "Food Safety Authority of India", "FSSAI/2024/789", today + timedelta(days=100)),
+            ("Weights & Measures", "financial", "Department of Weights & Measures", "WM/2024/456", today + timedelta(days=300)),
+            ("Pesticide Dealer Registration", "environmental", "Agricultural Department", "PEST/2023/234", today - timedelta(days=30)),
+            ("Poultry Farm Registration", "aquaculture", "Animal Husbandry Department", "POULTRY/2023/567", today + timedelta(days=150)),
+            ("Fish Farm Registration (State)", "aquaculture", "State Fisheries Department", "FISH-S/2023/890", today + timedelta(days=250)),
+            ("Fish Farm Registration (Central)", "aquaculture", "Central Government Ministry", "FISH-C/2023/012", today + timedelta(days=280)),
+            ("Groundwater Extraction", "environmental", "Groundwater Board", "GW/2023/345", today + timedelta(days=200)),
+            ("Electricity Connection", "financial", "Distribution Company", "ELEC/2023/678", today + timedelta(days=400)),
+            ("Fire Safety NOC", "environmental", "Fire Department", "FIRE/2024/901", today + timedelta(days=120)),
+            ("Labour Department Registration", "financial", "Department of Labour", "LABOUR/2023/234", today + timedelta(days=180)),
+            ("ESIC Registration", "financial", "Employees State Insurance", "ESIC/2023/567", today + timedelta(days=350)),
+            ("Provident Fund Registration", "financial", "EPFO", "PF/2023/890", today + timedelta(days=320)),
+            ("GST Registration", "financial", "GST Department", "GSTIN/37ABC123", today + timedelta(days=600)),
+            ("APEDA Export Certificate", "food_safety", "Agricultural Products Export Agency", "APEDA/2024/012", today + timedelta(days=80)),
+            ("Organic Certification", "food_safety", "Organic Certification Body", "ORGANIC/2023/345", today + timedelta(days=250)),
+            ("Biosafety Certificate", "environmental", "Institutional Biosafety Committee", "BIO/2024/678", today + timedelta(days=90)),
+            ("Environmental Clearance", "environmental", "Ministry of Environment", "ENV/2023/901", today + timedelta(days=500)),
+        ]
+
+        licences = []
+        for name, category, authority, lic_num, expiry in licence_data:
+            licences.append(
+                Licence(
+                    name=name,
+                    category=category,
+                    issuing_authority=authority,
+                    licence_number=lic_num,
+                    cost_inr=random.uniform(5000, 50000),
+                    issue_date=expiry - timedelta(days=365),
+                    expiry_date=expiry,
+                    renewal_date=expiry + timedelta(days=30),
+                    status="active" if expiry > today else ("expiring" if (expiry - today).days < 90 else "active"),
+                    responsible_person="Ravi Kumar",
+                    notes=f"Annual renewal required, expires {expiry.strftime('%Y-%m-%d')}"
+                )
+            )
+        db.add_all(licences)
+
+        db.commit()
+
+        print("\n✅ New modules seeded successfully:")
+        print("   • 2 ColdChainShipments (Nellore to Hyderabad/Chennai)")
+        print("   • 4 additional Employees (aquaculture, crops, poultry, logistics)")
+        print("   • 3 VaccinationSchedules + 2 VaccinationRecords")
+        print("   • 2 WaterSources + 2 WaterStorageTanks + 3 IrrigationZones")
+        print("   • 1 SolarArray + 1 Inverter + 10 EnergyGenerationLogs + 25 EnergyConsumptionLogs")
+        print("   • 12 ReportSchedules (monthly/quarterly/annual mix)")
+        print("   • 5 SubsidySchemes + 2 SubsidyApplications")
+        print("   • 2 NeighbouringFarms + 2 ConsultingContracts")
+        print("   • 3 VisitPackages + 2 VisitorGroups + 3 VisitBookings")
+        print("   • 1 ExpansionPhase + 3 ExpansionMilestones + 3 ExpansionCapex")
+        print("   • 12 SeasonalTasks (monthly schedule)")
+        print("   • 2 SensorCalibrationLogs + 2 BatteryReplacementLogs + 1 CameraFirmwareLog")
+        print("   • 4 WaterOutletLogs + 3 SoilCarbonLogs + 3 PesticideApplicationLogs")
+        print("   • 3 WasteDiversionLogs + 2 BiodiversityLogs + 30 SolarNetSurplusLogs")
+        print("   • 18 Licences (environmental, food safety, labour, financial, organic, compliance)")
+
+    except Exception as e:
+        print(f"❌ Error seeding new modules: {e}")
+        import traceback
+        traceback.print_exc()
+        db.rollback()
+    finally:
+        db.close()
+
+
 if __name__ == "__main__":
     seed()
+    seed_new_modules()

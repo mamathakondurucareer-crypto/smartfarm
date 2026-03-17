@@ -11,7 +11,12 @@ from backend.models.supply_chain import StoreStock, FarmSupplyTransfer
 from backend.models.store import ProductCatalog, StoreConfig
 from backend.models.financial import RevenueEntry, ExpenseEntry
 from backend.models.production import ProductionBatch
-from backend.models.user import User
+from backend.models.inventory import InventoryItem, InventoryTransaction
+from backend.models.user import User, Employee, Attendance
+from backend.models.aquaculture import FeedLog as AquaFeedLog, FishBatch, Pond
+from backend.models.poultry import PoultryFeedLog, PoultryFlock
+from backend.models.qa_traceability import ProductLot, QualityTest
+from backend.models.sensor import SensorDevice, Alert
 from backend.routers.auth import get_current_user
 
 router = APIRouter(prefix="/api/reports", tags=["Reports"])
@@ -377,4 +382,406 @@ def inventory_valuation(
         "total_sku_count": len(items),
         "total_qty": round(total_qty, 2),
         "items": items,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
+# DAILY FARM REPORT
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/daily-farm")
+def daily_farm_report(
+    report_date: Optional[date] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Consolidated daily snapshot: sales, attendance, alerts, inventory movements."""
+    _require_report_role(current_user)
+    target = report_date or date.today()
+    day_start = datetime(target.year, target.month, target.day, 0, 0, 0, tzinfo=timezone.utc)
+    day_end = datetime(target.year, target.month, target.day, 23, 59, 59, tzinfo=timezone.utc)
+
+    # Sales
+    txns = db.query(POSTransaction).filter(
+        POSTransaction.status == "completed",
+        POSTransaction.transaction_time >= day_start,
+        POSTransaction.transaction_time <= day_end,
+    ).all()
+    daily_sales = round(sum(t.total_amount for t in txns), 2)
+
+    # Revenue entries
+    rev_entries = db.query(RevenueEntry).filter(RevenueEntry.entry_date == target).all()
+    daily_revenue = round(sum(r.total_amount for r in rev_entries), 2)
+
+    # Expense entries
+    exp_entries = db.query(ExpenseEntry).filter(ExpenseEntry.entry_date == target).all()
+    daily_expenses = round(sum(e.total_amount for e in exp_entries), 2)
+
+    # Attendance
+    try:
+        attendance_count = db.query(Attendance).filter(Attendance.date == target).count()
+        present_count = db.query(Attendance).filter(
+            Attendance.date == target, Attendance.status == "present"
+        ).count()
+    except Exception:
+        attendance_count = present_count = 0
+
+    # Active alerts
+    try:
+        active_alerts = db.query(Alert).filter(Alert.resolved == False).count()
+        critical_alerts = db.query(Alert).filter(
+            Alert.resolved == False, Alert.alert_type == "critical"
+        ).count()
+    except Exception:
+        active_alerts = critical_alerts = 0
+
+    # Production batches today
+    prod_batches = db.query(ProductionBatch).filter(
+        ProductionBatch.production_date == target
+    ).all()
+
+    return {
+        "report_date": target.isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "sales": {
+            "pos_transactions": len(txns),
+            "pos_revenue": daily_sales,
+        },
+        "financial": {
+            "revenue_entries": len(rev_entries),
+            "total_revenue": daily_revenue,
+            "expense_entries": len(exp_entries),
+            "total_expenses": daily_expenses,
+            "net": round(daily_revenue - daily_expenses, 2),
+        },
+        "workforce": {
+            "total_records": attendance_count,
+            "present": present_count,
+        },
+        "operations": {
+            "production_batches": len(prod_batches),
+            "production_summary": {b.category: round(b.final_quantity, 2) for b in prod_batches},
+        },
+        "alerts": {
+            "active": active_alerts,
+            "critical": critical_alerts,
+        },
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
+# WEEKLY SUMMARY
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/weekly-summary")
+def weekly_summary(
+    week_start: Optional[date] = Query(None, description="Monday of the week (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """7-day aggregated summary from week_start (defaults to current week Monday)."""
+    _require_report_role(current_user)
+
+    if week_start is None:
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())
+    week_end = week_start + timedelta(days=6)
+
+    rev_q = db.query(RevenueEntry).filter(
+        RevenueEntry.entry_date >= week_start,
+        RevenueEntry.entry_date <= week_end,
+    ).all()
+    exp_q = db.query(ExpenseEntry).filter(
+        ExpenseEntry.entry_date >= week_start,
+        ExpenseEntry.entry_date <= week_end,
+    ).all()
+
+    total_rev = round(sum(r.total_amount for r in rev_q), 2)
+    total_exp = round(sum(e.total_amount for e in exp_q), 2)
+
+    # Daily breakdown
+    daily: dict = {}
+    for r in rev_q:
+        k = r.entry_date.isoformat()
+        daily.setdefault(k, {"revenue": 0.0, "expenses": 0.0})
+        daily[k]["revenue"] = round(daily[k]["revenue"] + r.total_amount, 2)
+    for e in exp_q:
+        k = e.entry_date.isoformat()
+        daily.setdefault(k, {"revenue": 0.0, "expenses": 0.0})
+        daily[k]["expenses"] = round(daily[k]["expenses"] + e.total_amount, 2)
+
+    prod_batches = db.query(ProductionBatch).filter(
+        ProductionBatch.production_date >= week_start,
+        ProductionBatch.production_date <= week_end,
+    ).all()
+    prod_by_category: dict = {}
+    for b in prod_batches:
+        prod_by_category[b.category] = round(prod_by_category.get(b.category, 0) + b.final_quantity, 2)
+
+    return {
+        "week_start": week_start.isoformat(),
+        "week_end": week_end.isoformat(),
+        "total_revenue": total_rev,
+        "total_expenses": total_exp,
+        "net_profit": round(total_rev - total_exp, 2),
+        "daily_breakdown": {k: v for k, v in sorted(daily.items())},
+        "production_by_category": prod_by_category,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
+# MONTHLY P&L
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/monthly-pl")
+def monthly_pl(
+    year: int = Query(default=2025),
+    month: int = Query(default=1, ge=1, le=12),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Full month P&L: revenue by stream, expenses by category, gross/net margin."""
+    _require_report_role(current_user)
+
+    import calendar
+    _, last_day = calendar.monthrange(year, month)
+    m_start = date(year, month, 1)
+    m_end = date(year, month, last_day)
+
+    revenues = db.query(RevenueEntry).filter(
+        RevenueEntry.entry_date >= m_start, RevenueEntry.entry_date <= m_end
+    ).all()
+    expenses = db.query(ExpenseEntry).filter(
+        ExpenseEntry.entry_date >= m_start, ExpenseEntry.entry_date <= m_end
+    ).all()
+
+    total_rev = round(sum(r.total_amount for r in revenues), 2)
+    total_exp = round(sum(e.total_amount for e in expenses), 2)
+    gross = round(total_rev - total_exp, 2)
+    margin = round(gross / total_rev * 100, 2) if total_rev else 0.0
+
+    by_stream: dict = {}
+    for r in revenues:
+        by_stream[r.stream] = round(by_stream.get(r.stream, 0) + r.total_amount, 2)
+
+    by_category: dict = {}
+    for e in expenses:
+        by_category[e.category] = round(by_category.get(e.category, 0) + e.total_amount, 2)
+
+    # POS contribution
+    pos_start = datetime(year, month, 1, tzinfo=timezone.utc)
+    pos_end = datetime(year, month, last_day, 23, 59, 59, tzinfo=timezone.utc)
+    pos_txns = db.query(POSTransaction).filter(
+        POSTransaction.status == "completed",
+        POSTransaction.transaction_time >= pos_start,
+        POSTransaction.transaction_time <= pos_end,
+    ).all()
+    pos_revenue = round(sum(t.total_amount for t in pos_txns), 2)
+
+    return {
+        "year": year,
+        "month": month,
+        "period": f"{m_start.isoformat()} to {m_end.isoformat()}",
+        "revenue": {
+            "total": total_rev,
+            "by_stream": by_stream,
+            "pos_sales": pos_revenue,
+        },
+        "expenses": {
+            "total": total_exp,
+            "by_category": by_category,
+        },
+        "profitability": {
+            "gross_profit": gross,
+            "gross_margin_pct": margin,
+        },
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
+# INVESTOR QUARTERLY REPORT
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/investor-quarterly")
+def investor_quarterly(
+    year: int = Query(default=2025),
+    quarter: int = Query(default=1, ge=1, le=4),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Investor-facing quarterly summary: revenue, production volume, key KPIs."""
+    _require_report_role(current_user)
+
+    import calendar
+    q_month_start = (quarter - 1) * 3 + 1
+    q_month_end = q_month_start + 2
+    _, last_day = calendar.monthrange(year, q_month_end)
+    q_start = date(year, q_month_start, 1)
+    q_end = date(year, q_month_end, last_day)
+
+    revenues = db.query(RevenueEntry).filter(
+        RevenueEntry.entry_date >= q_start, RevenueEntry.entry_date <= q_end
+    ).all()
+    expenses = db.query(ExpenseEntry).filter(
+        ExpenseEntry.entry_date >= q_start, ExpenseEntry.entry_date <= q_end
+    ).all()
+
+    total_rev = round(sum(r.total_amount for r in revenues), 2)
+    total_exp = round(sum(e.total_amount for e in expenses), 2)
+    net_profit = round(total_rev - total_exp, 2)
+
+    prod_batches = db.query(ProductionBatch).filter(
+        ProductionBatch.production_date >= q_start,
+        ProductionBatch.production_date <= q_end,
+    ).all()
+    total_production_kg = round(sum(b.final_quantity for b in prod_batches), 2)
+
+    by_stream: dict = {}
+    for r in revenues:
+        by_stream[r.stream] = round(by_stream.get(r.stream, 0) + r.total_amount, 2)
+
+    return {
+        "year": year,
+        "quarter": f"Q{quarter}",
+        "period": f"{q_start.isoformat()} to {q_end.isoformat()}",
+        "financial_summary": {
+            "total_revenue": total_rev,
+            "total_expenses": total_exp,
+            "net_profit": net_profit,
+            "profit_margin_pct": round(net_profit / total_rev * 100, 2) if total_rev else 0.0,
+            "revenue_by_stream": by_stream,
+        },
+        "operations": {
+            "production_batches": len(prod_batches),
+            "total_production_kg": total_production_kg,
+        },
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
+# FEED COST ANALYSIS BY SPECIES
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/feed-cost-analysis")
+def feed_cost_analysis(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Feed cost breakdown by species (aquaculture + poultry)."""
+    _require_report_role(current_user)
+
+    result: dict = {}
+
+    # Aquaculture feed
+    try:
+        aq_q = db.query(AquaFeedLog)
+        if start_date:
+            aq_q = aq_q.filter(AquaFeedLog.feed_date >= start_date)
+        if end_date:
+            aq_q = aq_q.filter(AquaFeedLog.feed_date <= end_date)
+        aq_logs = aq_q.all()
+
+        for log in aq_logs:
+            species = "fish"
+            if species not in result:
+                result[species] = {"total_feed_kg": 0.0, "total_cost": 0.0, "entries": 0}
+            result[species]["total_feed_kg"] = round(result[species]["total_feed_kg"] + (log.quantity_kg or 0), 2)
+            result[species]["total_cost"] = round(result[species]["total_cost"] + (log.cost or 0), 2)
+            result[species]["entries"] += 1
+    except Exception:
+        pass
+
+    # Poultry feed
+    try:
+        po_q = db.query(PoultryFeedLog)
+        if start_date:
+            po_q = po_q.filter(PoultryFeedLog.feed_date >= start_date)
+        if end_date:
+            po_q = po_q.filter(PoultryFeedLog.feed_date <= end_date)
+        po_logs = po_q.all()
+
+        for log in po_logs:
+            species = getattr(log, "species", "poultry") or "poultry"
+            if species not in result:
+                result[species] = {"total_feed_kg": 0.0, "total_cost": 0.0, "entries": 0}
+            result[species]["total_feed_kg"] = round(result[species]["total_feed_kg"] + (log.quantity_kg or 0), 2)
+            result[species]["total_cost"] = round(result[species]["total_cost"] + (log.cost or 0), 2)
+            result[species]["entries"] += 1
+    except Exception:
+        pass
+
+    total_cost = round(sum(v["total_cost"] for v in result.values()), 2)
+
+    for species_data in result.values():
+        kg = species_data["total_feed_kg"]
+        cost = species_data["total_cost"]
+        species_data["cost_per_kg"] = round(cost / kg, 2) if kg else 0.0
+
+    return {
+        "period": {
+            "start": start_date.isoformat() if start_date else None,
+            "end": end_date.isoformat() if end_date else None,
+        },
+        "total_feed_cost": total_cost,
+        "by_species": result,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
+# LOT TRACEABILITY REPORT
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/lot-traceability/{batch_id}")
+def lot_traceability(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Full traceability chain for a product lot: QA tests, production batch, source."""
+    _require_report_role(current_user)
+
+    lot = db.query(ProductLot).filter(ProductLot.lot_number == batch_id).first()
+    if not lot:
+        raise HTTPException(404, f"Product lot '{batch_id}' not found")
+
+    qa_tests = db.query(QualityTest).filter(QualityTest.lot_id == lot.id).all()
+
+    production = None
+    if lot.production_batch_id:
+        production = db.query(ProductionBatch).filter(
+            ProductionBatch.id == lot.production_batch_id
+        ).first()
+
+    return {
+        "lot_number": lot.lot_number,
+        "product_name": lot.product_name,
+        "category": lot.category,
+        "quantity_kg": lot.quantity_kg,
+        "unit": lot.unit,
+        "production_date": lot.production_date.isoformat() if lot.production_date else None,
+        "expiry_date": lot.expiry_date.isoformat() if lot.expiry_date else None,
+        "status": lot.status,
+        "source_batch": lot.source_batch_ref,
+        "production_batch": {
+            "id": production.id,
+            "category": production.category,
+            "source": production.source,
+            "production_date": production.production_date.isoformat(),
+            "final_quantity": production.final_quantity,
+        } if production else None,
+        "qa_tests": [
+            {
+                "id": t.id,
+                "test_type": t.test_type,
+                "test_date": t.test_date.isoformat(),
+                "result": t.result,
+                "passed": t.passed,
+                "tested_by": t.tested_by,
+            }
+            for t in qa_tests
+        ],
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
