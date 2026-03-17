@@ -1,14 +1,10 @@
 /**
- * API base URL — change API_BASE to your machine's LAN IP when
- * testing on a physical device (e.g. "http://192.168.1.10:8000").
- * For web/simulator localhost:8000 works fine.
+ * API base URL — injected at Docker build time via EXPO_PUBLIC_API_URL.
+ * Falls back to localhost:8002 for local dev outside Docker.
+ * For physical device testing, set EXPO_PUBLIC_API_URL to your LAN IP.
  */
-import { Platform } from "react-native";
-
 export const API_BASE =
-  Platform.OS === "web"
-    ? "http://localhost:8002"   // Docker host port (docker-compose maps 8002→8000)
-    : "http://localhost:8002";  // replace with LAN IP for physical device
+  process.env.EXPO_PUBLIC_API_URL || "http://localhost:8002";
 
 // Anthropic Claude API key — required for the AI Analysis screen.
 // Get yours at https://console.anthropic.com

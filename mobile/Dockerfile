@@ -1,5 +1,8 @@
 FROM node:20-alpine AS build
 
+ARG EXPO_PUBLIC_API_URL=http://localhost:8002
+ENV EXPO_PUBLIC_API_URL=$EXPO_PUBLIC_API_URL
+
 WORKDIR /app
 
 COPY package.json ./
