@@ -224,21 +224,23 @@ const NurseryBackendScreen = () => {
     const capacityUsed = batchesSummary.total_capacity
       ? ((batchesSummary.total_ready / batchesSummary.total_capacity) * 100).toFixed(1)
       : 0;
+    const isEmpty = batchesSummary.total_batches === 0;
+    const valueColor = isEmpty ? "#bdbdbd" : "#4CAF50";
     return (
-      <View style={styles.summaryCard}>
+      <View style={[styles.summaryCard, isEmpty && { borderLeftColor: "#bdbdbd" }]}>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Total Batches</Text>
-          <Text style={styles.summaryValue}>{batchesSummary.total_batches}</Text>
+          <Text style={[styles.summaryValue, { color: valueColor }]}>{batchesSummary.total_batches}</Text>
         </View>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Seedlings Ready</Text>
-          <Text style={styles.summaryValue}>
+          <Text style={[styles.summaryValue, { color: valueColor }]}>
             {batchesSummary.total_ready}
           </Text>
         </View>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Capacity Used</Text>
-          <Text style={styles.summaryValue}>{capacityUsed}%</Text>
+          <Text style={[styles.summaryValue, { color: valueColor }]}>{capacityUsed}%</Text>
         </View>
       </View>
     );
@@ -263,6 +265,13 @@ const NurseryBackendScreen = () => {
       <FlatList
         data={batches}
         keyExtractor={(item) => item.id.toString()}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Sprout size={48} color="#bdbdbd" />
+            <Text style={styles.emptyTitle}>No batches yet</Text>
+            <Text style={styles.emptyText}>Tap "+ Add Batch" to record your first nursery batch.</Text>
+          </View>
+        }
         renderItem={({ item }) => (
           <View
             style={[
@@ -348,6 +357,13 @@ const NurseryBackendScreen = () => {
       <FlatList
         data={orders}
         keyExtractor={(item) => item.id.toString()}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <ShoppingCart size={48} color="#bdbdbd" />
+            <Text style={styles.emptyTitle}>No orders yet</Text>
+            <Text style={styles.emptyText}>Tap "+ Add Order" to record your first seedling sale.</Text>
+          </View>
+        }
         renderItem={({ item }) => (
           <View
             style={[
@@ -707,6 +723,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#999",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: "#bdbdbd",
+    textAlign: "center",
+    lineHeight: 20,
   },
   modalOverlay: {
     flex: 1,

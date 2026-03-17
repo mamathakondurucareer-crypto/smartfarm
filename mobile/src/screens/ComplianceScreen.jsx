@@ -252,6 +252,13 @@ const ComplianceScreen = () => {
       <FlatList
         data={licences}
         keyExtractor={(item) => item.id.toString()}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Shield size={48} color="#bdbdbd" />
+            <Text style={styles.emptyTitle}>No licences added</Text>
+            <Text style={styles.emptyText}>Tap "+ Add Licence" to track your farm permits and certificates.</Text>
+          </View>
+        }
         renderItem={({ item }) => {
           const days_left = item.expiry_date
             ? Math.ceil(
@@ -397,6 +404,17 @@ const ComplianceScreen = () => {
           return true;
         })}
         keyExtractor={(item) => item.id.toString()}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <CheckSquare size={48} color="#bdbdbd" />
+            <Text style={styles.emptyTitle}>
+              {taskFilter === "completed" ? "No completed tasks" : taskFilter === "pending" ? "No pending tasks" : "No tasks yet"}
+            </Text>
+            <Text style={styles.emptyText}>
+              {taskFilter === "all" ? "Tap \"+ Add Task\" to schedule your first compliance task." : "Switch to \"All\" to see all tasks."}
+            </Text>
+          </View>
+        }
         renderItem={({ item }) => (
           <View
             style={[
@@ -803,6 +821,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#999",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: "#bdbdbd",
+    textAlign: "center",
+    lineHeight: 20,
   },
   modalOverlay: {
     flex: 1,

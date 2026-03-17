@@ -193,6 +193,13 @@ const QAScreen = () => {
       <FlatList
         data={lots}
         keyExtractor={(item) => item.id.toString()}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Package size={48} color="#bdbdbd" />
+            <Text style={styles.emptyTitle}>No production lots yet</Text>
+            <Text style={styles.emptyText}>Tap "+ Add Lot" to create a traceable production lot.</Text>
+          </View>
+        }
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.listItem}
@@ -244,6 +251,13 @@ const QAScreen = () => {
       <FlatList
         data={tests}
         keyExtractor={(item) => item.id.toString()}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <CheckCircle size={48} color="#bdbdbd" />
+            <Text style={styles.emptyTitle}>No quality tests recorded</Text>
+            <Text style={styles.emptyText}>Tap "+ Add Test" to log a quality test against a lot.</Text>
+          </View>
+        }
         renderItem={({ item }) => (
           <View style={styles.listItem}>
             <View style={styles.listItemContent}>
@@ -290,6 +304,13 @@ const QAScreen = () => {
       <FlatList
         data={quarantineRecords}
         keyExtractor={(item) => item.id.toString()}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <AlertTriangle size={48} color="#bdbdbd" />
+            <Text style={styles.emptyTitle}>No quarantine records</Text>
+            <Text style={styles.emptyText}>Quarantine records appear here when lots are flagged for review.</Text>
+          </View>
+        }
         renderItem={({ item }) => {
           const lotInfo = lots.find((l) => l.id === item.lot_id);
           return (
@@ -736,6 +757,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#999",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: "#bdbdbd",
+    textAlign: "center",
+    lineHeight: 20,
   },
   modalOverlay: {
     flex: 1,
