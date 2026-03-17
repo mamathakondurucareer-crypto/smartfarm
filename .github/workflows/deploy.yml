@@ -46,11 +46,11 @@ jobs:
         with:
           ref: ${{ steps.branch.outputs.ref }}
 
-      # ── 3. Write .env file from GitHub environment secrets ───────────────────
-      - name: Write .env.${{ github.event.inputs.environment }}
+      # ── 3. Write .env.prod from GitHub environment secrets (test uses committed .env.test) ──
+      - name: Write .env.prod (from secrets)
+        if: github.event.inputs.environment == 'prod'
         run: |
-          ENV="${{ github.event.inputs.environment }}"
-          cat > ".env.${ENV}" <<EOF
+          cat > ".env.prod" <<EOF
           POSTGRES_DB=${{ secrets.POSTGRES_DB }}
           POSTGRES_USER=${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
@@ -91,10 +91,10 @@ jobs:
           docker compose -f "docker-compose.${ENV}.yml" -p "smartfarm_${ENV}" logs backend
           exit 1
 
-      # ── 6. Cleanup temp .env ─────────────────────────────────────────────────
-      - name: Remove .env file
-        if: always()
-        run: rm -f ".env.${{ github.event.inputs.environment }}"
+      # ── 6. Cleanup temp .env.prod (do not remove committed .env.test) ──────────
+      - name: Remove .env.prod
+        if: always() && github.event.inputs.environment == 'prod'
+        run: rm -f ".env.prod"
 
       # ── 7. Summary ───────────────────────────────────────────────────────────
       - name: Deployment summary
