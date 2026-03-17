@@ -20,8 +20,11 @@ export default function DrawerContent() {
   const user       = useAuthStore((s) => s.user);
   const logout     = useAuthStore((s) => s.logout);
   const userRole   = (user?.role ?? "VIEWER").toUpperCase();
+  const enabledModules = useFarmStore((s) => s.farm.enabledModules ?? {});
 
-  const visibleScreens = SCREENS.filter((s) => canAccessScreen(s.name, userRole));
+  const visibleScreens = SCREENS.filter((s) =>
+    canAccessScreen(s.name, userRole) && enabledModules[s.name] !== false
+  );
 
   return (
     <View style={styles.container}>

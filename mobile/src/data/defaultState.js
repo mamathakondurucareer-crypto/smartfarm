@@ -83,5 +83,13 @@ export const defaultFarmState = () => ({
   },
 
   aiConversations: [],
+  enabledModules: {
+    Dashboard: true, Aquaculture: true, Greenhouse: true, VerticalFarm: true,
+    Poultry: true, Water: true, Energy: true, Automation: true, Nursery: true,
+    StockProduced: true, StockSales: true, Packing: true, Scanner: true,
+    Store: true, POS: true, Logistics: true, Market: true, Financial: true,
+    Reports: true, AI: true, ServiceRequests: true, ActivityLog: true,
+    Users: true, Settings: true,
+  },
   lastUpdated: Date.now(),
 });

@@ -7,7 +7,7 @@ import {
   Home, Fish, Leaf, Sprout, Egg,
   Droplets, Sun, Zap, Truck, DollarSign, Brain, Users,
   Store, ShoppingCart, ScanLine, Package,
-  BarChart3, ClipboardList, Wrench, Activity, Box, MapPin,
+  BarChart3, ClipboardList, Wrench, Activity, Box, MapPin, Settings,
 } from "lucide-react-native";
 import { colors } from "./theme";
 
@@ -44,4 +44,5 @@ export const SCREENS = [
   { name: "ServiceRequests",  label: "Service Requests", Icon: Wrench,        color: colors.service },
   { name: "ActivityLog",      label: "Activity Log",     Icon: Activity,      color: colors.textDim },
   { name: "Users",            label: "User Management",  Icon: Users,         color: colors.info },
+  { name: "Settings",         label: "Settings",         Icon: Settings,      color: colors.textDim },
 ];

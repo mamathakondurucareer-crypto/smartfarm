@@ -7,8 +7,8 @@ import { Platform } from "react-native";
 
 export const API_BASE =
   Platform.OS === "web"
-    ? "http://localhost:8000"
-    : "http://localhost:8000"; // replace with LAN IP for physical device
+    ? "http://localhost:8002"   // Docker host port (docker-compose maps 8002→8000)
+    : "http://localhost:8002";  // replace with LAN IP for physical device
 
 // Anthropic Claude API key — required for the AI Analysis screen.
 // Get yours at https://console.anthropic.com

@@ -3,7 +3,7 @@
  */
 import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { api } from "../services/api";
+import { api, setUnauthorizedHandler } from "../services/api";
 
 const AUTH_KEY = "smartfarm-auth-v1";
 
@@ -14,6 +14,12 @@ const useAuthStore = create((set, get) => ({
 
   // ─── Hydrate from storage on app launch ───────────────────────
   loadAuth: async () => {
+    // Register global 401 handler so any API call auto-logs out
+    setUnauthorizedHandler(() => {
+      AsyncStorage.removeItem(AUTH_KEY);
+      set({ token: null, user: null });
+    });
+
     try {
       const raw = await AsyncStorage.getItem(AUTH_KEY);
       if (raw) {
@@ -21,7 +27,15 @@ const useAuthStore = create((set, get) => ({
         // Normalise: ensure role is uppercase; older sessions may use role_name
         if (!user.role && user.role_name) user.role = user.role_name;
         if (user.role) user.role = user.role.toUpperCase();
-        set({ token, user, authReady: true });
+
+        // Validate token against the server — clears stale/pre-security-update tokens
+        try {
+          await api.me(token);
+          set({ token, user, authReady: true });
+        } catch {
+          await AsyncStorage.removeItem(AUTH_KEY);
+          set({ authReady: true });
+        }
       } else {
         set({ authReady: true });
       }

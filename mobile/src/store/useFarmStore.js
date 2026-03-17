@@ -77,6 +77,74 @@ const useFarmStore = create((set, get) => ({
     set((s) => ({ farm: { ...s.farm, aiConversations: messages.slice(-20) } }));
     get().persistToStorage();
   },
+
+  // ─── Module toggles ────────────────────────────────────────────
+  toggleModule: (name) => {
+    set((s) => ({
+      farm: { ...s.farm, enabledModules: { ...s.farm.enabledModules, [name]: !s.farm.enabledModules[name] } },
+    }));
+    get().persistToStorage();
+  },
+
+  // ─── Aquaculture ───────────────────────────────────────────────
+  updatePond: (id, updates) => {
+    set((s) => ({ farm: { ...s.farm, ponds: s.farm.ponds.map((p) => p.id === id ? { ...p, ...updates } : p) } }));
+    get().persistToStorage();
+  },
+  addPond: (pond) => {
+    set((s) => ({ farm: { ...s.farm, ponds: [...s.farm.ponds, pond] } }));
+    get().persistToStorage();
+  },
+  removePond: (id) => {
+    set((s) => ({ farm: { ...s.farm, ponds: s.farm.ponds.filter((p) => p.id !== id) } }));
+    get().persistToStorage();
+  },
+
+  // ─── Greenhouse ────────────────────────────────────────────────
+  updateGreenhouse: (id, updates) => {
+    set((s) => ({ farm: { ...s.farm, greenhouse: s.farm.greenhouse.map((c) => c.id === id ? { ...c, ...updates } : c) } }));
+    get().persistToStorage();
+  },
+  addGreenhouse: (crop) => {
+    set((s) => ({ farm: { ...s.farm, greenhouse: [...s.farm.greenhouse, crop] } }));
+    get().persistToStorage();
+  },
+  removeGreenhouse: (id) => {
+    set((s) => ({ farm: { ...s.farm, greenhouse: s.farm.greenhouse.filter((c) => c.id !== id) } }));
+    get().persistToStorage();
+  },
+
+  // ─── Vertical Farm ─────────────────────────────────────────────
+  updateVerticalFarm: (crop, updates) => {
+    set((s) => ({ farm: { ...s.farm, verticalFarm: s.farm.verticalFarm.map((v) => v.crop === crop ? { ...v, ...updates } : v) } }));
+    get().persistToStorage();
+  },
+  addVerticalFarm: (batch) => {
+    set((s) => ({ farm: { ...s.farm, verticalFarm: [...s.farm.verticalFarm, batch] } }));
+    get().persistToStorage();
+  },
+  removeVerticalFarm: (crop) => {
+    set((s) => ({ farm: { ...s.farm, verticalFarm: s.farm.verticalFarm.filter((v) => v.crop !== crop) } }));
+    get().persistToStorage();
+  },
+
+  // ─── Poultry / Ducks / Bees / Nursery ─────────────────────────
+  updatePoultry: (updates) => {
+    set((s) => ({ farm: { ...s.farm, poultry: { ...s.farm.poultry, ...updates } } }));
+    get().persistToStorage();
+  },
+  updateDucks: (updates) => {
+    set((s) => ({ farm: { ...s.farm, ducks: { ...s.farm.ducks, ...updates } } }));
+    get().persistToStorage();
+  },
+  updateBees: (updates) => {
+    set((s) => ({ farm: { ...s.farm, bees: { ...s.farm.bees, ...updates } } }));
+    get().persistToStorage();
+  },
+  updateNursery: (updates) => {
+    set((s) => ({ farm: { ...s.farm, nursery: { ...s.farm.nursery, ...updates } } }));
+    get().persistToStorage();
+  },
 }));
 
 // ─── Helpers ───────────────────────────────────────────────────────

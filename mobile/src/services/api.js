@@ -3,6 +3,12 @@
  */
 import { API_BASE } from "../config/apiConfig";
 
+// Global 401 handler — set once at app boot by useAuthStore
+let _onUnauthorized = null;
+export function setUnauthorizedHandler(fn) {
+  _onUnauthorized = fn;
+}
+
 async function request(method, path, body, token, formEncoded = false) {
   const headers = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -26,6 +32,9 @@ async function request(method, path, body, token, formEncoded = false) {
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 401 && _onUnauthorized) {
+      _onUnauthorized();
+    }
     throw new Error(data.detail || `Request failed (${res.status})`);
   }
   return data;

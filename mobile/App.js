@@ -51,6 +51,7 @@ import AIScreen                from "./src/screens/AIScreen";
 import ServiceRequestsScreen   from "./src/screens/ServiceRequestsScreen";
 import ActivityLogScreen       from "./src/screens/ActivityLogScreen";
 import UsersScreen             from "./src/screens/UsersScreen";
+import SettingsScreen          from "./src/screens/SettingsScreen";
 
 const SCREEN_MAP = {
   // Farm ops
@@ -81,6 +82,7 @@ const SCREEN_MAP = {
   ServiceRequests: ServiceRequestsScreen,
   ActivityLog:     ActivityLogScreen,
   Users:           UsersScreen,
+  Settings:        SettingsScreen,
 };
 
 // ─── Error boundary ───────────────────────────────────────────────
