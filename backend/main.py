@@ -103,6 +103,19 @@ from backend.routers.drones import router as drones_router
 from backend.routers.qa_traceability import router as qa_router
 from backend.routers.compliance import router as compliance_router
 from backend.routers.nursery import router as nursery_router
+from backend.routers.cold_chain import router as cold_chain_router
+from backend.routers.hr import router as hr_router
+from backend.routers.vaccination import router as vaccination_router
+from backend.routers.water import router as water_router
+from backend.routers.energy import router as energy_router
+from backend.routers.audit import router as audit_router
+from backend.routers.agritourism import router as agritourism_router
+from backend.routers.contracts import router as contracts_router
+from backend.routers.subsidies import router as subsidies_router
+from backend.routers.expansion import router as expansion_router
+from backend.routers.seasonal import router as seasonal_router
+from backend.routers.sensor_calibration import router as sensor_calibration_router
+from backend.routers.environmental import router as environmental_router
 
 app.include_router(auth_router)
 app.include_router(dashboard_router)
@@ -131,6 +144,19 @@ app.include_router(drones_router)
 app.include_router(qa_router)
 app.include_router(compliance_router)
 app.include_router(nursery_router)
+app.include_router(cold_chain_router)
+app.include_router(hr_router)
+app.include_router(vaccination_router)
+app.include_router(water_router)
+app.include_router(energy_router)
+app.include_router(audit_router)
+app.include_router(agritourism_router)
+app.include_router(contracts_router)
+app.include_router(subsidies_router)
+app.include_router(expansion_router)
+app.include_router(seasonal_router)
+app.include_router(sensor_calibration_router)
+app.include_router(environmental_router)
 
 
 # ── Health Check (public — includes DB ping for self-healing probes) ──

@@ -126,3 +126,102 @@ class LeaveRequest(Base, TimestampMixin):
     approved_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"))
 
     employee: Mapped["Employee"] = relationship("Employee", back_populates="leave_requests")
+
+
+class LeaveBalance(Base, TimestampMixin):
+    """Annual leave entitlement and balance per employee per leave type."""
+    __tablename__ = "leave_balances"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    employee_id: Mapped[int] = mapped_column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
+    leave_type: Mapped[str] = mapped_column(String(20), nullable=False)  # casual | sick | earned | unpaid
+    entitled_days: Mapped[int] = mapped_column(Integer, default=0)
+    taken_days: Mapped[float] = mapped_column(Float, default=0)
+    # remaining = entitled - taken (computed in application layer)
+
+    employee: Mapped["Employee"] = relationship("Employee")
+
+
+class PayrollRun(Base, TimestampMixin):
+    """Monthly payroll calculation per employee."""
+    __tablename__ = "payroll_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    employee_id: Mapped[int] = mapped_column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    month: Mapped[int] = mapped_column(Integer, nullable=False)   # 1–12
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Earnings
+    basic_salary: Mapped[float] = mapped_column(Float, default=0)
+    hra: Mapped[float] = mapped_column(Float, default=0)
+    other_allowances: Mapped[float] = mapped_column(Float, default=0)
+    overtime_hours: Mapped[float] = mapped_column(Float, default=0)
+    ot_pay: Mapped[float] = mapped_column(Float, default=0)       # 2× hourly for >48 hrs/week
+    gross_salary: Mapped[float] = mapped_column(Float, default=0)
+    # Deductions
+    pf_employee: Mapped[float] = mapped_column(Float, default=0)  # 12% of basic
+    pf_employer: Mapped[float] = mapped_column(Float, default=0)  # 12% of basic
+    esi_employee: Mapped[float] = mapped_column(Float, default=0) # 0.75% of gross
+    esi_employer: Mapped[float] = mapped_column(Float, default=0) # 3.25% of gross
+    tds: Mapped[float] = mapped_column(Float, default=0)
+    other_deductions: Mapped[float] = mapped_column(Float, default=0)
+    total_deductions: Mapped[float] = mapped_column(Float, default=0)
+    net_pay: Mapped[float] = mapped_column(Float, default=0)
+    # Attendance summary for the month
+    working_days: Mapped[int] = mapped_column(Integer, default=26)
+    present_days: Mapped[float] = mapped_column(Float, default=0)
+    absent_days: Mapped[float] = mapped_column(Float, default=0)
+    leave_days: Mapped[float] = mapped_column(Float, default=0)
+    # Meta
+    status: Mapped[str] = mapped_column(String(20), default="draft")  # draft | processed | paid
+    payslip_url: Mapped[Optional[str]] = mapped_column(String(500))
+    processed_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"))
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    employee: Mapped["Employee"] = relationship("Employee")
+
+
+class PerformanceReview(Base, TimestampMixin):
+    """Quarterly/annual performance review per employee."""
+    __tablename__ = "performance_reviews"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    employee_id: Mapped[int] = mapped_column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    review_period: Mapped[str] = mapped_column(String(20), nullable=False)  # Q1_2025, Q2_2025, Annual_2025
+    review_date: Mapped[date] = mapped_column(Date, nullable=False)
+    # Scores (1–5)
+    productivity_score: Mapped[float] = mapped_column(Float, default=0)
+    quality_score: Mapped[float] = mapped_column(Float, default=0)
+    punctuality_score: Mapped[float] = mapped_column(Float, default=0)
+    teamwork_score: Mapped[float] = mapped_column(Float, default=0)
+    overall_score: Mapped[float] = mapped_column(Float, default=0)  # computed avg
+    # Narrative
+    strengths: Mapped[Optional[str]] = mapped_column(Text)
+    areas_for_improvement: Mapped[Optional[str]] = mapped_column(Text)
+    recommended_increment_pct: Mapped[float] = mapped_column(Float, default=0)
+    status: Mapped[str] = mapped_column(String(20), default="draft")  # draft | final
+    reviewed_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"))
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    employee: Mapped["Employee"] = relationship("Employee")
+
+
+class TrainingRecord(Base, TimestampMixin):
+    """Employee training and certification log."""
+    __tablename__ = "training_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    employee_id: Mapped[int] = mapped_column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    training_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    training_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    # safety | technical | compliance | soft_skills | on_the_job | external
+    conducted_by: Mapped[Optional[str]] = mapped_column(String(150))
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    hours: Mapped[float] = mapped_column(Float, default=0)
+    score: Mapped[Optional[float]] = mapped_column(Float)        # 0–100 if assessed
+    certificate_url: Mapped[Optional[str]] = mapped_column(String(500))
+    status: Mapped[str] = mapped_column(String(20), default="scheduled")  # scheduled | completed | failed
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    employee: Mapped["Employee"] = relationship("Employee")
