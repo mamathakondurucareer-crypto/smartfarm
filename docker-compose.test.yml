@@ -1,0 +1,60 @@
+# ── Test environment ──────────────────────────────────────────────────────────
+# Ports: db=5434  backend=8003  mobile=8084
+# Seed:  full test data (all roles, one user per role)
+# Usage: docker compose -f docker-compose.test.yml --env-file .env.test up -d --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-smartfarm_test}
+      POSTGRES_USER:     ${POSTGRES_USER:-smartfarm_test}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartfarm_test_pass}
+    volumes:
+      - pgdata_test:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartfarm_test}"]
+      interval: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
+    environment:
+      DATABASE_URL:       postgresql://${POSTGRES_USER:-smartfarm_test}:${POSTGRES_PASSWORD:-smartfarm_test_pass}@db:5432/${POSTGRES_DB:-smartfarm_test}
+      SECRET_KEY:         ${SECRET_KEY}
+      ANTHROPIC_API_KEY:  ${ANTHROPIC_API_KEY:-}
+      ALLOWED_ORIGINS:    ${ALLOWED_ORIGINS:-http://localhost:8084}
+      DEBUG:              "false"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "python -m backend.seeds.seed_data && uvicorn backend.main:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  mobile:
+    build:
+      context: ./mobile
+      dockerfile: Dockerfile
+    ports:
+      - "8084:8081"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata_test:

@@ -1,7 +1,9 @@
 # Environment
 .env
-*.env
-!.env.example
+.env.prod
+!.env.test
+!.env.prod.example
+!config/.env.example
 
 # Python
 __pycache__/
