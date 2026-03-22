@@ -1,13 +1,14 @@
 /**
  * Custom drawer content — permanent sidebar on tablet/desktop,
  * slide-in drawer on mobile.
- * Filters nav items by the logged-in user's role.
+ * Screens are grouped by department/function (section) with
+ * collapsible section headers. Filters by the logged-in user's role.
  */
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
-import { Wifi, WifiOff, LogOut, User } from "lucide-react-native";
+import { Wifi, WifiOff, LogOut, User, ChevronDown, ChevronRight } from "lucide-react-native";
 import { colors, spacing, radius, fontSize } from "../../config/theme";
-import { SCREENS } from "../../config/navigation";
+import { SCREENS, SECTIONS } from "../../config/navigation";
 import { canAccessScreen } from "../../config/permissions";
 import useFarmStore  from "../../store/useFarmStore";
 import useAuthStore  from "../../store/useAuthStore";
@@ -15,16 +16,31 @@ import { useNavigation } from "../../context/NavigationContext";
 
 export default function DrawerContent() {
   const { activeScreen, navigate } = useNavigation();
-  const simRunning = useFarmStore((s) => s.simRunning);
-  const toggleSim  = useFarmStore((s) => s.toggleSimulation);
-  const user       = useAuthStore((s) => s.user);
-  const logout     = useAuthStore((s) => s.logout);
-  const userRole   = (user?.role ?? "VIEWER").toUpperCase();
+  const simRunning     = useFarmStore((s) => s.simRunning);
+  const toggleSim      = useFarmStore((s) => s.toggleSimulation);
+  const user           = useAuthStore((s) => s.user);
+  const logout         = useAuthStore((s) => s.logout);
+  const userRole       = (user?.role ?? "VIEWER").toUpperCase();
   const enabledModules = useFarmStore((s) => s.farm.enabledModules ?? {});
 
-  const visibleScreens = SCREENS.filter((s) =>
-    canAccessScreen(s.name, userRole) && enabledModules[s.name] !== false
-  );
+  // All sections start expanded
+  const [collapsed, setCollapsed] = useState({});
+  const toggleSection = (key) =>
+    setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // Filter screens by role + module toggles, then group by section
+  const grouped = useMemo(() => {
+    const visible = SCREENS.filter(
+      (s) => canAccessScreen(s.name, userRole) && enabledModules[s.name] !== false
+    );
+    const bySection = {};
+    for (const screen of visible) {
+      const key = screen.section ?? "admin";
+      if (!bySection[key]) bySection[key] = [];
+      bySection[key].push(screen);
+    }
+    return bySection;
+  }, [userRole, enabledModules]);
 
   return (
     <View style={styles.container}>
@@ -45,29 +61,51 @@ export default function DrawerContent() {
         </View>
       )}
 
-      {/* Navigation items filtered by role */}
+      {/* Grouped navigation */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {visibleScreens.map(({ name, label, Icon, color }) => {
-          const isActive = activeScreen === name;
+        {SECTIONS.map(({ key, label }) => {
+          const screens = grouped[key];
+          if (!screens || screens.length === 0) return null;
+          const isCollapsed = !!collapsed[key];
+
           return (
-            <TouchableOpacity
-              key={name}
-              onPress={() => navigate(name)}
-              style={[styles.navItem, isActive && { backgroundColor: color + "20" }]}
-              activeOpacity={0.7}
-            >
-              <Icon size={16} color={isActive ? color : colors.textDim} />
-              <Text style={[styles.navLabel, { color: isActive ? color : colors.textDim }]}>
-                {label}
-              </Text>
-            </TouchableOpacity>
+            <View key={key}>
+              {/* Section header */}
+              <TouchableOpacity
+                onPress={() => toggleSection(key)}
+                style={styles.sectionHeader}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.sectionLabel}>{label.toUpperCase()}</Text>
+                {isCollapsed
+                  ? <ChevronRight size={12} color={colors.textMuted} />
+                  : <ChevronDown  size={12} color={colors.textMuted} />}
+              </TouchableOpacity>
+
+              {/* Section items */}
+              {!isCollapsed && screens.map(({ name, label: itemLabel, Icon, color }) => {
+                const isActive = activeScreen === name;
+                return (
+                  <TouchableOpacity
+                    key={name}
+                    onPress={() => navigate(name)}
+                    style={[styles.navItem, isActive && { backgroundColor: color + "20" }]}
+                    activeOpacity={0.7}
+                  >
+                    <Icon size={16} color={isActive ? color : colors.textDim} />
+                    <Text style={[styles.navLabel, { color: isActive ? color : colors.textDim }]}>
+                      {itemLabel}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           );
         })}
       </ScrollView>
 
       {/* Bottom controls */}
       <View style={styles.bottomSection}>
-        {/* Simulation toggle */}
         <TouchableOpacity
           onPress={toggleSim}
           style={[styles.simBtn, simRunning && { borderColor: colors.primary, backgroundColor: colors.primary + "15" }]}
@@ -81,7 +119,6 @@ export default function DrawerContent() {
           </Text>
         </TouchableOpacity>
 
-        {/* Logout */}
         <TouchableOpacity onPress={logout} style={styles.logoutBtn} activeOpacity={0.8}>
           <LogOut size={14} color={colors.danger} />
           <Text style={styles.logoutLabel}>Sign Out</Text>
@@ -127,14 +164,28 @@ const styles = StyleSheet.create({
   userRole:  { fontSize: fontSize.xs, color: colors.textMuted },
   scrollView: {
     flex: 1,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    marginTop: spacing.xs,
+  },
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: colors.textMuted,
+    letterSpacing: 0.8,
   },
   navItem: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: 10,
+    paddingVertical: 9,
     marginHorizontal: spacing.sm,
     marginVertical: 1,
     borderRadius: radius.md,
