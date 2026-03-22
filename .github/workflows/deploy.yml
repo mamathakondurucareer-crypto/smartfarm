@@ -47,7 +47,11 @@ jobs:
         with:
           ref: ${{ steps.branch.outputs.ref }}
 
-      # ── 3. Write .env.prod from GitHub environment secrets (test uses committed .env.test) ──
+      # ── 3. Unlock macOS keychain so Docker BuildKit can pull public images ────
+      - name: Unlock keychain
+        run: security unlock-keychain -p "${{ secrets.RUNNER_KEYCHAIN_PASSWORD }}" ~/Library/Keychains/login.keychain-db
+
+      # ── 4. Write .env.prod from GitHub environment secrets (test uses committed .env.test) ──
       - name: Write .env.prod (from secrets)
         if: github.event.inputs.environment == 'prod'
         run: |
