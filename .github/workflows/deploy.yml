@@ -22,9 +22,6 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  # Point Docker to a clean config dir so it never touches the system
-  # keychain (macOS self-hosted runner has a locked keychain in CI sessions)
-  DOCKER_CONFIG: /tmp/docker-ci-config
 
 jobs:
   deploy:
@@ -53,7 +50,13 @@ jobs:
         with:
           ref: ${{ steps.branch.outputs.ref }}
 
-      # ── 3. Write .env.prod from GitHub environment secrets (test uses committed .env.test) ──
+      # ── 3. Create clean Docker config (no keychain) ─────────────────────────
+      - name: Configure Docker credential store
+        run: |
+          mkdir -p /tmp/docker-ci-config
+          printf '{"auths":{}}' > /tmp/docker-ci-config/config.json
+
+      # ── 4. Write .env.prod from GitHub environment secrets (test uses committed .env.test) ──
       - name: Write .env.prod (from secrets)
         if: github.event.inputs.environment == 'prod'
         run: |
@@ -70,8 +73,10 @@ jobs:
           DEBUG=false
           EOF
 
-      # ── 4. Deploy ────────────────────────────────────────────────────────────
+      # ── 5. Deploy ────────────────────────────────────────────────────────────
       - name: Deploy ${{ github.event.inputs.environment }}
+        env:
+          DOCKER_CONFIG: /tmp/docker-ci-config
         run: |
           ENV="${{ github.event.inputs.environment }}"
           docker compose \
@@ -80,7 +85,7 @@ jobs:
             -p "smartfarm_${ENV}" \
             up -d --build --remove-orphans
 
-      # ── 5. Health check ──────────────────────────────────────────────────────
+      # ── 6. Health check ──────────────────────────────────────────────────────
       - name: Wait for backend health
         run: |
           ENV="${{ github.event.inputs.environment }}"
@@ -98,12 +103,12 @@ jobs:
           docker compose -f "docker-compose.${ENV}.yml" -p "smartfarm_${ENV}" logs backend
           exit 1
 
-      # ── 6. Cleanup temp .env.prod (do not remove committed .env.test) ──────────
+      # ── 7. Cleanup temp .env.prod (do not remove committed .env.test) ──────────
       - name: Remove .env.prod
         if: always() && github.event.inputs.environment == 'prod'
         run: rm -f ".env.prod"
 
-      # ── 7. Summary ───────────────────────────────────────────────────────────
+      # ── 8. Summary ───────────────────────────────────────────────────────────
       - name: Deployment summary
         run: |
           ENV="${{ github.event.inputs.environment }}"
