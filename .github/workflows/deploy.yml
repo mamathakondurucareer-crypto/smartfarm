@@ -50,16 +50,17 @@ jobs:
         with:
           ref: ${{ steps.branch.outputs.ref }}
 
-      # ── 3. Create clean Docker config (no keychain) ─────────────────────────
-      - name: Configure Docker credential store
+      # ── 3. Patch Docker config to bypass locked macOS keychain ───────────────
+      #       BuildKit reads ~/.docker/config.json directly for credentials even
+      #       when DOCKER_CONFIG is overridden. Remove credsStore in place so no
+      #       keychain access is attempted. Restore on cleanup (step 8).
+      - name: Disable Docker keychain credential store
         run: |
-          mkdir -p /tmp/docker-ci-config
-          # Copy CLI plugins so docker-compose plugin remains discoverable
-          if [ -d "$HOME/.docker/cli-plugins" ]; then
-            cp -r "$HOME/.docker/cli-plugins" /tmp/docker-ci-config/cli-plugins
+          mkdir -p "$HOME/.docker"
+          if [ -f "$HOME/.docker/config.json" ]; then
+            cp "$HOME/.docker/config.json" "$HOME/.docker/config.json.ci-bak"
           fi
-          # Clean config with no credsStore — bypasses locked macOS keychain
-          printf '{"auths":{}}' > /tmp/docker-ci-config/config.json
+          python3 -c "import json,os; f=os.path.expanduser('~/.docker/config.json'); c=json.load(open(f)) if os.path.exists(f) else {}; [c.pop(k,None) for k in ('credsStore','credStore','credHelpers')]; c.setdefault('auths',{}); json.dump(c,open(f,'w'),indent=2); print('Docker config patched')"
 
       # ── 4. Write .env.prod from GitHub environment secrets (test uses committed .env.test) ──
       - name: Write .env.prod (from secrets)
@@ -80,8 +81,6 @@ jobs:
 
       # ── 5. Deploy ────────────────────────────────────────────────────────────
       - name: Deploy ${{ github.event.inputs.environment }}
-        env:
-          DOCKER_CONFIG: /tmp/docker-ci-config
         run: |
           ENV="${{ github.event.inputs.environment }}"
           docker compose \
@@ -113,7 +112,16 @@ jobs:
         if: always() && github.event.inputs.environment == 'prod'
         run: rm -f ".env.prod"
 
-      # ── 8. Summary ───────────────────────────────────────────────────────────
+      # ── 8. Restore Docker config ─────────────────────────────────────────────
+      - name: Restore Docker config
+        if: always()
+        run: |
+          if [ -f "$HOME/.docker/config.json.ci-bak" ]; then
+            mv "$HOME/.docker/config.json.ci-bak" "$HOME/.docker/config.json"
+            echo "Docker config restored"
+          fi
+
+      # ── 9. Summary ───────────────────────────────────────────────────────────
       - name: Deployment summary
         run: |
           ENV="${{ github.event.inputs.environment }}"
