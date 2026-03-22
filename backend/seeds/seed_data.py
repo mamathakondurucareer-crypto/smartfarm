@@ -1506,6 +1506,59 @@ def seed_new_modules():
         db.close()
 
 
+def seed_market_prices():
+    """Seed latest market prices for five target cities."""
+    init_db()
+    db = SessionLocal()
+    try:
+        from backend.models.market import MarketPrice
+        existing = db.query(MarketPrice).count()
+        if existing > 0:
+            print(f"ℹ️  Market prices already seeded ({existing} records). Skipping.")
+            return
+
+        today = date.today()
+        entries = []
+        city_data = {
+            "hyderabad":  {"murrel": 320, "rohu": 180, "tomato": 28,  "chilli": 95,  "trend": "up"},
+            "chennai":    {"murrel": 340, "rohu": 195, "tomato": 32,  "chilli": 88,  "trend": "stable"},
+            "vijayawada": {"murrel": 295, "rohu": 165, "tomato": 25,  "chilli": 82,  "trend": "down"},
+            "kadapa":     {"murrel": 280, "rohu": 155, "tomato": 22,  "chilli": 78,  "trend": "stable"},
+            "nellore":    {"murrel": 310, "rohu": 175, "tomato": 24,  "chilli": 85,  "trend": "up"},
+        }
+        product_category = {"murrel": "fish", "rohu": "fish", "tomato": "vegetable", "chilli": "spice"}
+
+        for city, products in city_data.items():
+            trend = products["trend"]
+            for product, avg_price in products.items():
+                if product == "trend":
+                    continue
+                entries.append(MarketPrice(
+                    recorded_date=today,
+                    market_city=city,
+                    product=product,
+                    category=product_category[product],
+                    min_price=round(avg_price * 0.92, 2),
+                    max_price=round(avg_price * 1.08, 2),
+                    avg_price=float(avg_price),
+                    unit="kg",
+                    trend=trend,
+                    source="manual",
+                ))
+
+        db.add_all(entries)
+        db.commit()
+        print(f"✅ Seeded {len(entries)} market price records across 5 cities.")
+    except Exception as e:
+        print(f"❌ Error seeding market prices: {e}")
+        import traceback
+        traceback.print_exc()
+        db.rollback()
+    finally:
+        db.close()
+
+
 if __name__ == "__main__":
     seed()
     seed_new_modules()
+    seed_market_prices()

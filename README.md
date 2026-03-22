@@ -16,12 +16,13 @@ smartfarm/
 │   ├── utils/                  # Helpers and constants
 │   └── seeds/seed_data.py      # Database seeding
 ├── mobile/                     # React Native + Expo app (iOS, Android, Web)
-│   ├── App.js                  # Root component with navigation
+│   ├── App.js                  # Root component with navigation, auth guard
 │   └── src/
-│       ├── screens/            # 24 app screens
+│       ├── screens/            # 29 app screens
 │       ├── components/         # Reusable UI components
-│       ├── store/              # Zustand state (4 stores)
+│       ├── store/              # Zustand state (5 stores)
 │       ├── services/           # API client layer
+│       ├── hooks/              # Custom React hooks (useResponsive)
 │       └── config/             # Theme, navigation, permissions
 ├── tests/                      # Python backend tests (pytest)
 ├── e2e/                        # Playwright end-to-end tests
@@ -94,6 +95,11 @@ docker compose up --build
 | Market | `/api/market` | Prices, orders, shipments |
 | Incidents | `/api/incidents` | Disease, equipment failure, weather events |
 | Production | `/api/production` | Produced, processed, shipped stock |
+| Feed Production | `/api/feed` | Animal feed batch management |
+| QA & Traceability | `/api/qa` | Quality audits, batch traceability |
+| Compliance | `/api/compliance` | Regulatory compliance tracking |
+| Nursery Orders | `/api/nursery` | Plant nursery order management |
+| Drones | `/api/drones` | Drone fleet, missions, maintenance |
 | AI Analysis | `/api/ai` | AI-powered farm analysis (Claude API) |
 | Store Config | `/api/store` | Store setup, price rules |
 | Store Stock | `/api/store/stock` | Store inventory management |
@@ -153,6 +159,30 @@ cd e2e && npx playwright test
 # Mobile Jest tests
 cd mobile && npm test
 ```
+
+## Role-Based Access Control
+
+17 built-in roles covering every department. Admins can override screen access per role via the **Role Management** screen; overrides persist to device storage.
+
+| Role | Description |
+|------|-------------|
+| ADMIN | Full system access |
+| MANAGER | All operational screens |
+| SUPERVISOR | Operations + supply chain; no admin |
+| WORKER | Core farm ops screens only |
+| VIEWER | Read-only dashboard + reports |
+| STORE_MANAGER | Store, POS, logistics, financials |
+| CASHIER | POS, store view |
+| PACKER | Packing, scanner, stock |
+| DRIVER | Logistics, scanner |
+| SCANNER | Scanner only |
+| AQUA_TECH | Aquaculture, feed, water, QA, stock |
+| GREENHOUSE_TECH | Greenhouse, vertical farm, nursery, QA |
+| POULTRY_TECH | Poultry, feed, water, QA |
+| FIELD_WORKER | Nursery, automation, compliance, water |
+| QA_OFFICER | QA, compliance, all stock screens |
+| FINANCE_ADMIN | Financial, reports, market, store |
+| DRONE_OPS | Drones, automation, QA, field ops |
 
 ## Project Structure Details
 

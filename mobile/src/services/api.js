@@ -292,6 +292,15 @@ export const api = {
     },
   },
 
+  // ─── Market Prices ────────────────────────────────────────────
+  market: {
+    latestPrices: (token) => request("GET", "/api/market/prices/latest", null, token),
+    prices:       (token, params = "") => request("GET", `/api/market/prices${params}`, null, token),
+    recordPrice:  (data, token) => request("POST", "/api/market/prices", data, token),
+    orders:       (token, params = "") => request("GET", `/api/market/orders${params}`, null, token),
+    shipments:    (token, params = "") => request("GET", `/api/market/shipments${params}`, null, token),
+  },
+
   // ─── Nursery (Backend) ────────────────────────────────────────
   nursery: {
     batches: {
