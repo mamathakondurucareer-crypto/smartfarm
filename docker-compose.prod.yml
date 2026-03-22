@@ -54,6 +54,7 @@ services:
       dockerfile: Dockerfile
       args:
         EXPO_PUBLIC_API_URL: http://localhost:8002
+        EXPO_PUBLIC_APP_ENV: production
     ports:
       - "8083:8081"
     depends_on:

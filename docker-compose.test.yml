@@ -51,6 +51,7 @@ services:
       dockerfile: Dockerfile
       args:
         EXPO_PUBLIC_API_URL: http://localhost:8003
+        EXPO_PUBLIC_APP_ENV: test
     ports:
       - "8084:8081"
     depends_on:

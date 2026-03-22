@@ -6,7 +6,7 @@
  */
 import React, { useState, useMemo } from "react";
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
-import { Wifi, WifiOff, LogOut, User, ChevronDown, ChevronRight } from "lucide-react-native";
+import { Wifi, WifiOff, LogOut, User, ChevronDown, ChevronRight, FlaskConical } from "lucide-react-native";
 import { colors, spacing, radius, fontSize } from "../../config/theme";
 import { SCREENS, SECTIONS } from "../../config/navigation";
 import useRolesStore from "../../store/useRolesStore";
@@ -20,6 +20,7 @@ export default function DrawerContent() {
   const { isDesktop } = useResponsive();
   const simRunning     = useFarmStore((s) => s.simRunning);
   const toggleSim      = useFarmStore((s) => s.toggleSimulation);
+  const isProduction   = process.env.EXPO_PUBLIC_APP_ENV === "production";
   const user           = useAuthStore((s) => s.user);
   const logout         = useAuthStore((s) => s.logout);
   const userRole       = (user?.role ?? "VIEWER").toUpperCase();
@@ -120,18 +121,30 @@ export default function DrawerContent() {
 
       {/* Bottom controls */}
       <View style={styles.bottomSection}>
-        <TouchableOpacity
-          onPress={toggleSim}
-          style={[styles.simBtn, simRunning && { borderColor: colors.primary, backgroundColor: colors.primary + "15" }]}
-          activeOpacity={0.8}
-        >
-          {simRunning
-            ? <Wifi    size={14} color={colors.primary} />
-            : <WifiOff size={14} color={colors.textDim} />}
-          <Text style={[styles.simLabel, { color: simRunning ? colors.primary : colors.textDim }]}>
-            {simRunning ? "● LIVE" : "Simulate"}
-          </Text>
-        </TouchableOpacity>
+        {!isProduction && (
+          <TouchableOpacity
+            onPress={toggleSim}
+            style={[
+              styles.simBtn,
+              simRunning
+                ? { borderColor: colors.accent, backgroundColor: colors.accent + "18" }
+                : { borderColor: colors.border },
+            ]}
+            activeOpacity={0.8}
+          >
+            <FlaskConical size={14} color={simRunning ? colors.accent : colors.textDim} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.simLabel, { color: simRunning ? colors.accent : colors.textDim }]}>
+                {simRunning ? "Sensor Simulation: ON" : "Sensor Simulation: OFF"}
+              </Text>
+              <Text style={styles.simHint}>
+                {simRunning
+                  ? "Fake sensor data is being generated"
+                  : "Tap to generate fake sensor data"}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity onPress={logout} style={styles.logoutBtn} activeOpacity={0.8}>
           <LogOut size={14} color={colors.danger} />
@@ -246,6 +259,11 @@ const styles = StyleSheet.create({
   simLabel: {
     fontSize: fontSize.sm,
     fontWeight: "600",
+  },
+  simHint: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginTop: 1,
   },
   logoutBtn: {
     flexDirection: "row",
