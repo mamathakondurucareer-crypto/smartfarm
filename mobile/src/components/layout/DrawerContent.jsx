@@ -9,7 +9,7 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-nati
 import { Wifi, WifiOff, LogOut, User, ChevronDown, ChevronRight } from "lucide-react-native";
 import { colors, spacing, radius, fontSize } from "../../config/theme";
 import { SCREENS, SECTIONS } from "../../config/navigation";
-import { canAccessScreen } from "../../config/permissions";
+import useRolesStore from "../../store/useRolesStore";
 import useFarmStore  from "../../store/useFarmStore";
 import useAuthStore  from "../../store/useAuthStore";
 import { useNavigation } from "../../context/NavigationContext";
@@ -24,6 +24,7 @@ export default function DrawerContent() {
   const logout         = useAuthStore((s) => s.logout);
   const userRole       = (user?.role ?? "VIEWER").toUpperCase();
   const enabledModules = useFarmStore((s) => s.farm.enabledModules ?? {});
+  const canAccess      = useRolesStore((s) => s.canAccess);
 
   // All sections start expanded
   const [collapsed, setCollapsed] = useState({});
@@ -33,7 +34,7 @@ export default function DrawerContent() {
   // Filter screens by role + module toggles, then group by section
   const grouped = useMemo(() => {
     const visible = SCREENS.filter(
-      (s) => canAccessScreen(s.name, userRole) && enabledModules[s.name] !== false
+      (s) => canAccess(s.name, userRole) && enabledModules[s.name] !== false
     );
     const bySection = {};
     for (const screen of visible) {

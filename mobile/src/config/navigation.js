@@ -65,5 +65,6 @@ export const SCREENS = [
   { name: "ServiceRequests", label: "Service Requests",   Icon: Wrench,        color: colors.service,     section: "admin"      },
   { name: "ActivityLog",     label: "Activity Log",       Icon: Activity,      color: colors.textDim,     section: "admin"      },
   { name: "Users",           label: "User Management",    Icon: Users,         color: colors.info,        section: "admin"      },
+  { name: "Roles",           label: "Role Management",    Icon: Shield,        color: "#6A1B9A",          section: "admin"      },
   { name: "Settings",        label: "Settings",           Icon: Settings,      color: colors.textDim,     section: "admin"      },
 ];

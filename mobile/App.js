@@ -22,9 +22,11 @@ import {
 } from "lucide-react-native";
 
 import { NavigationProvider, useNavigation } from "./src/context/NavigationContext";
+import { SCREENS } from "./src/config/navigation";
 import { useResponsive }   from "./src/hooks/useResponsive";
 import useFarmStore        from "./src/store/useFarmStore";
 import useAuthStore        from "./src/store/useAuthStore";
+import useRolesStore       from "./src/store/useRolesStore";
 import DrawerContent       from "./src/components/layout/DrawerContent";
 import LoginScreen         from "./src/screens/LoginScreen";
 import { colors, fontSize } from "./src/config/theme";
@@ -58,6 +60,7 @@ import AIScreen                from "./src/screens/AIScreen";
 import ServiceRequestsScreen   from "./src/screens/ServiceRequestsScreen";
 import ActivityLogScreen       from "./src/screens/ActivityLogScreen";
 import UsersScreen             from "./src/screens/UsersScreen";
+import RolesScreen             from "./src/screens/RolesScreen";
 import SettingsScreen          from "./src/screens/SettingsScreen";
 // ─── New Modules ─────────────────────────────────────────────────
 import FeedProductionScreen   from "./src/screens/FeedProductionScreen";
@@ -90,6 +93,7 @@ const SCREEN_MAP = {
   ServiceRequests: ServiceRequestsScreen,
   ActivityLog:     ActivityLogScreen,
   Users:           UsersScreen,
+  Roles:           RolesScreen,
   Settings:        SettingsScreen,
   FeedProduction:  FeedProductionScreen,
   Drones:          DroneScreen,
@@ -262,11 +266,18 @@ export default function App() {
   const tickSensors     = useFarmStore((s) => s.tickSensors);
   const intervalRef     = useRef(null);
 
-  const loadAuth = useAuthStore((s) => s.loadAuth);
-  const token    = useAuthStore((s) => s.token);
-  const authReady= useAuthStore((s) => s.authReady);
+  const loadAuth    = useAuthStore((s) => s.loadAuth);
+  const token       = useAuthStore((s) => s.token);
+  const authReady   = useAuthStore((s) => s.authReady);
+  const loadRoles   = useRolesStore((s) => s.load);
+  const initScreens = useRolesStore((s) => s.initScreens);
 
-  useEffect(() => { loadAuth(); loadFromStorage(); }, []);
+  useEffect(() => {
+    loadAuth();
+    loadFromStorage();
+    loadRoles();
+    initScreens(SCREENS.map((s) => s.name));
+  }, []);
 
   useEffect(() => {
     if (simRunning) {

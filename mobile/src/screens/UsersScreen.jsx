@@ -22,11 +22,23 @@ import { styles } from "./UsersScreen.styles";
 import { commonStyles as cs } from "../styles/common";
 
 const ROLE_COLORS = {
-  ADMIN:      colors.danger,
-  MANAGER:    colors.accent,
-  SUPERVISOR: colors.info,
-  WORKER:     colors.primary,
-  VIEWER:     colors.textMuted,
+  ADMIN:            colors.danger,
+  MANAGER:          colors.accent,
+  SUPERVISOR:       colors.info,
+  WORKER:           colors.primary,
+  VIEWER:           colors.textMuted,
+  STORE_MANAGER:    "#FF7043",
+  CASHIER:          "#FFA726",
+  PACKER:           "#8D6E63",
+  DRIVER:           "#29B6F6",
+  SCANNER:          colors.textDim,
+  AQUA_TECH:        "#0288D1",
+  GREENHOUSE_TECH:  "#2E7D32",
+  POULTRY_TECH:     "#F57F17",
+  FIELD_WORKER:     "#558B2F",
+  QA_OFFICER:       "#6A1B9A",
+  FINANCE_ADMIN:    "#00695C",
+  DRONE_OPS:        "#1565C0",
 };
 
 const EMPTY_FORM = {
