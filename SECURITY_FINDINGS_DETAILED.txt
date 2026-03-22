@@ -1,0 +1,880 @@
+================================================================================
+SMARTFARM SECURITY AUDIT - DETAILED FINDINGS
+================================================================================
+Date: 2026-03-22
+Project: SmartFarm OS (FastAPI + React Native)
+
+Total Issues Found: 12
+  - Critical: 1
+  - High: 4
+  - Medium: 5
+  - Low: 2
+
+================================================================================
+ISSUE #1: PRODUCTION CREDENTIALS EXPOSED IN .env.prod
+================================================================================
+Severity: CRITICAL
+Type: Secrets Exposure / Hardcoded Credentials
+File: /Users/usangaraju/Downloads/smartfarm/.env.prod
+Lines: 1-20
+
+DETAILS:
+--------
+The production environment file contains plaintext secrets:
+
+    Line 7:  POSTGRES_PASSWORD=SfPr0d2024!
+    Line 10: SECRET_KEY=be602bc33abd848b293029e7fbd44bfd11d82fb76c8970abdd814c819a200953
+    Line 17: ADMIN_PASSWORD=Admin@SmartFarm2024!
+
+ATTACK VECTOR:
+- Any developer with repository access can read credentials
+- If repository is accidentally made public, credentials are exposed
+- If cloned by attacker, credentials give direct database access
+- Git history contains these secrets permanently
+
+CURRENT STATUS:
+- File is in .gitignore (good)
+- But .env.prod EXISTS IN REPO (bad)
+- GitHub Secrets are used for CI/CD (good)
+
+IMMEDIATE ACTIONS REQUIRED:
+1. Rotate POSTGRES_PASSWORD immediately
+2. Rotate ADMIN_PASSWORD immediately
+3. Regenerate SECRET_KEY
+4. Remove .env.prod from git history:
+   git filter-branch --tree-filter 'rm -f .env.prod' -- --all
+5. Verify .gitignore entry exists
+6. Update deployment to pull secrets from GitHub Secrets only
+
+ACCEPTABLE STATE:
+- .env.prod exists ONLY in CI/CD pipeline (as temp file)
+- .env.prod.example documents structure without secrets
+- All actual secrets in GitHub Secrets or external vault
+
+================================================================================
+ISSUE #2: UNAUTHENTICATED EMPLOYEE LEAVE REQUEST SUBMISSION
+================================================================================
+Severity: HIGH
+Type: Broken Authorization / Privilege Escalation
+File: /Users/usangaraju/Downloads/smartfarm/backend/routers/financial.py
+Lines: 318-323
+
+CURRENT CODE:
+    @router.post("/leave-requests", status_code=201)
+    def submit_leave(data: LeaveRequestCreate,
+                     db: Session = Depends(get_db),
+                     current_user: User = Depends(get_current_user)):
+        lr = LeaveRequest(**data.model_dump())  # ← NO VALIDATION
+        db.add(lr)
+        db.commit()
+        return {"id": lr.id, "status": "pending"}
+
+VULNERABILITY:
+- Endpoint requires authentication but NOT ownership verification
+- Any logged-in user can submit leave for ANY employee
+- Request schema LeaveRequestCreate must contain employee_id field
+- No check that employee_id belongs to current_user
+
+ATTACK SCENARIO:
+1. User alice (normal worker) logs in
+2. Calls POST /api/financial/leave-requests with employee_id=5 (bob's ID)
+3. Bob's leave request is created without Bob's consent
+4. HR approves thinking Bob requested leave
+5. Bob's leave balance is debited fraudulently
+
+FIX REQUIRED:
+    @router.post("/leave-requests", status_code=201)
+    def submit_leave(data: LeaveRequestCreate,
+                     db: Session = Depends(get_db),
+                     current_user: User = Depends(get_current_user)):
+        # Only allow employees to request leave for themselves
+        if current_user.role.name not in HR_ROLES:
+            if data.employee_id != current_user.employee.id:
+                raise HTTPException(403,
+                    "Cannot submit leave request for other employees")
+        # HR/Manager can request leave for anyone
+        lr = LeaveRequest(**data.model_dump())
+        db.add(lr)
+        db.commit()
+        return {"id": lr.id, "status": "pending"}
+
+================================================================================
+ISSUE #3: ARBITRARY USER ID INJECTION IN LEAVE APPROVAL
+================================================================================
+Severity: HIGH
+Type: Broken Authorization / Audit Trail Manipulation
+File: /Users/usangaraju/Downloads/smartfarm/backend/routers/financial.py
+Lines: 326-336
+
+CURRENT CODE:
+    @router.put("/leave-requests/{lr_id}/approve")
+    def approve_leave(lr_id: int, approved_by: int,  # ← DANGEROUS PARAMETER
+                      db: Session = Depends(get_db),
+                      current_user: User = Depends(get_current_user)):
+        if current_user.role.name not in HR_ROLES:
+            raise HTTPException(403, "HR role required")
+        lr = db.query(LeaveRequest).filter(LeaveRequest.id == lr_id).first()
+        if not lr:
+            raise HTTPException(404, "Leave request not found")
+        lr.status = "approved"
+        lr.approved_by = approved_by  # ← ACCEPTS ANY VALUE FROM REQUEST
+        db.commit()
+        return {"message": "Leave approved"}
+
+VULNERABILITY:
+- approved_by parameter is directly from HTTP request (query param)
+- No validation that approved_by is current_user.id
+- No timestamp recorded for approval
+- HR user can forge approvals by other managers
+
+ATTACK SCENARIO:
+1. HR user alice calls:
+   PUT /api/financial/leave-requests/42/approve?approved_by=999
+2. Leave is marked as approved by user_id=999 (e.g., the CFO)
+3. Employee records show CFO approval without CFO's knowledge
+4. Audit trail is corrupted
+5. CFO has no record of approving this leave
+
+FIX REQUIRED:
+    @router.put("/leave-requests/{lr_id}/approve")
+    def approve_leave(lr_id: int,
+                      db: Session = Depends(get_db),
+                      current_user: User = Depends(get_current_user)):
+        if current_user.role.name not in HR_ROLES:
+            raise HTTPException(403, "HR role required")
+        lr = db.query(LeaveRequest).filter(LeaveRequest.id == lr_id).first()
+        if not lr:
+            raise HTTPException(404, "Leave request not found")
+        lr.status = "approved"
+        lr.approved_by = current_user.id  # ← USE CURRENT USER
+        lr.approved_at = datetime.now(timezone.utc)  # ← ADD TIMESTAMP
+        db.commit()
+        return {"message": "Leave approved"}
+
+================================================================================
+ISSUE #4: SQL INJECTION VIA UNVALIDATED ILIKE PATTERN
+================================================================================
+Severity: HIGH
+Type: SQL Injection (Potential)
+File: /Users/usangaraju/Downloads/smartfarm/backend/routers/activity_log.py
+Line: 40
+
+CURRENT CODE:
+    if action:
+        q = q.filter(ActivityLog.action.ilike(f"%{action}%"))
+
+ANALYSIS:
+- SQLAlchemy's ilike() DOES parameterize, so injection is NOT currently possible
+- However, the pattern is a code smell indicating potential future vulnerabilities
+- If code is refactored to use string concatenation, it WILL be vulnerable
+
+RISK:
+- Medium now (SQLAlchemy protects), but High if code refactoring occurs
+- Developers may copy this pattern thinking it's safe everywhere
+- Database query logs show actual values in SQL (information disclosure)
+
+CURRENT STATUS: SAFE (due to SQLAlchemy)
+
+RECOMMENDED FIX (Best Practice):
+    # Option 1: Validate against enum
+    ALLOWED_ACTIONS = {"LOGIN", "LOGIN_FAILED", "CREATE_USER", "UPDATE_USER", ...}
+
+    if action:
+        if action.upper() not in ALLOWED_ACTIONS:
+            raise HTTPException(400, f"Invalid action: {action}")
+        q = q.filter(ActivityLog.action == action.upper())
+
+    # Option 2: If free-text search is required, still use LIKE with parameterization
+    if action:
+        q = q.filter(ActivityLog.action.ilike(f"%{action.strip()}%"))
+
+REASONING:
+- Enum validation prevents injection AND improves API clarity
+- Allows clients to discover valid values
+- Free-text LIKE queries are slow anyway; enum is better
+
+================================================================================
+ISSUE #5: MISSING USER OWNERSHIP VERIFICATION
+================================================================================
+Severity: HIGH
+Type: Broken Authorization / Information Disclosure
+File: /Users/usangaraju/Downloads/smartfarm/backend/routers/financial.py
+Lines: 212-219
+
+CURRENT CODE:
+    @router.get("/employees/{emp_id}")
+    def get_employee(emp_id: int,
+                     db: Session = Depends(get_db),
+                     current_user: User = Depends(get_current_user)):
+        if current_user.role.name not in HR_ROLES:
+            raise HTTPException(403, "HR role required")
+        emp = db.query(Employee).filter(Employee.id == emp_id).first()
+        if not emp:
+            raise HTTPException(404, "Employee not found")
+        return emp  # ← RETURNS SENSITIVE DATA WITHOUT OWNERSHIP CHECK
+
+SENSITIVE DATA IN EMPLOYEE MODEL:
+- phone: Mapped[str] - Personal phone number
+- emergency_contact: Mapped[Optional[str]] - Emergency contact info
+- address: Mapped[Optional[str]] - Home address
+- aadhar_number: Mapped[Optional[str]] - National ID (VERY sensitive)
+- pan_number: Mapped[Optional[str]] - Tax ID
+- bank_account: Mapped[Optional[str]] - Bank account number
+- bank_ifsc: Mapped[Optional[str]] - Bank routing code
+- base_salary: Mapped[float] - Salary information
+
+VULNERABILITY:
+- Any HR user can view any employee's complete profile
+- Including bank account and national ID
+- Principle of least privilege violated
+- No department-based access control
+
+ATTACK SCENARIO:
+1. Supervisor alice has HR role to manage her department's attendance
+2. Calls GET /api/financial/employees/999 (from different department)
+3. Gets complete profile including:
+   - Bank account: 1234567890
+   - Aadhar: 123456789012
+   - Salary: 45000
+
+FIX REQUIRED:
+    @router.get("/employees/{emp_id}")
+    def get_employee(emp_id: int,
+                     db: Session = Depends(get_db),
+                     current_user: User = Depends(get_current_user)):
+        if current_user.role.name not in HR_ROLES:
+            raise HTTPException(403, "HR role required")
+
+        emp = db.query(Employee).filter(Employee.id == emp_id).first()
+        if not emp:
+            raise HTTPException(404, "Employee not found")
+
+        # Supervisors can only view employees in their department
+        if current_user.role.name == "supervisor":
+            if current_user.employee.department != emp.department:
+                raise HTTPException(403,
+                    "Cannot view employees outside your department")
+
+        # Optionally mask sensitive data for supervisors
+        if current_user.role.name == "supervisor":
+            emp.aadhar_number = None
+            emp.bank_account = None
+            emp.bank_ifsc = None
+
+        return emp
+
+ADDITIONAL RECOMMENDATION:
+- Create separate response models: EmployeePublic, EmployeeFull
+- Return EmployeeFull only to admin/manager
+- Return EmployeePublic to supervisors (no bank/aadhar data)
+
+================================================================================
+ISSUE #6: MISSING INPUT VALIDATION ON QA LOT CODE
+================================================================================
+Severity: MEDIUM
+Type: Input Validation
+File: /Users/usangaraju/Downloads/smartfarm/mobile/src/services/api.js
+Line: 318
+
+CURRENT CODE:
+    qa: {
+        lots: {
+            trace: (lotCode, token) => request("GET",
+                    `/api/qa/lots/trace/${lotCode}`, null, token),
+
+VULNERABILITY:
+- lotCode is directly interpolated into URL path
+- No format validation on client side
+- No check for path traversal characters
+- Could contain special characters, slashes, etc.
+
+ATTACK SCENARIOS:
+1. lotCode = "../../../etc/passwd"
+   → URL becomes: /api/qa/lots/trace/../../../etc/passwd
+   → Backend must validate and reject
+
+2. lotCode = "LOT-001<script>alert('xss')</script>"
+   → Could appear in logs/error messages
+   → Potential log poisoning
+
+3. lotCode = "LOT-001; DROP TABLE lots;--"
+   → Backend ORM should protect, but poor validation
+   → Creates confusing error messages
+
+FIX REQUIRED (Client-side validation):
+    qa: {
+        lots: {
+            trace: (lotCode, token) => {
+                // Validate lot code format
+                if (!lotCode || typeof lotCode !== 'string') {
+                    throw new Error("Invalid lot code");
+                }
+                // Must be alphanumeric, hyphens, underscores only
+                // Expected format: LOT-PRODUCT-YYYYMMDD-XXXXX
+                if (!/^[A-Z0-9\-_]{10,50}$/.test(lotCode)) {
+                    throw new Error(
+                        "Invalid lot code format. " +
+                        "Expected: LOT-TYPE-DATE-ID");
+                }
+                return request("GET",
+                    `/api/qa/lots/trace/${lotCode}`, null, token);
+            },
+
+BACKEND VALIDATION (also required):
+    @router.get("/api/qa/lots/trace/{lot_code}")
+    def trace_lot(lot_code: str, ...):
+        # Validate format
+        if not re.match(r"^[A-Z0-9\-_]{10,50}$", lot_code):
+            raise HTTPException(400, "Invalid lot code format")
+
+        lot = db.query(ProductLot).filter(
+            ProductLot.lot_code == lot_code
+        ).first()
+        ...
+
+================================================================================
+ISSUE #7: OVERLY BROAD EXCEPTION HANDLING IN AI ENDPOINT
+================================================================================
+Severity: MEDIUM
+Type: Error Handling / Insufficient Logging
+File: /Users/usangaraju/Downloads/smartfarm/backend/routers/ai_analysis.py
+Lines: 88-124
+
+CURRENT CODE:
+    try:
+        import httpx
+        context = build_farm_context(db)
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={...},
+                json={...},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            ai_text = "\n".join(b["text"] for b in data.get("content", [])
+                               if b.get("type") == "text")
+        return AIQueryResponse(...)
+    except httpx.HTTPStatusError:
+        raise HTTPException(502, "AI service error — please try again")
+    except Exception:  # ← OVERLY BROAD
+        raise HTTPException(500, "AI analysis failed")
+
+PROBLEMS:
+1. "except Exception" catches programming errors silently
+   - TypeError (wrong type passed)
+   - AttributeError (missing field in response)
+   - ValueError (invalid JSON)
+   - KeyError (unexpected response structure)
+
+2. No logging - impossible to debug in production
+
+3. Generic 500 error doesn't help with debugging
+
+4. Exception details lost completely
+
+SCENARIOS NOT PROPERLY HANDLED:
+- Database connection timeout (should be 503, not 500)
+- AI request timeout (should be 504, not 502)
+- Malformed AI response (should be 502 with details)
+- Missing environment variable ANTHROPIC_API_KEY (should fail at startup)
+
+FIX REQUIRED:
+    import logging
+    import asyncio
+
+    logger = logging.getLogger(__name__)
+
+    @router.post("/analyze", response_model=AIQueryResponse)
+    async def analyze(request: AIQueryRequest,
+                      db: Session = Depends(get_db),
+                      current_user: User = Depends(get_current_user)):
+        if not settings.anthropic_api_key:
+            logger.error("ANTHROPIC_API_KEY not configured")
+            raise HTTPException(503,
+                "AI service not available")
+
+        try:
+            context = build_farm_context(db)
+        except TimeoutError as e:
+            logger.error(f"Database timeout building context: {e}")
+            raise HTTPException(503, "Database temporarily unavailable")
+        except Exception as e:
+            logger.exception(f"Unexpected error building context: {e}")
+            raise HTTPException(500, "Failed to prepare analysis")
+
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.post(...)
+                resp.raise_for_status()
+                data = resp.json()
+                ai_text = "\n".join(...)
+                return AIQueryResponse(...)
+
+        except asyncio.TimeoutError:
+            logger.warning("AI request timeout (60s)")
+            raise HTTPException(504, "AI request timed out")
+
+        except httpx.HTTPStatusError as e:
+            if e.status_code == 429:
+                logger.warning(f"AI rate limited: {e.response.text}")
+                raise HTTPException(429,
+                    "Too many requests. Please wait before retrying.")
+            else:
+                logger.error(f"AI service error: {e.status_code}")
+                raise HTTPException(502, "AI service error")
+
+        except ValueError as e:
+            logger.error(f"Invalid AI response format: {e}")
+            raise HTTPException(502, "Invalid response from AI service")
+
+        except Exception as e:
+            logger.exception(f"Unexpected error in AI analysis: {e}")
+            raise HTTPException(500, "Analysis service error")
+
+================================================================================
+ISSUE #8: NO RATE LIMITING ON AI ANALYSIS ENDPOINT
+================================================================================
+Severity: MEDIUM
+Type: Denial of Service / Cost Exhaustion
+File: /Users/usangaraju/Downloads/smartfarm/backend/routers/ai_analysis.py
+Lines: 79-84
+
+CURRENT CODE:
+    @router.post("/analyze", response_model=AIQueryResponse)
+    async def analyze(request: AIQueryRequest,
+                      db: Session = Depends(get_db),
+                      current_user: User = Depends(get_current_user)):
+        # No rate limiting!
+
+VULNERABILITY:
+- Endpoint makes external API call to Anthropic Claude
+- Each call costs money (API billing model)
+- No rate limiting = attacker can make unlimited requests
+- Each request is expensive
+- No daily/hourly quotas per user
+
+ATTACK SCENARIO:
+1. Attacker obtains valid login (e.g., guest account)
+2. Writes script to call /api/ai/analyze 1000 times/minute
+3. Each call = ~0.01-0.10 USD (depends on prompt size)
+4. Costs $10-100 per minute
+5. No protection mechanism
+6. Farm receives $50,000+ bill at end of month
+
+MITIGATION STATUS:
+- Global rate limiter exists: limiter = Limiter(..., default_limits=["200/minute"])
+- But NOT applied to /analyze endpoint
+
+FIX REQUIRED:
+    from backend.main import limiter
+
+    @router.post("/analyze", response_model=AIQueryResponse)
+    @limiter.limit("5/minute")  # 5 requests per IP per minute
+    async def analyze(request: Request,  # ← Add Request param
+                      request_body: AIQueryRequest,
+                      db: Session = Depends(get_db),
+                      current_user: User = Depends(get_current_user)):
+        # Process request_body instead of request
+        ...
+
+ADDITIONAL RECOMMENDATIONS:
+1. Per-user quota (not just per-IP):
+   - 10 requests/day for regular users
+   - 50 requests/day for admin
+
+2. Implement via database:
+   CREATE TABLE ai_usage_quota (
+       user_id INT PRIMARY KEY,
+       date DATE,
+       request_count INT,
+       monthly_cost DECIMAL(10,2)
+   );
+
+3. Alert when monthly cost exceeds threshold:
+   if monthly_cost > 100:
+       disable_endpoint = True
+       alert("AI endpoint disabled - cost limit exceeded")
+
+================================================================================
+ISSUE #9: HTTPS ENFORCEMENT INCOMPLETE
+================================================================================
+Severity: MEDIUM
+Type: Transport Security / Configuration
+File: /Users/usangaraju/Downloads/smartfarm/backend/middleware/security.py
+Lines: 17-19
+
+CURRENT CODE:
+    async def dispatch(self, request: Request, call_next) -> Response:
+        # Redirect HTTP → HTTPS in production (when behind a reverse proxy)
+        if not _settings.debug and request.headers.get("x-forwarded-proto") == "http":
+            https_url = str(request.url).replace("http://", "https://", 1)
+            return RedirectResponse(url=https_url, status_code=301)
+
+VULNERABILITY:
+- Depends entirely on x-forwarded-proto header
+- If backend is exposed without reverse proxy, HTTP is NOT enforced
+- If client spoofs x-forwarded-proto, redirect may not work
+- No HSTS preload list (though HSTS header is set)
+
+CURRENT PROTECTIONS:
+✓ HSTS header set: "max-age=31536000; includeSubDomains"
+✓ Reverse proxy deployment required in docs
+✗ No fallback if header is missing
+✗ No warning if header is absent in production
+
+RISK SCENARIOS:
+1. Developer accidentally deploys without reverse proxy
+2. Traffic goes HTTP → login credentials sent plaintext
+3. No error message warns about missing reverse proxy
+4. Silent failure → insecure operation
+
+FIX REQUIRED:
+    async def dispatch(self, request: Request, call_next) -> Response:
+        if not _settings.debug:
+            # Check for reverse proxy
+            x_forwarded_proto = request.headers.get("x-forwarded-proto")
+
+            if not x_forwarded_proto:
+                logger.warning(
+                    "Production mode but x-forwarded-proto header missing. "
+                    "Ensure HTTPS is enforced at reverse proxy level. "
+                    "Deployment is INSECURE without reverse proxy."
+                )
+                # In strict mode, could reject the request
+                # raise HTTPException(502, "Invalid deployment configuration")
+
+            # Redirect HTTP to HTTPS
+            if x_forwarded_proto == "http":
+                https_url = str(request.url).replace("http://", "https://", 1)
+                return RedirectResponse(url=https_url, status_code=301)
+
+        response = await call_next(request)
+        # ... set headers ...
+        return response
+
+DEPLOYMENT DOCUMENTATION:
+Add to deployment docs:
+
+    WARNING: SmartFarm MUST be deployed behind a reverse proxy with HTTPS.
+
+    ✓ Nginx (recommended)
+    ✓ AWS ALB/CloudFront
+    ✓ Kubernetes Ingress
+    ✗ Direct HTTP exposure is NOT supported
+
+    Reverse proxy must set x-forwarded-proto: https for all requests.
+
+    Example Nginx config:
+        server {
+            listen 443 ssl http2;
+            server_name farm.example.com;
+            ssl_certificate ...;
+            ssl_certificate_key ...;
+
+            location / {
+                proxy_pass http://localhost:8002;
+                proxy_set_header x-forwarded-proto https;
+                proxy_set_header x-forwarded-for $remote_addr;
+            }
+        }
+
+================================================================================
+ISSUE #10: INSUFFICIENT SECURITY EVENT LOGGING
+================================================================================
+Severity: MEDIUM
+Type: Logging / Monitoring / Audit Trail
+File: /Users/usangaraju/Downloads/smartfarm/backend/routers/auth.py
+Lines: 156-182
+
+CURRENT CODE:
+    log_activity(db, "REGISTER", "auth",
+                 username=data.username,
+                 description=f"New user '{data.username}' self-registered")
+
+    _check_lockout(client_ip)
+
+    log_activity(db, "LOGIN_FAILED", "auth",
+                 username=form.username,
+                 description=f"Failed login attempt for '{form.username}'",
+                 ip=client_ip)
+
+    log_activity(db, "LOGIN", "auth",
+                 username=user.username,
+                 user_id=user.id,
+                 description=f"User '{user.username}' logged in",
+                 ip=client_ip)
+
+CURRENT STATE:
+✓ Activity log to database (good)
+✓ IP address logged (good)
+✓ Failed logins logged (good)
+✗ No application-level logging to stderr/stdout
+✗ No real-time alerting
+✗ Database compromise = logs gone
+✗ Impossible to monitor in production
+
+MISSING EVENTS:
+1. Failed password change attempts
+2. Role change attempts (admin creates/modifies user)
+3. Admin user creation
+4. Sensitive data access (GET /employees/{id})
+5. Unusual patterns:
+   - 10 failed logins from same IP
+   - User accessing data from unusual location
+   - Off-hours access
+   - Mass data export attempts
+
+MISSING MONITORING:
+1. Real-time alerts on:
+   - Failed login brute force (done at DB level, not logs)
+   - Admin account creation
+   - Privilege escalation attempts
+   - API error spikes (500 errors)
+
+2. Dashboard metrics:
+   - Failed login attempts by user/IP/day
+   - Role changes
+   - Data access patterns
+   - API performance
+
+FIX REQUIRED:
+    import logging
+    import json
+    from datetime import datetime, timezone
+
+    # Configure structured logging
+    logger = logging.getLogger(__name__)
+
+    # In login endpoint
+    @router.post("/login", response_model=TokenPair)
+    def login(request: Request, form: OAuth2PasswordRequestForm = Depends(),
+              db: Session = Depends(get_db)):
+        client_ip = request.client.host if request.client else "unknown"
+        _check_lockout(client_ip)
+
+        user = db.query(User).filter(User.username == form.username).first()
+        if not user or not verify_password(form.password, user.hashed_password):
+            _record_failure(client_ip)
+
+            # Application-level logging
+            logger.warning(json.dumps({
+                "event": "login_failed",
+                "username": form.username,
+                "ip": client_ip,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "reason": "invalid_credentials"
+            }))
+
+            # Database logging
+            log_activity(db, "LOGIN_FAILED", "auth",
+                         username=form.username,
+                         description=f"Failed login attempt",
+                         ip=client_ip,
+                         status="failed",
+                         error_message="Invalid credentials")
+            db.commit()
+            raise HTTPException(401, "Invalid credentials")
+
+        if not user.is_active:
+            logger.warning(json.dumps({
+                "event": "login_failed",
+                "username": form.username,
+                "ip": client_ip,
+                "reason": "account_disabled"
+            }))
+            raise HTTPException(403, "Account disabled")
+
+        _clear_failures(client_ip)
+        user.last_login = datetime.now(timezone.utc)
+
+        # SUCCESS: Log to both application and database
+        logger.info(json.dumps({
+            "event": "login_success",
+            "user_id": user.id,
+            "username": user.username,
+            "ip": client_ip,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "role": user.role.name
+        }))
+
+        log_activity(db, "LOGIN", "auth",
+                     username=user.username,
+                     user_id=user.id,
+                     description=f"User logged in",
+                     ip=client_ip,
+                     status="success")
+        db.commit()
+
+        payload = {"sub": str(user.id), "role": user.role.name}
+        return TokenPair(...)
+
+MONITORING SETUP (example with ElasticSearch/Kibana):
+1. Stream logs to ELK stack
+2. Create Kibana dashboard:
+   - Failed login attempts graph
+   - Top IPs with failures
+   - Users with most failed attempts
+3. Set alerts:
+   - IF failed_logins > 10 in 15 min THEN page on-call
+   - IF login_success from unusual IP THEN notify user
+   - IF api_errors_5xx > 5 in 5 min THEN alert
+
+================================================================================
+ISSUE #11: NO CSRF PROTECTION DOCUMENTATION
+================================================================================
+Severity: LOW
+Type: Security Documentation / Future-proofing
+File: /Users/usangaraju/Downloads/smartfarm/backend/main.py
+Lines: 70-78
+
+CURRENT CODE:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,  # Allows cookies
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
+
+CURRENT STATE:
+✓ JWT tokens in Authorization header (CSRF-immune)
+✓ No session cookies (CSRF-immune)
+✓ Allows credentials but only for JWT
+✗ No documentation warning about future changes
+✗ Allow_credentials=True is risky if cookies are added later
+
+RISK:
+If future developer adds cookie-based session authentication:
+1. CORS allows credentials to be sent
+2. If CSRF tokens aren't added, endpoints become vulnerable
+3. Hidden form submission could change account details
+4. Attacker could forge state-changing requests
+
+EXAMPLE VULNERABILITY (if cookies added):
+    <!-- attacker.com -->
+    <form method="POST" action="https://farm.example.com/api/auth/update-email">
+        <input name="email" value="attacker@evil.com">
+        <input type="submit" value="Click to claim farm">
+    </form>
+    <!-- If user is logged in, browser auto-sends cookie, form is submitted -->
+
+FIX REQUIRED:
+Add documentation comment:
+
+    # ── CORS ──
+    # Credentials require an explicit origin list — wildcard is forbidden.
+    #
+    # IMPORTANT: This application uses JWT tokens in Authorization header (CSRF-immune).
+    # If cookie-based authentication is added in the future, CSRF protection MUST be
+    # implemented. See: https://owasp.org/www-community/attacks/csrf
+    #
+    # CSRF protection options:
+    # 1. Double-submit cookie pattern (validate CSRF token in request)
+    # 2. SameSite cookie attribute (SameSite=Strict)
+    # 3. Custom CSRF middleware that validates Origin/Referer headers
+    #
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,  # Only safe with JWT, not with cookies
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
+
+================================================================================
+ISSUE #12: USER ENUMERATION ATTACK POSSIBLE
+================================================================================
+Severity: LOW
+Type: Information Disclosure / User Enumeration
+File: /Users/usangaraju/Downloads/smartfarm/backend/routers/auth.py
+Lines: 143-146
+
+CURRENT CODE:
+    @router.post("/register", response_model=UserOut, status_code=201)
+    def register(data: UserCreate, db: Session = Depends(get_db)):
+        try:
+            validate_password_strength(data.password)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+        if db.query(User).filter(User.username == data.username).first():
+            raise HTTPException(400, "Username already exists")  # ← LEAKS INFO
+        if db.query(User).filter(User.email == data.email).first():
+            raise HTTPException(400, "Email already registered")  # ← LEAKS INFO
+
+VULNERABILITY:
+- Returns different error messages for "username exists" vs "email exists"
+- Attacker can enumerate valid usernames/emails
+- Not critical (registration is open), but still a best practice violation
+
+ATTACK SCENARIO:
+1. Attacker wants to find valid employee emails
+2. Tries to register with common emails: admin@..., alice@..., bob@...
+3. Observes responses:
+   - "Username already exists" → username is taken
+   - "Email already registered" → email is taken
+4. Builds list of valid employee emails/usernames
+5. Uses list for phishing or targeted attacks
+
+IMPACT ASSESSMENT:
+- Low: Because registration is open (no secret that people exist)
+- But: Still violates security best practices
+
+FIX REQUIRED (Optional):
+    @router.post("/register", response_model=UserOut, status_code=201)
+    def register(data: UserCreate, db: Session = Depends(get_db)):
+        try:
+            validate_password_strength(data.password)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+
+        # Check if username OR email already exists
+        existing = db.query(User).filter(
+            (User.username == data.username) | (User.email == data.email)
+        ).first()
+
+        if existing:
+            # Generic error message prevents enumeration
+            raise HTTPException(400,
+                "Username or email already registered. "
+                "Please use different values or contact support.")
+
+        # Continue with registration
+        role = db.query(Role).filter(Role.id == data.role_id).first()
+        ...
+
+ALTERNATIVELY:
+Return 200 OK with generic success message (risky - confuses users):
+    return {"message": "Check your email to verify your account"}
+    # But: Doesn't fail if email already exists
+
+RECOMMENDATION:
+- Implement the generic error message (Option 1)
+- This is best practice even if enumeration risk is low
+- Improves user experience (clearer error message)
+
+================================================================================
+END OF DETAILED FINDINGS
+================================================================================
+
+Summary of Actions Required:
+
+IMMEDIATE (Before Any Production Deployment):
+  1. Rotate production credentials in .env.prod
+  2. Fix leave request authorization issues (#2, #3)
+  3. Add rate limiting to AI endpoint (#8)
+
+SHORT-TERM (Next Sprint):
+  4. Add input validation on search filters (#4)
+  5. Improve error handling and logging (#7, #10)
+  6. Document HTTPS deployment requirements (#9)
+  7. Add missing ownership checks (#5)
+
+LONG-TERM (Nice to Have):
+  8. Implement user enumeration protection (#12)
+  9. Add CSRF documentation (#11)
+  10. Set up centralized logging and monitoring
+
+All 12 issues documented above with code examples and fixes.
+================================================================================

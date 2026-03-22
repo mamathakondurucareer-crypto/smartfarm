@@ -197,6 +197,24 @@ export const commonStyles = StyleSheet.create({
     fontSize: fontSize.md,
   },
 
+  // ── Warning / stale-data banner (non-blocking) ───────────────────────────────
+  warnBox: {
+    backgroundColor: colors.warn + "20",
+    borderWidth: 1,
+    borderColor: colors.warn + "40",
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  warnText: {
+    color: colors.warn,
+    fontSize: fontSize.sm,
+    flex: 1,
+  },
+
   // ── Chip / filter rows ───────────────────────────────────────────────────────
   chipRow: {
     flexDirection: "row",

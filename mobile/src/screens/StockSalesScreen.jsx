@@ -49,7 +49,7 @@ export default function StockSalesScreen() {
     }
   }, [token, startDate, endDate]);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const summary   = salesData?.summary ?? {};
   const totalRev  = summary.total_revenue ?? salesData?.total_revenue ?? 0;

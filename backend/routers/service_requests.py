@@ -37,6 +37,9 @@ def list_service_requests(
     current_user: User = Depends(get_current_user),
 ):
     q = db.query(ServiceRequest)
+    # Non-admin users can only see their own requests
+    if current_user.role.name not in ADMIN_ROLES:
+        q = q.filter(ServiceRequest.requested_by == current_user.id)
     if status:
         q = q.filter(ServiceRequest.status == status)
     if priority:
@@ -80,6 +83,9 @@ def get_service_request(
     req = db.query(ServiceRequest).filter(ServiceRequest.id == request_id).first()
     if not req:
         raise HTTPException(404, "Service request not found")
+    # Non-admin users can only view their own requests
+    if req.requested_by != current_user.id and current_user.role.name not in ADMIN_ROLES:
+        raise HTTPException(403, "Not authorised to view this request")
     return req
 
 

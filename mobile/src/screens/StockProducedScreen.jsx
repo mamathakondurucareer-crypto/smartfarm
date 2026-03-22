@@ -45,7 +45,7 @@ export default function StockProducedScreen() {
     }
   }, [token, startDate, endDate]);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const totalBatches = data?.total_batches ?? 0;
   const totalVal     = data?.total_value ?? 0;

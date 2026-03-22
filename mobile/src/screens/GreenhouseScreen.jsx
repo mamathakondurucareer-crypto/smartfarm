@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
-import { Leaf, Thermometer, Droplets, Activity, Sun, Plus, Pencil, Trash2 } from "lucide-react-native";
+import { Leaf, Thermometer, Droplets, Activity, Sun, Plus, Pencil, Trash2, WifiOff } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import StatGrid      from "../components/ui/StatGrid";
 import Card          from "../components/ui/Card";
@@ -33,7 +33,8 @@ export default function GreenhouseScreen() {
 
   const s    = farm.sensors;
 
-  const [apiCrops, setApiCrops] = useState(null);
+  const [apiCrops, setApiCrops]   = useState(null);
+  const [staleData, setStaleData] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -52,7 +53,7 @@ export default function GreenhouseScreen() {
           setApiCrops(mapped);
         }
       })
-      .catch(() => {});
+      .catch(() => setStaleData(true));
   }, [token]);
 
   const displayCrops = apiCrops ?? farm.greenhouse;
@@ -103,22 +104,41 @@ export default function GreenhouseScreen() {
     setModalVisible(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.crop) {
       alert("Please enter crop name");
       return;
     }
 
     const cropData = {
-      crop: formData.crop,
-      stage: formData.stage,
+      crop:        formData.crop,
+      stage:       formData.stage,
       daysPlanted: parseInt(formData.daysPlanted) || 0,
-      health: parseInt(formData.health) || 0,
-      yieldKg: parseInt(formData.yieldKg) || 0,
-      targetKg: parseInt(formData.targetKg) || 0,
+      health:      parseInt(formData.health) || 0,
+      yieldKg:     parseInt(formData.yieldKg) || 0,
+      targetKg:    parseInt(formData.targetKg) || 0,
     };
 
     if (editingCrop) {
+      if (typeof editingCrop.id === "number" && token) {
+        try {
+          await api.crops.updateGreenhouse(editingCrop.id, {
+            crop_name:       cropData.crop,
+            growth_stage:    cropData.stage,
+            health_score:    cropData.health,
+            actual_yield_kg: cropData.yieldKg,
+            target_yield_kg: cropData.targetKg,
+          }, token);
+        } catch (e) {
+          console.warn("Greenhouse API update failed:", e.message);
+        }
+      }
+      // Update React state so display reflects change immediately
+      setApiCrops((prev) =>
+        prev
+          ? prev.map((c) => (c.id === editingCrop.id ? { ...c, ...cropData } : c))
+          : prev
+      );
       updateGreenhouse(editingCrop.id, cropData);
     } else {
       const newId = `GH-${formData.crop}-${Date.now()}`;
@@ -137,6 +157,13 @@ export default function GreenhouseScreen() {
 
   return (
     <ScreenWrapper title="Greenhouse">
+      {staleData && (
+        <View style={cs.warnBox}>
+          <WifiOff size={14} color={colors.warn} />
+          <Text style={cs.warnText}>Live data unavailable — showing cached data</Text>
+        </View>
+      )}
+
       <StatGrid stats={envStats} />
 
       <View style={cs.gap} />

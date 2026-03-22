@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from backend.database import get_db
 from backend.models.logistics import DeliveryRoute, DeliveryTrip, DeliveryTripOrder
 from backend.models.market import CustomerOrder
-from backend.models.user import User
+from backend.models.user import User, Employee
 from backend.routers.auth import get_current_user
 from backend.services.activity_log_service import log_activity
 from backend.schemas import (
@@ -92,10 +92,17 @@ def list_trips(
     current_user: User = Depends(get_current_user),
 ):
     q = db.query(DeliveryTrip)
+    # Drivers can only see trips assigned to them; admin/manager/supervisor see all
+    if current_user.role.name not in ADMIN_ROLES:
+        emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+        if emp is None:
+            return []
+        q = q.filter(DeliveryTrip.driver_id == emp.id)
+    else:
+        if driver_id:
+            q = q.filter(DeliveryTrip.driver_id == driver_id)
     if status:
         q = q.filter(DeliveryTrip.status == status)
-    if driver_id:
-        q = q.filter(DeliveryTrip.driver_id == driver_id)
     if route_id:
         q = q.filter(DeliveryTrip.route_id == route_id)
     if start_date:

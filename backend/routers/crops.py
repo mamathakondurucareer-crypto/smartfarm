@@ -14,6 +14,7 @@ from backend.models.crop import (
 from backend.schemas import (
     GreenhouseCropCreate, GreenhouseCropOut, VerticalFarmBatchCreate,
     CropActivityCreate, CropHarvestCreate, CropDiseaseCreate,
+    GreenhouseCropUpdate, VerticalFarmBatchUpdate,
 )
 
 router = APIRouter(prefix="/api/crops", tags=["Crop Management"])
@@ -49,6 +50,25 @@ def update_growth_stage(crop_id: int, stage: str, health_score: float = None, db
     return {"message": "Stage updated", "crop_code": crop.crop_code, "stage": stage}
 
 
+@router.put("/greenhouse/{crop_id}")
+def update_greenhouse_crop(crop_id: int, data: GreenhouseCropUpdate, db: Session = Depends(get_db)):
+    crop = db.query(GreenhouseCrop).filter(GreenhouseCrop.id == crop_id).first()
+    if not crop:
+        raise HTTPException(404, "Crop not found")
+    if data.crop_name is not None:
+        crop.crop_name = data.crop_name
+    if data.growth_stage is not None:
+        crop.growth_stage = data.growth_stage
+    if data.health_score is not None:
+        crop.health_score = data.health_score
+    if data.actual_yield_kg is not None:
+        crop.actual_yield_kg = data.actual_yield_kg
+    if data.target_yield_kg is not None:
+        crop.target_yield_kg = data.target_yield_kg
+    db.commit()
+    return {"message": "Crop updated", "crop_id": crop_id}
+
+
 # ── Vertical Farm ──
 @router.get("/vertical-farm")
 def list_vf_batches(status: Optional[str] = None, db: Session = Depends(get_db)):
@@ -65,6 +85,27 @@ def create_vf_batch(data: VerticalFarmBatchCreate, db: Session = Depends(get_db)
     db.commit()
     db.refresh(batch)
     return batch
+
+
+@router.put("/vertical-farm/{batch_id}")
+def update_vf_batch(batch_id: int, data: VerticalFarmBatchUpdate, db: Session = Depends(get_db)):
+    batch = db.query(VerticalFarmBatch).filter(VerticalFarmBatch.id == batch_id).first()
+    if not batch:
+        raise HTTPException(404, "Batch not found")
+    if data.crop_name is not None:
+        batch.crop_name = data.crop_name
+    if data.tier is not None:
+        batch.tier = data.tier
+    if data.current_day is not None:
+        batch.current_day = data.current_day
+    if data.health_score is not None:
+        batch.health_score = data.health_score
+    if data.expected_yield_kg is not None:
+        batch.expected_yield_kg = data.expected_yield_kg
+    if data.status is not None:
+        batch.status = data.status
+    db.commit()
+    return {"message": "VF batch updated", "batch_id": batch_id}
 
 
 # ── Field Crops ──

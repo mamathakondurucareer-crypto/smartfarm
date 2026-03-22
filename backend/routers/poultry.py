@@ -11,7 +11,10 @@ from backend.models.poultry import (
     PoultryFlock, EggCollection, DuckFlock, BeeHive, HoneyHarvest,
     PoultryFeedLog, PoultryHealthLog,
 )
-from backend.schemas import EggCollectionCreate, PoultryFeedLogCreate, PoultryHealthLogCreate
+from backend.schemas import (
+    EggCollectionCreate, PoultryFeedLogCreate, PoultryHealthLogCreate,
+    PoultryFlockUpdate, DuckFlockUpdate, BeeHiveUpdate,
+)
 
 router = APIRouter(prefix="/api/poultry", tags=["Poultry & Livestock"])
 
@@ -89,16 +92,65 @@ def log_health(data: PoultryHealthLogCreate, db: Session = Depends(get_db)):
     return {"id": log.id, "message": "Health log recorded"}
 
 
+@router.put("/flocks/{flock_id}")
+def update_flock(flock_id: int, data: PoultryFlockUpdate, db: Session = Depends(get_db)):
+    flock = db.query(PoultryFlock).filter(PoultryFlock.id == flock_id).first()
+    if not flock:
+        raise HTTPException(404, "Flock not found")
+    if data.current_count is not None:
+        flock.current_count = data.current_count
+    if data.lay_rate_pct is not None:
+        flock.lay_rate_pct = data.lay_rate_pct
+    if data.total_eggs_produced is not None:
+        flock.total_eggs_produced = data.total_eggs_produced
+    if data.status is not None:
+        flock.status = data.status
+    db.commit()
+    return {"message": "Flock updated", "flock_id": flock_id}
+
+
 # ── Ducks ──
 @router.get("/ducks")
 def list_ducks(db: Session = Depends(get_db)):
     return db.query(DuckFlock).all()
 
 
+@router.put("/ducks/{duck_id}")
+def update_duck_flock(duck_id: int, data: DuckFlockUpdate, db: Session = Depends(get_db)):
+    duck = db.query(DuckFlock).filter(DuckFlock.id == duck_id).first()
+    if not duck:
+        raise HTTPException(404, "Duck flock not found")
+    if data.current_count is not None:
+        duck.current_count = data.current_count
+    if data.eggs_today is not None:
+        duck.eggs_today = data.eggs_today
+    if data.deployment_area is not None:
+        duck.deployment_area = data.deployment_area
+    db.commit()
+    return {"message": "Duck flock updated", "duck_id": duck_id}
+
+
 # ── Bees ──
 @router.get("/bees")
 def list_hives(db: Session = Depends(get_db)):
     return db.query(BeeHive).all()
+
+
+@router.put("/bees/{hive_id}")
+def update_hive(hive_id: int, data: BeeHiveUpdate, db: Session = Depends(get_db)):
+    hive = db.query(BeeHive).filter(BeeHive.id == hive_id).first()
+    if not hive:
+        raise HTTPException(404, "Hive not found")
+    if data.colony_strength is not None:
+        hive.colony_strength = data.colony_strength
+    if data.total_honey_harvested_kg is not None:
+        hive.total_honey_harvested_kg = data.total_honey_harvested_kg
+    if data.last_inspection_date is not None:
+        hive.last_inspection_date = data.last_inspection_date
+    if data.status is not None:
+        hive.status = data.status
+    db.commit()
+    return {"message": "Hive updated", "hive_id": hive_id}
 
 
 @router.get("/bees/{hive_id}")

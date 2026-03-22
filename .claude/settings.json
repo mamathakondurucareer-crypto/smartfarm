@@ -72,7 +72,17 @@
       "Bash(grep -h @router /Users/usangaraju/Downloads/smartfarm/backend/routers/*.py)",
       "Bash(wc -l /Users/usangaraju/Downloads/smartfarm/tests/test_*.py)",
       "Bash(grep -r \"APIRouter\\\\|prefix=\" /Users/usangaraju/Downloads/smartfarm/backend/routers/*.py)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(docker volume:*)",
+      "Bash(grep -l \"api\\\\.\" /Users/usangaraju/Downloads/smartfarm/mobile/src/screens/*.jsx)",
+      "Bash(ls /Users/usangaraju/Downloads/smartfarm/.env*)",
+      "Read(//Users/usangaraju/Downloads/smartfarm/**)",
+      "Bash(docker ps:*)",
+      "Bash(git pull:*)",
+      "Bash(/Users/usangaraju/Downloads/smartfarm/backend/schemas/__init__.py:*)",
+      "Bash(ls /Users/usangaraju/Downloads/smartfarm/tests/test_functional_*.py)"
     ],
     "additionalDirectories": [
       "/tmp",

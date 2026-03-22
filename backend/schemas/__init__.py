@@ -336,6 +336,47 @@ class PoultryHealthLogCreate(BaseModel):
     ammonia_ppm: Optional[float] = None
 
 
+# ── Update schemas (for PUT endpoints) ──────────────────────────────────────
+class PondBatchUpdate(BaseModel):
+    species: Optional[str] = None
+    current_count: Optional[int] = None
+    current_avg_weight_kg: Optional[float] = None  # UI sends kg; backend stores grams
+    fcr: Optional[float] = None
+    mortality_pct: Optional[float] = None
+
+class GreenhouseCropUpdate(BaseModel):
+    crop_name: Optional[str] = None
+    growth_stage: Optional[str] = None
+    health_score: Optional[float] = None
+    actual_yield_kg: Optional[float] = None
+    target_yield_kg: Optional[float] = None
+
+class VerticalFarmBatchUpdate(BaseModel):
+    crop_name: Optional[str] = None
+    tier: Optional[str] = None
+    current_day: Optional[int] = None
+    health_score: Optional[float] = None
+    expected_yield_kg: Optional[float] = None
+    status: Optional[str] = None
+
+class PoultryFlockUpdate(BaseModel):
+    current_count: Optional[int] = None
+    lay_rate_pct: Optional[float] = None
+    total_eggs_produced: Optional[int] = None
+    status: Optional[str] = None
+
+class DuckFlockUpdate(BaseModel):
+    current_count: Optional[int] = None
+    eggs_today: Optional[int] = None
+    deployment_area: Optional[str] = None
+
+class BeeHiveUpdate(BaseModel):
+    colony_strength: Optional[str] = None
+    total_honey_harvested_kg: Optional[float] = None
+    last_inspection_date: Optional[date] = None
+    status: Optional[str] = None
+
+
 # ═══════════════════════════════════════════════════════════════
 # INVENTORY
 # ═══════════════════════════════════════════════════════════════
@@ -642,9 +683,14 @@ class StockMovementCreate(BaseModel):
     batch_code: Optional[str] = None
     unit_cost: float = 0
 
+class ConversationMessage(BaseModel):
+    role: str  # "user" | "assistant"
+    content: str
+
 class AIQueryRequest(BaseModel):
     query: str
     context_modules: List[str] = Field(default_factory=lambda: ["all"])
+    conversation_history: List[ConversationMessage] = Field(default_factory=list)
 
 class AIQueryResponse(BaseModel):
     query: str

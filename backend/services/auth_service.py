@@ -12,7 +12,7 @@ settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 _PASSWORD_RE = re.compile(
-    r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]).{8,128}$"
+    r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]).{12,128}$"
 )
 
 
@@ -20,7 +20,7 @@ def validate_password_strength(password: str) -> None:
     """Raise ValueError if the password does not meet complexity requirements."""
     if not _PASSWORD_RE.match(password):
         raise ValueError(
-            "Password must be 8–128 characters and include at least one uppercase letter, "
+            "Password must be 12–128 characters and include at least one uppercase letter, "
             "one lowercase letter, one digit, and one special character."
         )
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
-import { Fish, Activity, Thermometer, Droplets, AlertTriangle, BarChart3, Plus, Pencil, Trash2 } from "lucide-react-native";
+import { Fish, Activity, Thermometer, Droplets, AlertTriangle, BarChart3, Plus, Pencil, Trash2, WifiOff } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import StatGrid      from "../components/ui/StatGrid";
 import Card          from "../components/ui/Card";
@@ -33,28 +33,29 @@ export default function AquacultureScreen() {
 
   const [apiSummary, setApiSummary] = useState(null);
   const [apiPonds, setApiPonds]     = useState(null);
+  const [staleData, setStaleData]   = useState(false);
 
   useEffect(() => {
     if (!token) return;
-    api.aquaculture.summary(token).then(setApiSummary).catch(() => {});
+    api.aquaculture.summary(token).then(setApiSummary).catch(() => setStaleData(true));
     api.aquaculture.ponds(token)
       .then((rows) => {
         if (rows && rows.length > 0) {
-          // Map backend PondOut to display shape
           const mapped = rows.map((p) => ({
-            id:        p.pond_code || String(p.id),
-            species:   p.fish_species || "—",
-            stock:     p.current_stock ?? 0,
-            avgWeight: p.avg_weight_kg ?? 0,
-            fcr:       p.fcr ?? 0,
-            do:        s.dissolvedO2,
-            feedToday: p.today_feed_kg ?? 0,
-            mortality: p.mortality_pct ?? 0,
+            _backendId: p.id,
+            id:         p.pond_code || String(p.id),
+            species:    p.fish_species || "—",
+            stock:      p.current_stock ?? 0,
+            avgWeight:  p.avg_weight_kg ?? 0,
+            fcr:        p.fcr ?? 0,
+            do:         s.dissolvedO2,
+            feedToday:  p.today_feed_kg ?? 0,
+            mortality:  p.mortality_pct ?? 0,
           }));
           setApiPonds(mapped);
         }
       })
-      .catch(() => {});
+      .catch(() => setStaleData(true));
   }, [token]);
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -131,24 +132,48 @@ export default function AquacultureScreen() {
     setModalVisible(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.id || !formData.species || !formData.stock) {
       alert("Please fill in all required fields");
       return;
     }
 
     const pondData = {
-      id: formData.id,
-      species: formData.species,
-      stock: parseInt(formData.stock) || 0,
-      avgWeight: parseFloat(formData.avgWeight) || 0,
-      fcr: parseFloat(formData.fcr) || 0,
-      do: parseFloat(formData.do) || 0,
-      feedToday: parseInt(formData.feedToday) || 0,
-      mortality: parseFloat(formData.mortality) || 0,
+      id:         formData.id,
+      species:    formData.species,
+      stock:      parseInt(formData.stock) || 0,
+      avgWeight:  parseFloat(formData.avgWeight) || 0,
+      fcr:        parseFloat(formData.fcr) || 0,
+      do:         parseFloat(formData.do) || 0,
+      feedToday:  parseInt(formData.feedToday) || 0,
+      mortality:  parseFloat(formData.mortality) || 0,
     };
 
     if (editingPond) {
+      // Persist to backend if we have a backend id
+      if (editingPond._backendId && token) {
+        try {
+          await api.aquaculture.updatePond(editingPond._backendId, {
+            species:               pondData.species,
+            current_count:         pondData.stock,
+            current_avg_weight_kg: pondData.avgWeight,
+            fcr:                   pondData.fcr,
+            mortality_pct:         pondData.mortality,
+          }, token);
+        } catch (e) {
+          console.warn("Pond API update failed:", e.message);
+        }
+      }
+      // Update React state so display reflects the change immediately
+      setApiPonds((prev) =>
+        prev
+          ? prev.map((p) =>
+              p.id === editingPond.id
+                ? { ...p, ...pondData, _backendId: editingPond._backendId }
+                : p
+            )
+          : prev
+      );
       updatePond(editingPond.id, pondData);
     } else {
       addPond(pondData);
@@ -170,6 +195,13 @@ export default function AquacultureScreen() {
 
   return (
     <ScreenWrapper title="Aquaculture">
+      {staleData && (
+        <View style={cs.warnBox}>
+          <WifiOff size={14} color={colors.warn} />
+          <Text style={cs.warnText}>Live data unavailable — showing cached data</Text>
+        </View>
+      )}
+
       <StatGrid stats={summaryStats} />
 
       <View style={cs.gap} />

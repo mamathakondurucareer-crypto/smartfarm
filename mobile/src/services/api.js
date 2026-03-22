@@ -9,6 +9,21 @@ export function setUnauthorizedHandler(fn) {
   _onUnauthorized = fn;
 }
 
+function _statusMessage(status) {
+  switch (status) {
+    case 400: return "Invalid request. Please check your input.";
+    case 401: return "Session expired. Please log in again.";
+    case 403: return "You don't have permission to perform this action.";
+    case 404: return "The requested item was not found.";
+    case 409: return "A conflict occurred — this item may already exist.";
+    case 422: return "Invalid data submitted. Please check your input.";
+    case 429: return "Too many requests. Please wait before trying again.";
+    case 500: return "Server error. Please try again later.";
+    case 503: return "Service unavailable. Please try again later.";
+    default:  return `Request failed (${status})`;
+  }
+}
+
 async function request(method, path, body, token, formEncoded = false) {
   const headers = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -24,19 +39,46 @@ async function request(method, path, body, token, formEncoded = false) {
     }
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: bodyStr,
-    cache: "no-store",
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: bodyStr,
+      cache: "no-store",
+    });
+  } catch {
+    const err = new Error("Cannot connect to server. Check your network connection.");
+    err.status = 0;
+    throw err;
+  }
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     if (res.status === 401 && _onUnauthorized) {
       _onUnauthorized();
     }
-    throw new Error(data.detail || `Request failed (${res.status})`);
+
+    // Derive a clean message from the response
+    let message;
+    const detail = data.detail;
+    if (typeof detail === "string" && detail) {
+      message = detail;
+    } else if (Array.isArray(detail) && detail.length > 0) {
+      // Pydantic validation errors — each item has { loc, msg, type }
+      message = detail
+        .map((e) => {
+          const field = Array.isArray(e.loc) ? e.loc.slice(1).join(".") : "";
+          return field ? `${field}: ${e.msg}` : e.msg;
+        })
+        .join("; ");
+    } else {
+      message = _statusMessage(res.status);
+    }
+
+    const err = new Error(message);
+    err.status = res.status;
+    throw err;
   }
   return data;
 }
@@ -178,22 +220,28 @@ export const api = {
 
   // ─── Aquaculture ──────────────────────────────────────────────
   aquaculture: {
-    ponds:      (token, params = "") => request("GET", `/api/aquaculture/ponds${params}`, null, token),
-    summary:    (token)              => request("GET", "/api/aquaculture/summary",         null, token),
-    batches:    (token)              => request("GET", "/api/aquaculture/batches",          null, token),
+    ponds:      (token, params = "") => request("GET",  `/api/aquaculture/ponds${params}`, null, token),
+    summary:    (token)              => request("GET",  "/api/aquaculture/summary",         null, token),
+    batches:    (token)              => request("GET",  "/api/aquaculture/batches",          null, token),
+    updatePond: (id, data, token)    => request("PUT",  `/api/aquaculture/ponds/${id}`,     data, token),
   },
 
   // ─── Crops (Greenhouse / Vertical Farm) ───────────────────────
   crops: {
-    greenhouse:  (token)           => request("GET",  "/api/crops/greenhouse",    null, token),
-    verticalFarm:(token)           => request("GET",  "/api/crops/vertical-farm", null, token),
+    greenhouse:        (token)              => request("GET", "/api/crops/greenhouse",              null, token),
+    verticalFarm:      (token)              => request("GET", "/api/crops/vertical-farm",           null, token),
+    updateGreenhouse:  (id, data, token)    => request("PUT", `/api/crops/greenhouse/${id}`,        data, token),
+    updateVerticalFarm:(id, data, token)    => request("PUT", `/api/crops/vertical-farm/${id}`,     data, token),
   },
 
   // ─── Poultry ──────────────────────────────────────────────────
   poultry: {
-    flocks: (token) => request("GET", "/api/poultry/flocks", null, token),
-    ducks:  (token) => request("GET", "/api/poultry/ducks",  null, token),
-    bees:   (token) => request("GET", "/api/poultry/bees",   null, token),
+    flocks:       (token)              => request("GET", "/api/poultry/flocks",            null, token),
+    ducks:        (token)              => request("GET", "/api/poultry/ducks",             null, token),
+    bees:         (token)              => request("GET", "/api/poultry/bees",              null, token),
+    updateFlock:  (id, data, token)    => request("PUT", `/api/poultry/flocks/${id}`,      data, token),
+    updateDuck:   (id, data, token)    => request("PUT", `/api/poultry/ducks/${id}`,       data, token),
+    updateBee:    (id, data, token)    => request("PUT", `/api/poultry/bees/${id}`,        data, token),
   },
 
   // ─── Dashboard ────────────────────────────────────────────────
@@ -201,6 +249,12 @@ export const api = {
     kpis:             (token, params = "") => request("GET", `/api/dashboard/kpis${params}`,              null, token),
     revenueByStream:  (token, params = "") => request("GET", `/api/dashboard/revenue-by-stream${params}`,  null, token),
     monthlyPnl:       (token, params = "") => request("GET", `/api/dashboard/monthly-pnl${params}`,        null, token),
+  },
+
+  // ─── AI Analysis ──────────────────────────────────────────────
+  ai: {
+    analyze: (query, conversationHistory, token) =>
+      request("POST", "/api/ai/analyze", { query, conversation_history: conversationHistory }, token),
   },
 
   // ─── Activity Log ─────────────────────────────────────────────
@@ -261,7 +315,13 @@ export const api = {
       list:         (token)                => request("GET",   "/api/qa/lots",                      null,  token),
       create:       (data, token)          => request("POST",  "/api/qa/lots",                      data,  token),
       get:          (id, token)            => request("GET",   `/api/qa/lots/${id}`,                null,  token),
-      trace:        (lotCode, token)       => request("GET",   `/api/qa/lots/trace/${lotCode}`,     null,  token),
+      trace:        (lotCode, token)       => {
+        // SECURITY: Validate lotCode format to prevent path traversal / URL injection
+        if (!/^[a-zA-Z0-9_\-\.]+$/.test(lotCode)) {
+          throw new Error("Invalid lot code format. Only alphanumeric characters, hyphens, underscores, and dots allowed.");
+        }
+        return request("GET", `/api/qa/lots/trace/${encodeURIComponent(lotCode)}`, null, token);
+      },
       updateStatus: (id, status, token)    => request("PATCH", `/api/qa/lots/${id}/status?status=${status}`, null, token),
     },
     tests: {

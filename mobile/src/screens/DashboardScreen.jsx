@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import {
   DollarSign, TrendingUp, Fish, Egg, Sun, Droplets,
-  Thermometer, Wind, Activity, AlertTriangle, Zap, BarChart3,
+  Thermometer, Wind, Activity, AlertTriangle, Zap, BarChart3, WifiOff,
 } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import StatGrid     from "../components/ui/StatGrid";
@@ -34,6 +34,7 @@ export default function DashboardScreen({ navigation }) {
   const [kpis, setKpis] = useState(null);
   const [revenueSegments, setRevenueSegments] = useState([]);
   const [apiAlerts, setApiAlerts] = useState([]);
+  const [staleData, setStaleData] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -42,7 +43,7 @@ export default function DashboardScreen({ navigation }) {
     const end   = now.toISOString().slice(0, 10);
     api.dashboard.kpis(token, `?start_date=${start}&end_date=${end}`)
       .then(setKpis)
-      .catch(() => {});
+      .catch(() => setStaleData(true));
     api.dashboard.revenueByStream(token, `?start_date=${start}&end_date=${end}`)
       .then((rows) => {
         const segs = rows.map((r) => ({
@@ -52,7 +53,7 @@ export default function DashboardScreen({ navigation }) {
         }));
         if (segs.length) setRevenueSegments(segs);
       })
-      .catch(() => {});
+      .catch(() => setStaleData(true));
     api.sensors.alerts(token, "?resolved=false&limit=5")
       .then((rows) => {
         const mapped = rows.map((a) => ({
@@ -64,7 +65,7 @@ export default function DashboardScreen({ navigation }) {
         }));
         setApiAlerts(mapped);
       })
-      .catch(() => {});
+      .catch(() => setStaleData(true));
   }, [token]);
 
   // Use API alerts when available, fall back to simulated local alerts
@@ -106,6 +107,13 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <ScreenWrapper title="Dashboard">
+      {staleData && (
+        <View style={cs.warnBox}>
+          <WifiOff size={14} color={colors.warn} />
+          <Text style={cs.warnText}>Live data unavailable — showing cached data</Text>
+        </View>
+      )}
+
       {/* KPI row */}
       <StatGrid stats={kpiStats} />
 

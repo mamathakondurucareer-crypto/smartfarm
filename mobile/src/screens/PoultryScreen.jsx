@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
-import { Egg, Users, TrendingUp, Activity, Thermometer, AlertTriangle, Bug, Sprout, Pencil } from "lucide-react-native";
+import { Egg, Users, TrendingUp, Activity, Thermometer, AlertTriangle, Bug, Sprout, Pencil, WifiOff } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import Card          from "../components/ui/Card";
 import SectionHeader from "../components/ui/SectionHeader";
@@ -21,27 +21,33 @@ export default function PoultryScreen() {
 
   const { poultry: p, ducks: d, bees, sensors: s } = farm;
 
-  const [apiPoultry, setApiPoultry] = useState(null);
-  const [apiDucks, setApiDucks]     = useState(null);
-  const [apiBees, setApiBees]       = useState(null);
+  const [apiPoultry, setApiPoultry]   = useState(null);
+  const [apiDucks, setApiDucks]       = useState(null);
+  const [apiBees, setApiBees]         = useState(null);
+  const [staleData, setStaleData]     = useState(false);
+  // Store backend IDs for PUT calls
+  const [flockIds, setFlockIds]       = useState([]);
+  const [duckId, setDuckId]           = useState(null);
+  const [beeIds, setBeeIds]           = useState([]);
 
   useEffect(() => {
     if (!token) return;
     api.poultry.flocks(token)
       .then((rows) => {
         if (rows && rows.length > 0) {
-          // Aggregate all flocks
+          setFlockIds(rows.map((f) => f.id));
           const totalHens  = rows.reduce((sum, f) => sum + (f.current_count ?? 0), 0);
           const avgLayRate = rows.reduce((sum, f) => sum + (f.lay_rate_pct ?? 0), 0) / rows.length;
           const totalEggs  = rows.reduce((sum, f) => sum + (f.total_eggs_produced ?? 0), 0);
           setApiPoultry({ hens: totalHens, layRate: +avgLayRate.toFixed(1), eggsToday: totalEggs });
         }
       })
-      .catch(() => {});
+      .catch(() => setStaleData(true));
     api.poultry.ducks(token)
       .then((rows) => {
         if (rows && rows.length > 0) {
           const first = rows[0];
+          setDuckId(first.id);
           setApiDucks({
             count:      first.current_count ?? 0,
             eggsToday:  first.eggs_today ?? 0,
@@ -49,10 +55,11 @@ export default function PoultryScreen() {
           });
         }
       })
-      .catch(() => {});
+      .catch(() => setStaleData(true));
     api.poultry.bees(token)
       .then((rows) => {
         if (rows && rows.length > 0) {
+          setBeeIds(rows.map((h) => h.id));
           const totalHoney = rows.reduce((sum, h) => sum + (h.total_honey_harvested_kg ?? 0), 0);
           setApiBees({
             hives:          rows.length,
@@ -61,7 +68,7 @@ export default function PoultryScreen() {
           });
         }
       })
-      .catch(() => {});
+      .catch(() => setStaleData(true));
   }, [token]);
 
   const henData  = apiPoultry ?? p;
@@ -127,31 +134,72 @@ export default function PoultryScreen() {
     setModalVisible(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (editingSection === "poultry") {
-      updatePoultry({
-        hens: parseInt(formData.hens) || 0,
-        layRate: parseFloat(formData.layRate) || 0,
-        eggsToday: parseInt(formData.eggsToday) || 0,
-        eggsBroken: parseInt(formData.eggsBroken) || 0,
+      const updated = {
+        hens:         parseInt(formData.hens) || 0,
+        layRate:      parseFloat(formData.layRate) || 0,
+        eggsToday:    parseInt(formData.eggsToday) || 0,
+        eggsBroken:   parseInt(formData.eggsBroken) || 0,
         feedConsumed: parseInt(formData.feedConsumed) || 0,
-        mortality: parseInt(formData.mortality) || 0,
-        waterUsage: parseInt(formData.waterUsage) || 0,
-      });
+        mortality:    parseInt(formData.mortality) || 0,
+        waterUsage:   parseInt(formData.waterUsage) || 0,
+      };
+      // Update each flock proportionally (first flock carries the edit)
+      if (token && flockIds.length > 0) {
+        try {
+          await api.poultry.updateFlock(flockIds[0], {
+            current_count:       updated.hens,
+            lay_rate_pct:        updated.layRate,
+            total_eggs_produced: updated.eggsToday,
+          }, token);
+        } catch (e) {
+          console.warn("Poultry API update failed:", e.message);
+        }
+      }
+      setApiPoultry((prev) => prev ? { ...prev, hens: updated.hens, layRate: updated.layRate, eggsToday: updated.eggsToday } : prev);
+      updatePoultry(updated);
+
     } else if (editingSection === "ducks") {
-      updateDucks({
-        count: parseInt(formData.count) || 0,
-        eggsToday: parseInt(formData.eggsToday) || 0,
+      const updated = {
+        count:         parseInt(formData.count) || 0,
+        eggsToday:     parseInt(formData.eggsToday) || 0,
         pestsConsumed: formData.pestsConsumed,
-        area: formData.area,
-      });
+        area:          formData.area,
+      };
+      if (token && duckId) {
+        try {
+          await api.poultry.updateDuck(duckId, {
+            current_count:   updated.count,
+            eggs_today:      updated.eggsToday,
+            deployment_area: updated.area,
+          }, token);
+        } catch (e) {
+          console.warn("Duck API update failed:", e.message);
+        }
+      }
+      setApiDucks((prev) => prev ? { ...prev, count: updated.count, eggsToday: updated.eggsToday, area: updated.area } : prev);
+      updateDucks(updated);
+
     } else if (editingSection === "bees") {
-      updateBees({
-        hives: parseInt(formData.hives) || 0,
-        honeyStored: parseInt(formData.honeyStored) || 0,
+      const updated = {
+        hives:          parseInt(formData.hives) || 0,
+        honeyStored:    parseFloat(formData.honeyStored) || 0,
         activeForagers: formData.activeForagers,
         lastInspection: formData.lastInspection,
-      });
+      };
+      if (token && beeIds.length > 0) {
+        try {
+          await api.poultry.updateBee(beeIds[0], {
+            total_honey_harvested_kg: updated.honeyStored,
+            last_inspection_date:     updated.lastInspection,
+          }, token);
+        } catch (e) {
+          console.warn("Bee API update failed:", e.message);
+        }
+      }
+      setApiBees((prev) => prev ? { ...prev, honeyStored: updated.honeyStored, lastInspection: updated.lastInspection } : prev);
+      updateBees(updated);
     }
     setModalVisible(false);
   };
@@ -226,6 +274,13 @@ export default function PoultryScreen() {
 
   return (
     <ScreenWrapper title="Poultry & Duck">
+      {staleData && (
+        <View style={cs.warnBox}>
+          <WifiOff size={14} color={colors.warn} />
+          <Text style={cs.warnText}>Live data unavailable — showing cached data</Text>
+        </View>
+      )}
+
       {/* Layer hens */}
       <Card>
         <View style={styles.sectionHeader}>

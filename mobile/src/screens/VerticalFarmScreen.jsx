@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
-import { Sprout, Thermometer, Droplets, Activity, Plus, Pencil, Trash2 } from "lucide-react-native";
+import { Sprout, Thermometer, Droplets, Activity, Plus, Pencil, Trash2, WifiOff } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import StatGrid      from "../components/ui/StatGrid";
 import Card          from "../components/ui/Card";
@@ -8,6 +8,8 @@ import SectionHeader from "../components/ui/SectionHeader";
 import Badge         from "../components/ui/Badge";
 import { colors, spacing, radius, fontSize } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import useAuthStore  from "../store/useAuthStore";
+import { api } from "../services/api";
 import { styles } from "./VerticalFarmScreen.styles";
 import { commonStyles as cs } from "../styles/common";
 
@@ -16,8 +18,34 @@ export default function VerticalFarmScreen() {
   const addVerticalFarm = useFarmStore((s) => s.addVerticalFarm);
   const updateVerticalFarm = useFarmStore((s) => s.updateVerticalFarm);
   const removeVerticalFarm = useFarmStore((s) => s.removeVerticalFarm);
+  const token = useAuthStore((s) => s.token);
 
   const s    = farm.sensors;
+
+  const [apiVFBatches, setApiVFBatches] = useState(null);
+  const [staleData, setStaleData]       = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+    api.crops.verticalFarm(token)
+      .then((rows) => {
+        if (rows && rows.length > 0) {
+          const mapped = rows.map((b) => ({
+            _backendId: b.id,
+            crop:       b.crop_name,
+            tier:       b.tier || "",
+            cycleDay:   b.current_day ?? 0,
+            health:     b.health_score ?? 0,
+            batchKg:    b.expected_yield_kg ?? 0,
+            cyclesLeft: 0,
+          }));
+          setApiVFBatches(mapped);
+        }
+      })
+      .catch(() => setStaleData(true));
+  }, [token]);
+
+  const displayBatches = apiVFBatches ?? farm.verticalFarm;
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingBatch, setEditingBatch] = useState(null);
@@ -63,7 +91,7 @@ export default function VerticalFarmScreen() {
     setModalVisible(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.crop || !formData.tier) {
       alert("Please enter crop name and tier");
       return;
@@ -79,6 +107,28 @@ export default function VerticalFarmScreen() {
     };
 
     if (editingBatch) {
+      if (editingBatch._backendId && token) {
+        try {
+          await api.crops.updateVerticalFarm(editingBatch._backendId, {
+            crop_name:          batchData.crop,
+            tier:               batchData.tier,
+            current_day:        batchData.cycleDay,
+            health_score:       batchData.health,
+            expected_yield_kg:  batchData.batchKg,
+          }, token);
+        } catch (e) {
+          console.warn("VF API update failed:", e.message);
+        }
+      }
+      setApiVFBatches((prev) =>
+        prev
+          ? prev.map((b) =>
+              b.crop === editingBatch.crop
+                ? { ...b, ...batchData, _backendId: editingBatch._backendId }
+                : b
+            )
+          : prev
+      );
       updateVerticalFarm(editingBatch.crop, batchData);
     } else {
       addVerticalFarm(batchData);
@@ -96,6 +146,13 @@ export default function VerticalFarmScreen() {
 
   return (
     <ScreenWrapper title="Vertical Farm">
+      {staleData && (
+        <View style={cs.warnBox}>
+          <WifiOff size={14} color={colors.warn} />
+          <Text style={cs.warnText}>Live data unavailable — showing cached data</Text>
+        </View>
+      )}
+
       <StatGrid stats={envStats} />
 
       <View style={cs.gap} />
@@ -109,7 +166,7 @@ export default function VerticalFarmScreen() {
           </TouchableOpacity>
         </View>
 
-        {farm.verticalFarm.map((tier) => (
+        {displayBatches.map((tier) => (
           <View key={tier.crop} style={styles.tierCard}>
             <View style={styles.tierHeader}>
               <View style={styles.tierTitleRow}>

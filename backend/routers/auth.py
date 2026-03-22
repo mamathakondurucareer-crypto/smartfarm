@@ -168,6 +168,9 @@ def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Ses
     user = db.query(User).filter(User.username == form.username).first()
     if not user or not verify_password(form.password, user.hashed_password):
         _record_failure(client_ip)
+        log_activity(db, "LOGIN_FAILED", "auth", username=form.username,
+                     description=f"Failed login attempt for '{form.username}'", ip=client_ip)
+        db.commit()
         # Uniform error for both "not found" and "wrong password"
         raise HTTPException(401, "Invalid credentials")
     if not user.is_active:

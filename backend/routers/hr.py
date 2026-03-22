@@ -46,6 +46,20 @@ def _get_employee_or_404(db: Session, employee_id: int) -> Employee:
     return emp
 
 
+def _get_current_employee(db: Session, current_user: User) -> Optional[Employee]:
+    """Return the Employee record linked to current_user, or None."""
+    return db.query(Employee).filter(
+        Employee.user_id == current_user.id,
+        Employee.deleted_at.is_(None),
+    ).first()
+
+
+def _own_employee_id(db: Session, current_user: User) -> Optional[int]:
+    """Return employee_id for current_user if they have an employee record."""
+    emp = _get_current_employee(db, current_user)
+    return emp.id if emp else None
+
+
 # ── Leave Requests ───────────────────────────────────────────────────────────
 
 @router.post("/leave-requests", response_model=LeaveRequestOut)
@@ -71,7 +85,13 @@ def list_leave_requests(
     current_user: User = Depends(get_current_user),
 ):
     q = db.query(LeaveRequest)
-    if employee_id:
+    # Non-management users can only see their own leave requests
+    if current_user.role.name not in _WRITE_ROLES:
+        own_id = _own_employee_id(db, current_user)
+        if own_id is None:
+            return []
+        q = q.filter(LeaveRequest.employee_id == own_id)
+    elif employee_id:
         q = q.filter(LeaveRequest.employee_id == employee_id)
     if status:
         q = q.filter(LeaveRequest.status == status)
@@ -143,7 +163,13 @@ def list_attendance(
     current_user: User = Depends(get_current_user),
 ):
     q = db.query(Attendance)
-    if employee_id:
+    # Non-management users can only see their own attendance
+    if current_user.role.name not in _WRITE_ROLES:
+        own_id = _own_employee_id(db, current_user)
+        if own_id is None:
+            return []
+        q = q.filter(Attendance.employee_id == own_id)
+    elif employee_id:
         q = q.filter(Attendance.employee_id == employee_id)
     if date_from:
         q = q.filter(Attendance.date >= date_from)
@@ -162,6 +188,11 @@ def get_leave_balances(
     current_user: User = Depends(get_current_user),
 ):
     _get_employee_or_404(db, employee_id)
+    # Non-management users can only view their own leave balances
+    if current_user.role.name not in _WRITE_ROLES:
+        own_id = _own_employee_id(db, current_user)
+        if own_id != employee_id:
+            raise HTTPException(403, "Not authorised to view this employee's leave balances")
     if year is None:
         year = date.today().year
     balances = db.query(LeaveBalance).filter(
@@ -275,7 +306,13 @@ def list_payroll(
     current_user: User = Depends(get_current_user),
 ):
     q = db.query(PayrollRun)
-    if employee_id:
+    # Non-payroll-role users can only see their own payslips
+    if current_user.role.name not in _PAYROLL_ROLES:
+        own_id = _own_employee_id(db, current_user)
+        if own_id is None:
+            return []
+        q = q.filter(PayrollRun.employee_id == own_id)
+    elif employee_id:
         q = q.filter(PayrollRun.employee_id == employee_id)
     if month:
         q = q.filter(PayrollRun.month == month)
@@ -294,6 +331,11 @@ def get_payslip(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # Non-payroll-role users can only access their own payslip
+    if current_user.role.name not in _PAYROLL_ROLES:
+        own_id = _own_employee_id(db, current_user)
+        if own_id != employee_id:
+            raise HTTPException(403, "Not authorised to view this payslip")
     run = db.query(PayrollRun).filter(
         PayrollRun.employee_id == employee_id,
         PayrollRun.year == year,
@@ -358,7 +400,13 @@ def list_performance_reviews(
     current_user: User = Depends(get_current_user),
 ):
     q = db.query(PerformanceReview)
-    if employee_id:
+    # Non-management users can only see their own performance reviews
+    if current_user.role.name not in _WRITE_ROLES:
+        own_id = _own_employee_id(db, current_user)
+        if own_id is None:
+            return []
+        q = q.filter(PerformanceReview.employee_id == own_id)
+    elif employee_id:
         q = q.filter(PerformanceReview.employee_id == employee_id)
     if review_period:
         q = q.filter(PerformanceReview.review_period == review_period)
@@ -407,6 +455,11 @@ def get_training_history(
     current_user: User = Depends(get_current_user),
 ):
     _get_employee_or_404(db, employee_id)
+    # Non-management users can only see their own training history
+    if current_user.role.name not in _WRITE_ROLES:
+        own_id = _own_employee_id(db, current_user)
+        if own_id != employee_id:
+            raise HTTPException(403, "Not authorised to view this employee's training records")
     q = db.query(TrainingRecord).filter(TrainingRecord.employee_id == employee_id)
     if training_type:
         q = q.filter(TrainingRecord.training_type == training_type)

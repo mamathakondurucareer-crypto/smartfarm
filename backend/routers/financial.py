@@ -317,20 +317,98 @@ def list_salary(
 # ═══════ LEAVE ═══════
 @router.post("/leave-requests", status_code=201)
 def submit_leave(data: LeaveRequestCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Submit a leave request.
+
+    Security: Employees can only request leave for themselves.
+    HR/Manager can request leave for other employees.
+    """
+    # Check authorization: HR can request for anyone, employees only for themselves
+    if current_user.role.name not in HR_ROLES:
+        employee = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+        if not employee or data.employee_id != employee.id:
+            raise HTTPException(403,
+                "You can only submit leave requests for yourself. Contact HR for others.")
+
+    # Verify employee exists
+    employee = db.query(Employee).filter(Employee.id == data.employee_id).first()
+    if not employee:
+        raise HTTPException(404, "Employee not found")
+
+    # Check for duplicate pending/approved requests (overlapping date range)
+    existing = db.query(LeaveRequest).filter(
+        LeaveRequest.employee_id == data.employee_id,
+        LeaveRequest.status.in_(["pending", "approved"]),
+        LeaveRequest.start_date <= data.end_date,
+        LeaveRequest.end_date >= data.start_date
+    ).first()
+    if existing:
+        raise HTTPException(409,
+            f"Overlapping leave request already exists (ID: {existing.id})")
+
     lr = LeaveRequest(**data.model_dump())
     db.add(lr)
     db.commit()
+    db.refresh(lr)
+
+    log_activity(db, "LEAVE_REQUESTED", "hr",
+                 leave_request_id=lr.id, employee_id=data.employee_id,
+                 description=f"Leave from {data.start_date} to {data.end_date}",
+                 username=current_user.username, user_id=current_user.id)
+
     return {"id": lr.id, "status": "pending"}
 
 
 @router.put("/leave-requests/{lr_id}/approve")
-def approve_leave(lr_id: int, approved_by: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def approve_leave(lr_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Approve a pending leave request.
+
+    Security: Only HR can approve. The approved_by field is always set to current_user.id.
+    Client should not be able to specify who approved the request.
+    """
     if current_user.role.name not in HR_ROLES:
         raise HTTPException(403, "HR role required")
     lr = db.query(LeaveRequest).filter(LeaveRequest.id == lr_id).first()
     if not lr:
         raise HTTPException(404, "Leave request not found")
+    if lr.status != "pending":
+        raise HTTPException(400, f"Cannot approve a {lr.status} leave request")
+
     lr.status = "approved"
-    lr.approved_by = approved_by
+    lr.approved_by = current_user.id  # ← SECURITY FIX: Always use current_user.id, never trust client input
     db.commit()
-    return {"message": "Leave approved"}
+    db.refresh(lr)
+
+    log_activity(db, "LEAVE_APPROVED", "hr",
+                 leave_request_id=lr.id, approver_id=current_user.id,
+                 username=current_user.username, user_id=current_user.id)
+
+    return {"id": lr.id, "message": "Leave approved"}
+
+
+@router.put("/leave-requests/{lr_id}/reject")
+def reject_leave(lr_id: int, reason: Optional[str] = None, db: Session = Depends(get_db),
+                 current_user: User = Depends(get_current_user)):
+    """Reject a pending leave request.
+
+    Security: Only HR can reject leave requests.
+    """
+    if current_user.role.name not in HR_ROLES:
+        raise HTTPException(403, "HR role required")
+    lr = db.query(LeaveRequest).filter(LeaveRequest.id == lr_id).first()
+    if not lr:
+        raise HTTPException(404, "Leave request not found")
+    if lr.status != "pending":
+        raise HTTPException(400, f"Cannot reject a {lr.status} leave request")
+
+    lr.status = "rejected"
+    lr.approved_by = current_user.id
+    if reason:
+        lr.rejection_reason = reason
+    db.commit()
+    db.refresh(lr)
+
+    log_activity(db, "LEAVE_REJECTED", "hr",
+                 leave_request_id=lr.id, reason=reason,
+                 username=current_user.username, user_id=current_user.id)
+
+    return {"id": lr.id, "message": "Leave request rejected"}

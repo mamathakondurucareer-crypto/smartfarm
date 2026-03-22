@@ -124,6 +124,7 @@ class LeaveRequest(Base, TimestampMixin):
     reason: Mapped[Optional[str]] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, approved, rejected
     approved_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"))
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text)  # Reason if rejected
 
     employee: Mapped["Employee"] = relationship("Employee", back_populates="leave_requests")
 

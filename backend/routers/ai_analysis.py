@@ -1,7 +1,9 @@
 """AI-powered farm analysis endpoint using Anthropic Claude API."""
 
-from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException
+import logging
+from datetime import datetime, timezone, timedelta
+from collections import defaultdict
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -9,11 +11,43 @@ from backend.database import get_db
 from backend.config import get_settings
 from backend.models.user import User
 from backend.routers.auth import get_current_user
-from backend.schemas import AIQueryRequest, AIQueryResponse
+from backend.schemas import AIQueryRequest, AIQueryResponse, ConversationMessage
 from backend.services.analytics_service import AnalyticsService
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/ai", tags=["AI Analysis"])
 settings = get_settings()
+
+# Rate limiting for AI analysis (prevent cost exhaustion attacks)
+_ai_request_timestamps = defaultdict(list)  # user_id -> list of timestamps
+_RATE_LIMIT_REQUESTS = 10  # requests per window
+_RATE_LIMIT_WINDOW = timedelta(minutes=1)
+
+
+def _check_ai_rate_limit(user_id: int) -> None:
+    """Check if user has exceeded AI analysis rate limit.
+
+    SECURITY: Limit to 10 requests per minute per user to prevent cost exhaustion attacks
+    on the Anthropic API.
+
+    Raises HTTPException(429) if limit exceeded.
+    """
+    now = datetime.now(timezone.utc)
+    window_start = now - _RATE_LIMIT_WINDOW
+
+    # Clean old timestamps
+    _ai_request_timestamps[user_id] = [
+        ts for ts in _ai_request_timestamps[user_id]
+        if ts > window_start
+    ]
+
+    # Check limit
+    if len(_ai_request_timestamps[user_id]) >= _RATE_LIMIT_REQUESTS:
+        logger.warning(f"AI rate limit exceeded for user {user_id}")
+        raise HTTPException(429, f"Too many AI requests. Max {_RATE_LIMIT_REQUESTS} per minute.")
+
+    # Record this request
+    _ai_request_timestamps[user_id].append(now)
 
 
 def build_farm_context(db: Session) -> str:
@@ -78,36 +112,67 @@ PENDING ORDERS: {kpis['operations']['pending_orders']}"""
 
 @router.post("/analyze", response_model=AIQueryResponse)
 async def analyze(
+    http_request: Request,
     request: AIQueryRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """Analyze farm data with AI assistant.
+
+    SECURITY: Rate limited to 10 requests/minute per user to prevent cost exhaustion attacks.
+    """
+    # SECURITY: Check rate limit to prevent API cost exhaustion
+    _check_ai_rate_limit(current_user.id)
+
     if not settings.anthropic_api_key:
+        logger.warning(f"AI analysis requested but ANTHROPIC_API_KEY not configured. User: {current_user.id}")
         raise HTTPException(503, "AI analysis service is not available")
+
+    logger.info(f"AI analysis started. User: {current_user.id}, Query length: {len(request.query)}")
 
     try:
         import httpx
         context = build_farm_context(db)
         async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": settings.anthropic_api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": "claude-sonnet-4-20250514",
-                    "max_tokens": 2000,
-                    "system": f"""You are the AI Farm Analyst for SmartFarm OS. You have access to live operational data from the farm's database. Provide expert agricultural analysis with specific, actionable recommendations. Use data-driven insights with exact numbers from the context. Format with clear sections and priorities. Use ₹ for currency.
+            try:
+                resp = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": settings.anthropic_api_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": "claude-sonnet-4-20250514",
+                        "max_tokens": 2000,
+                        "system": f"""You are the AI Farm Analyst for SmartFarm OS. You have access to live operational data from the farm's database. Provide expert agricultural analysis with specific, actionable recommendations. Use data-driven insights with exact numbers from the context. Format with clear sections and priorities. Use ₹ for currency.
 
 {context}""",
-                    "messages": [{"role": "user", "content": request.query}],
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            ai_text = "\n".join(b["text"] for b in data.get("content", []) if b.get("type") == "text")
+                        "messages": [
+                            *[{"role": m.role, "content": m.content} for m in request.conversation_history],
+                            {"role": "user", "content": request.query},
+                        ],
+                    },
+                )
+                resp.raise_for_status()
+            except httpx.TimeoutException as e:
+                logger.error(f"AI API timeout. User: {current_user.id}. Error: {str(e)}")
+                raise HTTPException(504, "AI service is taking too long to respond. Please try again.")
+            except httpx.ConnectError as e:
+                logger.error(f"AI API connection failed. User: {current_user.id}. Error: {str(e)}")
+                raise HTTPException(503, "Could not reach AI service. Please try again.")
+            except httpx.HTTPStatusError as e:
+                logger.error(f"AI API error. User: {current_user.id}. Status: {e.response.status_code}. Error: {str(e)}")
+                raise HTTPException(502, "AI service returned an error. Please try again.")
+
+        data = resp.json()
+        ai_text = "\n".join(b["text"] for b in data.get("content", []) if b.get("type") == "text")
+
+        if not ai_text:
+            logger.warning(f"AI returned empty response. User: {current_user.id}")
+            raise HTTPException(500, "AI returned an empty response")
+
+        logger.info(f"AI analysis completed successfully. User: {current_user.id}, Response length: {len(ai_text)}")
 
         return AIQueryResponse(
             query=request.query,
@@ -115,10 +180,13 @@ async def analyze(
             modules_analyzed=request.context_modules,
             timestamp=datetime.now(timezone.utc),
         )
-    except httpx.HTTPStatusError:
-        raise HTTPException(502, "AI service error — please try again")
-    except Exception:
-        raise HTTPException(500, "AI analysis failed")
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (already logged)
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in AI analysis. User: {current_user.id}. Error: {str(e)}", exc_info=True)
+        raise HTTPException(500, "An unexpected error occurred during analysis")
 
 
 @router.get("/quick-health")

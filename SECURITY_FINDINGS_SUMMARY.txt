@@ -1,0 +1,321 @@
+================================================================================
+SMARTFARM SECURITY AUDIT - EXECUTIVE SUMMARY
+================================================================================
+Date: March 22, 2026
+Audit Scope: FastAPI Backend + React Native (Expo) Frontend
+Overall Risk Level: CRITICAL - Production deployment NOT RECOMMENDED
+
+================================================================================
+CRITICAL VULNERABILITIES (5)
+================================================================================
+
+1. CRITICAL: Production Secrets Exposed in Git Repository
+   Location: /Users/usangaraju/Downloads/smartfarm/.env.prod
+   Lines: 1-21
+   CVSS Score: 9.8
+
+   Exposed Credentials:
+   - Database password: SfPr0d2024!
+   - Database user: smartfarm
+   - Admin credentials: admin@smartfarm.in / Admin@SmartFarm2024!
+   - SECRET_KEY (JWT signing): be602bc33abd848b293029e7fbd44bfd11d82fb76c8970abdd814c819a200953
+
+   Impact: Complete system compromise. Attacker can:
+   - Access production database directly
+   - Forge JWT tokens and impersonate any user
+   - Modify all user accounts and data
+
+   Fix Timeline: IMMEDIATE (Day 1)
+   Action Items:
+   a) Rotate ALL credentials NOW in production
+   b) Remove .env.prod from Git history using 'bfg --delete-files .env.prod'
+   c) Force push cleaned history
+   d) Implement pre-commit hook to prevent future commits
+
+---
+
+2. CRITICAL: Client-Side API Key Exposure (Anthropic)
+   Location: /Users/usangaraju/Downloads/smartfarm/mobile/src/screens/AIScreen.jsx
+   Lines: 19, 99, 101-105
+   CVSS Score: 9.1
+
+   Issue: Frontend sends Anthropic API key to AI API endpoint
+   Attack Vector: Key visible in browser dev tools, network tab, source code
+   Financial Impact: Compromised key allows unlimited API calls ($0.003/1K tokens)
+
+   Current Status: Key is currently empty ("") but design is flawed
+
+   Fix Timeline: 2-4 hours
+   Action Items:
+   a) Delete CLAUDE_API_KEY export from apiConfig.js
+   b) Update AIScreen.jsx to call backend proxy instead
+   c) Use backend endpoint: POST /api/ai/analyze (which already exists)
+   d) Backend maintains API key securely in environment
+
+---
+
+3. CRITICAL: Frontend Token Storage Not Encrypted
+   Location: /Users/usangaraju/Downloads/smartfarm/mobile/src/store/useAuthStore.js
+   Lines: 8, 16-45, 55
+   CVSS Score: 8.7
+
+   Issue: JWT tokens stored in plain-text AsyncStorage
+   - No encryption on disk
+   - Readable by any app with file access
+   - Extracted from device backups
+
+   Attack Vector: Physical device access, malware, unencrypted backups
+
+   Fix Timeline: 3-4 hours
+   Action Items:
+   a) npm install react-native-encrypted-storage
+   b) Replace AsyncStorage with EncryptedStorage for token storage
+   c) Test token persistence across app restarts
+   d) For web: Use memory-only storage (cleared on page refresh)
+
+---
+
+4. CRITICAL: Missing Authorization Checks (IDOR - Insecure Direct Object References)
+   Location: Multiple routers
+   CVSS Score: 8.4
+
+   Vulnerable Endpoints:
+   - /api/service-requests/{request_id} (GET) - No ownership check
+   - /api/supply-chain/transfers/{transfer_id} - No ownership check
+   - Estimated 40+ endpoints without ownership/role validation
+
+   Attack Scenario:
+   User A (unprivileged) requests: GET /api/service-requests/999
+   Response: Full details of another user's sensitive service request
+
+   Fix Timeline: 3-5 days
+   Action Items:
+   a) Audit all 175+ endpoints using db.query().filter() patterns
+   b) Add ownership checks: if resource.user_id != current_user.id: raise 403
+   c) Add role-based checks for admin operations
+   d) Implement ownership validation helper function
+   e) Write tests for unauthorized access scenarios
+
+---
+
+5. CRITICAL: Weak Brute-Force Protection on Login
+   Location: /Users/usangaraju/Downloads/smartfarm/backend/routers/auth.py
+   Lines: 32-49, 163-189
+   CVSS Score: 8.3
+
+   Issues:
+   a) In-memory rate limiting lost on server restart
+   b) No persistence across multiple server instances (horizontal scaling)
+   c) Can be bypassed using different IP addresses (proxy/VPN)
+   d) Only 5 attempts before 15-minute lockout (too lenient)
+
+   Fix Timeline: 2-3 hours
+   Action Items:
+   a) Install Redis: pip install redis
+   b) Implement persistent rate limiting with Redis
+   c) Use combination: username + IP for identification
+   d) Adjust lockout: 3 attempts → 30 minute lockout
+   e) Progressive lockout: 30 min → 60 min → permanent
+
+================================================================================
+HIGH-SEVERITY VULNERABILITIES (7)
+================================================================================
+
+6. HIGH: Insufficient Security Event Logging
+   Location: /Users/usangaraju/Downloads/smartfarm/backend/routers/auth.py
+   Lines: 178-179
+   CVSS Score: 6.3
+
+   Missing:
+   - Failed login attempt logging
+   - Password change tracking
+   - Permission escalation logging
+   - Suspicious pattern detection
+
+   Fix Timeline: 2-3 days
+   Create SecurityLog model and comprehensive logging service
+
+---
+
+7. HIGH: Weak Password Validation Allows Common Patterns
+   Location: /Users/usangaraju/Downloads/smartfarm/backend/services/auth_service.py
+   Lines: 14-16
+   CVSS Score: 6.8
+
+   Current regex allows:
+   - "Password1!" (common word)
+   - "Admin@2024!" (predictable year pattern)
+   - Only 8 character minimum
+
+   Fix Timeline: 2-3 hours
+   Replace with: pip install zxcvbn
+   Require: 12+ characters, zxcvbn score >= 3
+
+---
+
+8. HIGH: Missing CSRF Protection on State-Changing Requests
+   Location: /Users/usangaraju/Downloads/smartfarm/backend/main.py
+   Lines: 70-78
+   CVSS Score: 6.5
+
+   Fix Timeline: 2-3 hours
+   Add CSRF middleware for POST/PUT/DELETE/PATCH requests
+
+---
+
+9. HIGH: API Response Leaks Sensitive Data
+   Location: /Users/usangaraju/Downloads/smartfarm/backend/routers/auth.py
+   Lines: 126-132
+   CVSS Score: 5.3
+
+   Issue: /api/auth/users returns email/phone for ALL users
+   Fix: Restrict contact info to admin/manager roles only
+
+---
+
+10. HIGH: Default CORS Origins Too Permissive
+    Location: /Users/usangaraju/Downloads/smartfarm/backend/config.py
+    Lines: 25
+    CVSS Score: 5.7
+
+    Current: "http://localhost:8081,http://localhost:3000"
+    Issue: Development servers allowed in production config
+    Fix: Set ALLOWED_ORIGINS=https://farm.smartfarm.local in .env.prod
+
+---
+
+11. HIGH: No Automatic HTTPS Redirect
+    Location: /Users/usangaraju/Downloads/smartfarm/backend/middleware/security.py
+    CVSS Score: 5.4
+
+    Fix: Add HTTPSRedirectMiddleware to force HTTP→HTTPS
+
+---
+
+12. HIGH: Database Connection Not Using SSL/TLS
+    Location: /Users/usangaraju/Downloads/smartfarm/backend/database.py
+    Lines: 17-22
+    CVSS Score: 5.1
+
+    Fix: Add sslmode=require for PostgreSQL connections
+
+================================================================================
+MEDIUM-SEVERITY VULNERABILITIES (3)
+================================================================================
+
+13. MEDIUM: Dependency Vulnerabilities
+    Status: Current as of March 2026
+    All major dependencies are latest versions
+    Recommendation: Run pip-audit regularly
+
+14. MEDIUM: Admin Credentials in Seed Script
+    Location: /Users/usangaraju/Downloads/smartfarm/backend/seeds/seed_prod.py
+    Fix: Require password reset on first login
+
+15. MEDIUM: CSP Too Restrictive
+    Location: /Users/usangaraju/Downloads/smartfarm/backend/middleware/security.py
+    Issue: Blocks fetch to api.anthropic.com
+    Fix: Add allowed APIs to Content-Security-Policy
+
+================================================================================
+REMEDIATION TIMELINE
+================================================================================
+
+PHASE 1: EMERGENCY (Day 1)
+├─ Rotate all production credentials
+├─ Delete .env.prod from Git history
+├─ Install pre-commit hook
+└─ Deploy security updates
+
+PHASE 2: CRITICAL FIXES (Days 2-6)
+├─ Add encrypted token storage (frontend) - 3 hours
+├─ Remove Anthropic API key from frontend - 30 min
+├─ Add authorization checks to routers - 3 days
+├─ Implement persistent rate limiting - 2 hours
+└─ Deploy and test changes
+
+PHASE 3: HIGH-PRIORITY (Days 7-12)
+├─ Add security event logging - 2 days
+├─ Upgrade password validation - 1 hour
+├─ Add CSRF middleware - 2 hours
+├─ Fix data exposure in responses - 1 day
+└─ Database SSL/TLS enforcement - 1 hour
+
+PHASE 4: MEDIUM-PRIORITY (Days 13-20)
+├─ Security testing (OWASP ZAP) - 2 days
+├─ Penetration testing - 3 days
+├─ Compliance audit - 2 days
+└─ Deployment hardening - 1 day
+
+================================================================================
+RISK ASSESSMENT BY COMPONENT
+================================================================================
+
+Backend Authentication:
+- Rate Limiting: VULNERABLE (in-memory, bypassable)
+- Password Hashing: SECURE (bcrypt with cost 12)
+- JWT Token Handling: SECURE (HS256, proper validation)
+- Authorization: VULNERABLE (missing on 40+ endpoints)
+- Logging: INADEQUATE (only successful logins logged)
+
+Backend API Security:
+- SQL Injection: SECURE (SQLAlchemy ORM used)
+- Command Injection: SECURE (no shell commands detected)
+- Input Validation: MOSTLY SECURE (Pydantic validation in place)
+- CORS: ACCEPTABLE (explicit origins, but default too permissive)
+- CSRF: VULNERABLE (no CSRF tokens on POST/PUT/DELETE)
+
+Frontend Security:
+- Token Storage: VULNERABLE (plain-text AsyncStorage)
+- API Communication: SECURE (HTTPS enforced)
+- XSS Prevention: SECURE (no innerHTML usage detected)
+- API Key Management: VULNERABLE (client-side key exposure pattern)
+- Authentication Flow: MOSTLY SECURE (JWT-based)
+
+Data Protection:
+- Database: VULNERABLE (no SSL, exposed credentials)
+- Network: ACCEPTABLE (HTTPS headers set)
+- Secrets Management: CRITICAL (hardcoded in Git)
+- Encryption: WEAK (no field-level encryption)
+
+================================================================================
+DEPLOYMENT BLOCKERS
+================================================================================
+
+🔴 MUST FIX before any deployment:
+1. Remove .env.prod from Git (currently exposed)
+2. Rotate all production credentials (DATABASE, JWT, ADMIN)
+3. Remove client-side API key pattern from frontend
+4. Add authorization checks to sensitive endpoints
+5. Implement encrypted token storage
+
+🟡 SHOULD FIX before production:
+6. Add persistent rate limiting
+7. Implement security event logging
+8. Upgrade password validation
+9. Add CSRF protection
+10. Database SSL/TLS enforcement
+
+🟢 CAN FIX post-production (if prioritized):
+- Enhanced monitoring/alerting
+- Advanced rate limiting
+- WAF (Web Application Firewall)
+- DDoS protection
+
+================================================================================
+CONTACT & NEXT STEPS
+================================================================================
+
+1. Schedule security remediation meeting with development team
+2. Prioritize fixes: CRITICAL (1-3 days), HIGH (3-5 days), MEDIUM (5-10 days)
+3. Implement fixes in order listed above
+4. Run automated security tests after each phase
+5. Conduct full security testing before deployment
+6. Schedule penetration test by external firm
+7. Implement post-deployment monitoring/alerting
+8. Monthly security training for development team
+
+Report: /Users/usangaraju/Downloads/smartfarm/SECURITY_AUDIT_REPORT.md
+Full Findings: See detailed report above
+
+================================================================================

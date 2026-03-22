@@ -14,9 +14,10 @@ import ScreenWrapper from "../components/layout/ScreenWrapper";
 import Badge         from "../components/ui/Badge";
 import { colors } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import useAuthStore  from "../store/useAuthStore";
 import { styles } from "./AIScreen.styles";
 import { commonStyles as cs } from "../styles/common";
-import { CLAUDE_API_KEY } from "../config/apiConfig";
+import { api } from "../services/api";
 
 // ─── Quick analysis prompts ───────────────────────────────────────
 const QUICK_PROMPTS = [
@@ -52,28 +53,13 @@ const QUICK_PROMPTS = [
   },
 ];
 
-// ─── Build farm context string for the AI ─────────────────────────
-function buildFarmContext(farm) {
-  const s = farm.sensors;
-  return `LIVE FARM DATA SNAPSHOT:
-SENSORS: WaterTemp=${s.waterTemp}°C, DO=${s.dissolvedO2}mg/L, pH=${s.ph}, Ammonia=${s.ammonia}mg/L, SoilMoisture=${s.soilMoisture}%, GH_Temp=${s.ghTemp}°C, GH_Humidity=${s.ghHumidity}%, GH_CO2=${s.ghCO2}ppm, Ambient=${s.ambientTemp}°C, SolarGen=${s.solarGeneration}kW, Reservoir=${s.reservoirLevel}%
-PONDS: ${farm.ponds.map((p) => `${p.id}(${p.species}): Stock=${p.stock}, AvgWt=${p.avgWeight}kg, DO=${p.do}, FCR=${p.fcr}, Mort=${p.mortality}%`).join("; ")}
-GREENHOUSE: ${farm.greenhouse.map((g) => `${g.crop}: ${g.stage}, Health=${g.health}%, Yield=${g.yieldKg}/${g.targetKg}kg, Day${g.daysPlanted}`).join("; ")}
-VERTICAL_FARM: ${farm.verticalFarm.map((v) => `${v.crop}: Day${v.cycleDay}, Health=${v.health}%, Batch=${v.batchKg}kg`).join("; ")}
-POULTRY: Hens=${farm.poultry.hens}, LayRate=${farm.poultry.layRate}%, EggsToday=${farm.poultry.eggsToday}
-DUCKS: ${farm.ducks.count} active, Eggs=${farm.ducks.eggsToday}
-BEES: ${farm.bees.hives} hives, Honey=${farm.bees.honeyStored}kg
-FINANCIAL: YTD_Revenue=₹${farm.financial.ytdRevenue}L, YTD_Expense=₹${farm.financial.ytdExpense}L, YTD_Profit=₹${farm.financial.ytdProfit}L
-MARKETS: Hyderabad(Murrel₹${farm.markets.hyderabad.lastPrice.murrel}), Chennai(Murrel₹${farm.markets.chennai.lastPrice.murrel}), Vijayawada, Kadapa, Nellore
-ALERTS: ${farm.alerts.slice(0, 5).map((a) => a.msg).join("; ")}`;
-}
-
 // ─── Component ────────────────────────────────────────────────────
 export default function AIScreen() {
-  const farm            = useFarmStore((s) => s.farm);
+  const aiConversations   = useFarmStore((s) => s.farm.aiConversations);
   const saveConversations = useFarmStore((s) => s.saveAIConversations);
+  const token             = useAuthStore((s) => s.token);
 
-  const [messages, setMessages]   = useState(farm.aiConversations ?? []);
+  const [messages, setMessages]   = useState(aiConversations ?? []);
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef                 = useRef(null);
@@ -96,32 +82,14 @@ export default function AIScreen() {
     setIsLoading(true);
 
     try {
-      if (!CLAUDE_API_KEY) throw new Error("Claude API key not configured. Set CLAUDE_API_KEY in src/config/apiConfig.js");
+      // Build conversation history (last 6 turns, excluding the new message)
+      const history = messages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .slice(-6)
+        .map((m) => ({ role: m.role, content: m.text }));
 
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method:  "POST",
-        headers: {
-          "Content-Type":    "application/json",
-          "x-api-key":       CLAUDE_API_KEY,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model:      "claude-sonnet-4-6",
-          max_tokens: 1000,
-          system: `You are the AI Farm Analyst for an Integrated Smart Regenerative Farm in Nellore, Andhra Pradesh, India. You have access to live sensor data. Provide expert agricultural analysis with specific, actionable recommendations. Use ₹ for currency. Reference specific sensor readings and thresholds.
-
-${buildFarmContext(farm)}`,
-          messages: updated
-            .filter((m) => m.role === "user" || m.role === "assistant")
-            .slice(-6)
-            .map((m) => ({ role: m.role === "user" ? "user" : "assistant", content: m.text })),
-        }),
-      });
-
-      const data   = await response.json();
-      if (data.error) throw new Error(data.error.message || `API error (${response.status})`);
-      const aiText = data.content?.filter((b) => b.type === "text").map((b) => b.text).join("\n")
-        ?? "Analysis complete. No specific issues detected at this time.";
+      const data = await api.ai.analyze(trimmed, history, token);
+      const aiText = data.response ?? "Analysis complete. No specific issues detected at this time.";
 
       const aiMsg     = { role: "assistant", text: aiText, time: new Date().toLocaleTimeString() };
       const withReply = [...updated, aiMsg];
@@ -130,14 +98,14 @@ ${buildFarmContext(farm)}`,
     } catch (err) {
       const errMsg = {
         role: "assistant",
-        text: `⚠️ Analysis temporarily unavailable.\n\nError: ${err.message}\n\nEnsure your device has internet access and the Claude API key is configured.`,
+        text: `⚠️ Analysis temporarily unavailable.\n\nError: ${err.message}\n\nEnsure the backend server is running and the AI service is configured.`,
         time: new Date().toLocaleTimeString(),
       };
       setMessages([...updated, errMsg]);
     }
 
     setIsLoading(false);
-  }, [messages, isLoading, farm, saveConversations]);
+  }, [messages, isLoading, token, saveConversations]);
 
   return (
     <ScreenWrapper title="AI Analysis">

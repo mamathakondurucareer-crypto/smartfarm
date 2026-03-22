@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
-import { Sprout, Truck, Activity, Leaf, Pencil } from "lucide-react-native";
+import { Sprout, Truck, Activity, Leaf, Pencil, WifiOff } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import StatGrid      from "../components/ui/StatGrid";
 import Card          from "../components/ui/Card";
 import SectionHeader from "../components/ui/SectionHeader";
 import { colors } from "../config/theme";
 import useFarmStore  from "../store/useFarmStore";
+import useAuthStore  from "../store/useAuthStore";
+import { api } from "../services/api";
 import { styles } from "./NurseryScreen.styles";
 import { commonStyles as cs } from "../styles/common";
 
@@ -14,18 +16,38 @@ export default function NurseryScreen() {
   const farm = useFarmStore((s) => s.farm);
   const updateNursery = useFarmStore((s) => s.updateNursery);
   const updateBees = useFarmStore((s) => s.updateBees);
+  const token = useAuthStore((s) => s.token);
 
   const { nursery: n, bees } = farm;
+
+  const [apiNursery, setApiNursery] = useState(null);
+  const [staleData, setStaleData]   = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+    api.nursery.batches.summary(token)
+      .then((data) => {
+        if (data) setApiNursery(data);
+      })
+      .catch(() => setStaleData(true));
+  }, [token]);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingSection, setEditingSection] = useState(null);
   const [formData, setFormData] = useState({});
 
+  const seedlingsReady  = apiNursery?.total_ready    ?? n.seedlingsReady;
+  const totalCapacity   = apiNursery?.total_capacity  ?? (n.seedlingsReady + 50000);
+  const ordersThisMonth = apiNursery?.total_batches   ?? n.ordersThisMonth;
+  const capacityUsed    = totalCapacity > 0
+    ? Math.round((seedlingsReady / totalCapacity) * 100)
+    : n.capacityUsed;
+
   const stats = [
-    { Icon: Sprout,   label: "Seedlings Ready",    value: `${(n.seedlingsReady / 1000).toFixed(0)}K`, color: colors.primary, sub: "of 300K capacity" },
-    { Icon: Truck,    label: "Orders This Month",  value: n.ordersThisMonth, color: colors.accent },
-    { Icon: Activity, label: "Capacity Used",      value: `${n.capacityUsed}%`, color: colors.info },
-    { Icon: Leaf,     label: "Species Available",  value: n.species,          color: colors.crop },
+    { Icon: Sprout,   label: "Seedlings Ready",    value: `${(seedlingsReady / 1000).toFixed(0)}K`,  color: colors.primary, sub: "of 300K capacity" },
+    { Icon: Truck,    label: "Batches Active",      value: ordersThisMonth, color: colors.accent },
+    { Icon: Activity, label: "Capacity Used",       value: `${capacityUsed}%`, color: colors.info },
+    { Icon: Leaf,     label: "Species Available",   value: n.species,          color: colors.crop },
   ];
 
   const openEditNursery = () => {
@@ -113,6 +135,13 @@ export default function NurseryScreen() {
 
   return (
     <ScreenWrapper title="Nursery & Bees">
+      {staleData && (
+        <View style={cs.warnBox}>
+          <WifiOff size={14} color={colors.warn} />
+          <Text style={cs.warnText}>Live data unavailable — showing cached data</Text>
+        </View>
+      )}
+
       <StatGrid stats={stats} />
 
       <View style={styles.gap} />
@@ -125,7 +154,7 @@ export default function NurseryScreen() {
           </TouchableOpacity>
         </View>
         <InfoItem label="Monthly Capacity"  value="300,000 seedlings" />
-        <InfoItem label="Current Readiness" value={n.seedlingsReady.toLocaleString()} />
+        <InfoItem label="Current Readiness" value={seedlingsReady.toLocaleString()} />
         <InfoItem label="Active Species"    value={`${n.species} varieties`} />
         <InfoItem label="Revenue / Month"   value="₹5.2 Lakh" />
         <InfoItem label="Top Sellers"       value="Tomato, Chilli, Brinjal, Marigold" />

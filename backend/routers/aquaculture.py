@@ -13,6 +13,7 @@ from backend.routers.auth import get_current_user
 from backend.schemas import (
     PondCreate, PondOut, FishBatchCreate, FishBatchOut,
     FeedLogCreate, WaterQualityCreate, FishHarvestCreate,
+    PondBatchUpdate,
 )
 from backend.services.alert_service import check_threshold
 
@@ -23,16 +24,44 @@ _WRITE_ROLES = ("admin", "manager", "operator")
 
 
 # ── Ponds ──
-@router.get("/ponds", response_model=list[PondOut])
+@router.get("/ponds")
 def list_ponds(
     status: Optional[str] = None,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
+    """Return ponds enriched with latest fish batch + today's feed data."""
     q = db.query(Pond).filter(Pond.is_active == True)
     if status:
         q = q.filter(Pond.status == status)
-    return q.order_by(Pond.pond_code).all()
+    ponds = q.order_by(Pond.pond_code).all()
+
+    result = []
+    for pond in ponds:
+        # latest growing batch
+        batch = (
+            db.query(FishBatch)
+            .filter(FishBatch.pond_id == pond.id, FishBatch.status == "growing")
+            .order_by(FishBatch.stocking_date.desc())
+            .first()
+        )
+        today_feed = db.query(func.coalesce(func.sum(FeedLog.quantity_kg), 0)).filter(
+            FeedLog.pond_id == pond.id, FeedLog.feed_date == date.today()
+        ).scalar()
+        result.append({
+            "id":            pond.id,
+            "pond_code":     pond.pond_code,
+            "fish_species":  batch.species if batch else None,
+            "current_stock": batch.current_count if batch else 0,
+            "avg_weight_kg": round(batch.current_avg_weight_g / 1000, 3) if batch else 0,
+            "fcr":           batch.fcr if batch else 0,
+            "today_feed_kg": float(today_feed),
+            "mortality_pct": round(
+                batch.mortality_count / (batch.initial_count or 1) * 100, 2
+            ) if batch else 0,
+            "batch_id":      batch.id if batch else None,
+        })
+    return result
 
 
 @router.post("/ponds", response_model=PondOut, status_code=201)
@@ -85,6 +114,42 @@ def get_pond(
         } if latest_wq else None,
         "batches": [FishBatchOut.model_validate(b) for b in batches],
     }
+
+
+# ── Update pond's active batch ──
+@router.put("/ponds/{pond_id}")
+def update_pond_batch(
+    pond_id: int,
+    data: PondBatchUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update the latest growing FishBatch for a pond (species, stock, weight, FCR, mortality)."""
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to update pond data")
+    pond = db.query(Pond).filter(Pond.id == pond_id).first()
+    if not pond:
+        raise HTTPException(404, "Pond not found")
+    batch = (
+        db.query(FishBatch)
+        .filter(FishBatch.pond_id == pond_id, FishBatch.status == "growing")
+        .order_by(FishBatch.stocking_date.desc())
+        .first()
+    )
+    if not batch:
+        raise HTTPException(404, "No active batch found for this pond")
+    if data.species is not None:
+        batch.species = data.species
+    if data.current_count is not None:
+        batch.current_count = data.current_count
+    if data.current_avg_weight_kg is not None:
+        batch.current_avg_weight_g = data.current_avg_weight_kg * 1000
+    if data.fcr is not None:
+        batch.fcr = data.fcr
+    if data.mortality_pct is not None:
+        batch.mortality_count = round(data.mortality_pct / 100 * (batch.initial_count or 1))
+    db.commit()
+    return {"message": "Pond batch updated", "pond_id": pond_id, "batch_id": batch.id}
 
 
 # ── Fish Batches ──
