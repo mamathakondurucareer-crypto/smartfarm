@@ -9,6 +9,7 @@ from backend.models.logistics import DeliveryRoute, DeliveryTrip, DeliveryTripOr
 from backend.models.market import CustomerOrder
 from backend.models.user import User
 from backend.routers.auth import get_current_user
+from backend.services.activity_log_service import log_activity
 from backend.schemas import (
     DeliveryRouteCreate, DeliveryRouteOut,
     DeliveryTripCreate, DeliveryTripOut,
@@ -55,6 +56,9 @@ def create_route(
         raise HTTPException(400, f"Route code '{data.route_code}' already exists")
     route = DeliveryRoute(**data.model_dump())
     db.add(route)
+    log_activity(db, "CREATE_ROUTE", "logistics", username=current_user.username,
+                 user_id=current_user.id, entity_type="DeliveryRoute",
+                 description=f"Route '{data.route_name}' ({data.route_code}) created")
     db.commit()
     db.refresh(route)
     return route
@@ -117,6 +121,9 @@ def create_trip(
         **data.model_dump(),
     )
     db.add(trip)
+    log_activity(db, "CREATE_TRIP", "logistics", username=current_user.username,
+                 user_id=current_user.id, entity_type="DeliveryTrip",
+                 description=f"Delivery trip created by '{current_user.username}'")
     db.commit()
     db.refresh(trip)
     return trip
@@ -214,6 +221,9 @@ def update_trip_status(
 
     for field, value in data.model_dump(exclude_none=True).items():
         setattr(trip, field, value)
+    log_activity(db, "UPDATE_TRIP_STATUS", "logistics", username=current_user.username,
+                 user_id=current_user.id, entity_type="DeliveryTrip", entity_id=trip_id,
+                 description=f"Trip #{trip_id} status changed to '{data.status}' by '{current_user.username}'")
     db.commit()
     db.refresh(trip)
     return trip

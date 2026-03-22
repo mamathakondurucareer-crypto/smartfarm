@@ -15,6 +15,7 @@ from backend.schemas import (
     InvoiceCreate, EmployeeCreate, EmployeeOut, AttendanceCreate, LeaveRequestCreate,
 )
 from backend.utils.helpers import generate_code
+from backend.services.activity_log_service import log_activity
 
 router = APIRouter(prefix="/api/financial", tags=["Financial & HR"])
 
@@ -29,6 +30,9 @@ def add_revenue(data: RevenueCreate, db: Session = Depends(get_db), current_user
         raise HTTPException(403, "Finance role required")
     entry = RevenueEntry(**data.model_dump())
     db.add(entry)
+    log_activity(db, "ADD_REVENUE", "financial", username=current_user.username,
+                 user_id=current_user.id,
+                 description=f"Revenue added: {data.stream} ₹{data.total_amount}")
     db.commit()
     db.refresh(entry)
     return {"id": entry.id, "total_amount": entry.total_amount}
@@ -63,6 +67,9 @@ def add_expense(data: ExpenseCreate, db: Session = Depends(get_db), current_user
         raise HTTPException(403, "Finance role required")
     entry = ExpenseEntry(**data.model_dump())
     db.add(entry)
+    log_activity(db, "ADD_EXPENSE", "financial", username=current_user.username,
+                 user_id=current_user.id,
+                 description=f"Expense added: {data.category} ₹{data.total_amount}")
     db.commit()
     db.refresh(entry)
     return {"id": entry.id, "total_amount": entry.total_amount}
@@ -160,6 +167,9 @@ def create_invoice(data: InvoiceCreate, db: Session = Depends(get_db), current_u
     inv.sgst = gst_total / 2
     inv.total_amount = subtotal + gst_total
     inv.balance_due = inv.total_amount
+    log_activity(db, "CREATE_INVOICE", "financial", username=current_user.username,
+                 user_id=current_user.id, entity_type="Invoice",
+                 description=f"Invoice created: {data.invoice_type} ₹{inv.total_amount:.2f}")
     db.commit()
     db.refresh(inv)
     return {"invoice_number": inv.invoice_number, "total_amount": inv.total_amount}

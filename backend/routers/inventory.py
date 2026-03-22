@@ -7,6 +7,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from backend.database import get_db
+from backend.models.user import User
+from backend.routers.auth import get_current_user
+from backend.services.activity_log_service import log_activity
 from backend.models.inventory import (
     InventoryCategory, InventoryItem, InventoryTransaction,
     PurchaseOrder, PurchaseOrderItem, Supplier,
@@ -45,9 +48,13 @@ def list_items(
 
 
 @router.post("/items", response_model=InventoryItemOut, status_code=201)
-def create_item(data: InventoryItemCreate, db: Session = Depends(get_db)):
+def create_item(data: InventoryItemCreate, db: Session = Depends(get_db),
+                current_user: User = Depends(get_current_user)):
     item = InventoryItem(**data.model_dump(), total_value=data.current_stock * data.unit_cost)
     db.add(item)
+    log_activity(db, "CREATE_ITEM", "inventory", username=current_user.username,
+                 user_id=current_user.id, entity_type="InventoryItem",
+                 description=f"Inventory item created: {data.name} ({data.unit})")
     db.commit()
     db.refresh(item)
     return item
@@ -66,7 +73,8 @@ def get_item(item_id: int, db: Session = Depends(get_db)):
 
 # ── Transactions ──
 @router.post("/transactions", status_code=201)
-def create_transaction(data: InventoryTransactionCreate, db: Session = Depends(get_db)):
+def create_transaction(data: InventoryTransactionCreate, db: Session = Depends(get_db),
+                       current_user: User = Depends(get_current_user)):
     item = db.query(InventoryItem).filter(InventoryItem.id == data.item_id).first()
     if not item:
         raise HTTPException(404, "Item not found")
@@ -90,6 +98,9 @@ def create_transaction(data: InventoryTransactionCreate, db: Session = Depends(g
         balance_after=item.current_stock,
     )
     db.add(txn)
+    log_activity(db, "INVENTORY_TRANSACTION", "inventory", username=current_user.username,
+                 user_id=current_user.id, entity_type="InventoryItem", entity_id=data.item_id,
+                 description=f"{data.transaction_type.upper()} {data.quantity} {item.unit} of {item.name}")
     db.commit()
     db.refresh(txn)
 

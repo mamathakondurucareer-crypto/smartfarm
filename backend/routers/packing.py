@@ -10,6 +10,7 @@ from backend.models.store import ProductCatalog
 from backend.models.user import User
 from backend.routers.auth import get_current_user
 from backend.services.barcode_service import generate_barcode, register_barcode, resolve_barcode
+from backend.services.activity_log_service import log_activity
 from backend.schemas import (
     PackingOrderCreate, PackingOrderOut, PackItemRequest,
     BarcodeOut, BarcodeGenerateRequest, BarcodeScanResult,
@@ -93,6 +94,9 @@ def create_packing_order(
         )
         db.add(item)
 
+    log_activity(db, "CREATE_PACKING_ORDER", "packing", username=current_user.username,
+                 user_id=current_user.id, entity_type="PackingOrder",
+                 description=f"Packing order created with {len(data.items)} item(s)")
     db.commit()
     order = (
         db.query(PackingOrder)
@@ -160,6 +164,9 @@ def start_packing_order(
         raise HTTPException(400, f"Order is '{order.status}', not pending")
     order.status = "in_progress"
     order.started_at = datetime.now(timezone.utc)
+    log_activity(db, "START_PACKING_ORDER", "packing", username=current_user.username,
+                 user_id=current_user.id, entity_type="PackingOrder", entity_id=order_id,
+                 description=f"Packing order #{order_id} started by '{current_user.username}'")
     db.commit()
     return {"message": "Packing order started", "order_id": order_id}
 
@@ -218,6 +225,9 @@ def complete_packing_order(
 
     order.status = "completed"
     order.completed_at = datetime.now(timezone.utc)
+    log_activity(db, "COMPLETE_PACKING_ORDER", "packing", username=current_user.username,
+                 user_id=current_user.id, entity_type="PackingOrder", entity_id=order_id,
+                 description=f"Packing order #{order_id} completed by '{current_user.username}'")
     db.commit()
     return {"message": "Packing order completed", "order_id": order_id}
 

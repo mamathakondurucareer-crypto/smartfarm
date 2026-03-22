@@ -1558,7 +1558,52 @@ def seed_market_prices():
         db.close()
 
 
+def seed_activity_logs():
+    """Seed sample activity log entries for the audit trail viewer."""
+    init_db()
+    db = SessionLocal()
+    try:
+        from backend.models.activity_log import ActivityLog
+        existing = db.query(ActivityLog).count()
+        if existing >= 15:
+            print(f"ℹ️  Activity logs already seeded ({existing} records). Skipping.")
+            return
+
+        now = datetime.now(timezone.utc)
+        entries = [
+            ActivityLog(timestamp=now - timedelta(minutes=5),   user_id=1, username="admin",         action="LOGIN",                module="auth",       description="User 'admin' logged in",                          ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(minutes=15),  user_id=2, username="manager",        action="LOGIN",                module="auth",       description="User 'manager' logged in",                        ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(hours=1),     user_id=1, username="admin",         action="CREATE_USER",          module="auth",       description="Admin 'admin' created user 'worker1'",             ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(hours=2),     user_id=2, username="manager",        action="ADD_REVENUE",          module="financial",  description="Revenue added: aquaculture ₹45000",                ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(hours=2, minutes=30), user_id=2, username="manager", action="ADD_EXPENSE",         module="financial",  description="Expense added: feed ₹12000",                       ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(hours=3),     user_id=1, username="admin",         action="CREATE_INVOICE",       module="financial",  description="Invoice created: sales ₹78500.00",                 ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(hours=4),     user_id=3, username="store_mgr",     action="OPEN_SESSION",         module="pos",        description="POS session opened by 'store_mgr'",                ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(hours=4, minutes=30), user_id=3, username="store_mgr",  action="SALE",          module="pos",        description="POS sale ₹1250.00 — 3 item(s)",                    ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(hours=5),     user_id=4, username="cashier1",       action="CREATE_PACKING_ORDER", module="packing",    description="Packing order created with 2 item(s)",             ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(hours=5, minutes=20), user_id=4, username="cashier1",action="START_PACKING_ORDER", module="packing",    description="Packing order #1 started by 'cashier1'",           ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(hours=6),     user_id=4, username="cashier1",       action="COMPLETE_PACKING_ORDER", module="packing",  description="Packing order #1 completed by 'cashier1'",         ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(hours=7),     user_id=2, username="manager",        action="CREATE_ITEM",          module="inventory",  description="Inventory item created: Fish Feed (kg)",           ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(hours=7, minutes=30), user_id=2, username="manager", action="INVENTORY_TRANSACTION", module="inventory", description="PURCHASE 500 kg of Fish Feed",                    ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(hours=8),     user_id=2, username="manager",        action="CREATE_TRIP",          module="logistics",  description="Delivery trip created by 'manager'",               ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(hours=8, minutes=45), user_id=2, username="manager", action="UPDATE_TRIP_STATUS",  module="logistics",  description="Trip #1 status changed to 'in_transit' by 'manager'", ip_address="127.0.0.1", status="success"),
+            ActivityLog(timestamp=now - timedelta(hours=9),     user_id=3, username="store_mgr",      action="CLOSE_SESSION",        module="pos",        description="POS session closed. Total: ₹4750.00",              ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(days=1),      user_id=1, username="admin",          action="ACTIVATE_USER",        module="auth",       description="Admin 'admin' activated user 'cashier1'",          ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(days=1, hours=2), user_id=2, username="manager",    action="VOID_TRANSACTION",     module="pos",        description="POS transaction voided by 'manager'",              ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(days=1, hours=4), user_id=1, username="admin",      action="UPDATE_USER",          module="auth",       description="Admin 'admin' updated user 'store_mgr'",           ip_address="127.0.0.1",  status="success"),
+            ActivityLog(timestamp=now - timedelta(days=2),      user_id=1, username="admin",          action="LOGIN",                module="auth",       description="User 'admin' logged in",                          ip_address="192.168.1.5", status="success"),
+        ]
+        db.add_all(entries)
+        db.commit()
+        print(f"✅ Seeded {len(entries)} activity log records.")
+    except Exception as e:
+        print(f"❌ Error seeding activity logs: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
 if __name__ == "__main__":
     seed()
     seed_new_modules()
     seed_market_prices()
+    seed_activity_logs()

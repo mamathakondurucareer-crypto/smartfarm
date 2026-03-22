@@ -15,6 +15,7 @@ from backend.config import get_settings
 from backend.database import get_db
 from backend.models.user import User, Role
 from backend.schemas import UserCreate, UserOut, TokenResponse, RoleOut
+from backend.services.activity_log_service import log_activity
 from backend.services.auth_service import (
     hash_password,
     verify_password,
@@ -152,6 +153,8 @@ def register(data: UserCreate, db: Session = Depends(get_db)):
         full_name=data.full_name, phone=data.phone, role_id=data.role_id,
     )
     db.add(user)
+    log_activity(db, "REGISTER", "auth", username=data.username,
+                 description=f"New user '{data.username}' self-registered")
     db.commit()
     db.refresh(user)
     return user
@@ -172,6 +175,8 @@ def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Ses
 
     _clear_failures(client_ip)
     user.last_login = datetime.now(timezone.utc)
+    log_activity(db, "LOGIN", "auth", username=user.username, user_id=user.id,
+                 description=f"User '{user.username}' logged in", ip=client_ip)
     db.commit()
 
     payload = {"sub": str(user.id), "role": user.role.name}
@@ -250,6 +255,9 @@ def create_user_admin(
         full_name=data.full_name, phone=data.phone, role_id=data.role_id,
     )
     db.add(user)
+    log_activity(db, "CREATE_USER", "auth", username=current_user.username,
+                 user_id=current_user.id,
+                 description=f"Admin '{current_user.username}' created user '{data.username}'")
     db.commit()
     db.refresh(user)
     return _user_to_admin_out(user)
@@ -282,6 +290,9 @@ def update_user(
         if not role:
             raise HTTPException(400, "Invalid role_id")
         user.role_id = updates["role_id"]
+    log_activity(db, "UPDATE_USER", "auth", username=current_user.username,
+                 user_id=current_user.id, entity_type="User", entity_id=user_id,
+                 description=f"Admin '{current_user.username}' updated user '{user.username}'")
     db.commit()
     db.refresh(user)
     return _user_to_admin_out(user)
@@ -302,6 +313,10 @@ def set_user_status(
     if user.id == current_user.id:
         raise HTTPException(400, "Cannot change your own status")
     user.is_active = data.is_active
+    action = "ACTIVATE_USER" if data.is_active else "DEACTIVATE_USER"
+    log_activity(db, action, "auth", username=current_user.username,
+                 user_id=current_user.id, entity_type="User", entity_id=user_id,
+                 description=f"Admin '{current_user.username}' {'activated' if data.is_active else 'deactivated'} user '{user.username}'")
     db.commit()
     db.refresh(user)
     return _user_to_admin_out(user)
