@@ -20,9 +20,6 @@ concurrency:
   group: deploy-${{ github.event.inputs.environment }}
   cancel-in-progress: false
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   deploy:
     name: Deploy to ${{ github.event.inputs.environment }}
@@ -50,19 +47,7 @@ jobs:
         with:
           ref: ${{ steps.branch.outputs.ref }}
 
-      # ── 3. Patch Docker config to bypass locked macOS keychain ───────────────
-      #       BuildKit reads ~/.docker/config.json directly for credentials even
-      #       when DOCKER_CONFIG is overridden. Remove credsStore in place so no
-      #       keychain access is attempted. Restore on cleanup (step 8).
-      - name: Disable Docker keychain credential store
-        run: |
-          mkdir -p "$HOME/.docker"
-          if [ -f "$HOME/.docker/config.json" ]; then
-            cp "$HOME/.docker/config.json" "$HOME/.docker/config.json.ci-bak"
-          fi
-          python3 -c "import json,os; f=os.path.expanduser('~/.docker/config.json'); c=json.load(open(f)) if os.path.exists(f) else {}; [c.pop(k,None) for k in ('credsStore','credStore','credHelpers')]; c.setdefault('auths',{}); json.dump(c,open(f,'w'),indent=2); print('Docker config patched')"
-
-      # ── 4. Write .env.prod from GitHub environment secrets (test uses committed .env.test) ──
+      # ── 3. Write .env.prod from GitHub environment secrets (test uses committed .env.test) ──
       - name: Write .env.prod (from secrets)
         if: github.event.inputs.environment == 'prod'
         run: |
@@ -79,7 +64,7 @@ jobs:
           DEBUG=false
           EOF
 
-      # ── 5. Deploy ────────────────────────────────────────────────────────────
+      # ── 4. Deploy ────────────────────────────────────────────────────────────
       - name: Deploy ${{ github.event.inputs.environment }}
         run: |
           ENV="${{ github.event.inputs.environment }}"
@@ -89,7 +74,7 @@ jobs:
             -p "smartfarm_${ENV}" \
             up -d --build --remove-orphans
 
-      # ── 6. Health check ──────────────────────────────────────────────────────
+      # ── 5. Health check ──────────────────────────────────────────────────────
       - name: Wait for backend health
         run: |
           ENV="${{ github.event.inputs.environment }}"
@@ -107,21 +92,12 @@ jobs:
           docker compose -f "docker-compose.${ENV}.yml" -p "smartfarm_${ENV}" logs backend
           exit 1
 
-      # ── 7. Cleanup temp .env.prod (do not remove committed .env.test) ──────────
+      # ── 6. Cleanup temp .env.prod (do not remove committed .env.test) ──────────
       - name: Remove .env.prod
         if: always() && github.event.inputs.environment == 'prod'
         run: rm -f ".env.prod"
 
-      # ── 8. Restore Docker config ─────────────────────────────────────────────
-      - name: Restore Docker config
-        if: always()
-        run: |
-          if [ -f "$HOME/.docker/config.json.ci-bak" ]; then
-            mv "$HOME/.docker/config.json.ci-bak" "$HOME/.docker/config.json"
-            echo "Docker config restored"
-          fi
-
-      # ── 9. Summary ───────────────────────────────────────────────────────────
+      # ── 7. Summary ───────────────────────────────────────────────────────────
       - name: Deployment summary
         run: |
           ENV="${{ github.event.inputs.environment }}"
