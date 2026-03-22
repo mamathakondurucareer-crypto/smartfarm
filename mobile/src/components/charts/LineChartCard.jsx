@@ -1,9 +1,10 @@
 import React from "react";
-import { View, StyleSheet, useWindowDimensions } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import { colors } from "../../config/theme";
 import Card from "../ui/Card";
 import SectionHeader from "../ui/SectionHeader";
+import { useResponsive } from "../../hooks/useResponsive";
 
 /**
  * A titled line chart card supporting multiple datasets.
@@ -16,7 +17,7 @@ import SectionHeader from "../ui/SectionHeader";
  * @param {number}   height    — chart height (default 200)
  */
 export default function LineChartCard({ Icon, title, color, labels, datasets, height = 200 }) {
-  const { width } = useWindowDimensions();
+  const { chartWidth } = useResponsive();
 
   const chartData = {
     labels,
@@ -42,7 +43,7 @@ export default function LineChartCard({ Icon, title, color, labels, datasets, he
       <SectionHeader Icon={Icon} title={title} color={color} />
       <LineChart
         data={chartData}
-        width={width - 80}
+        width={chartWidth}
         height={height}
         chartConfig={chartConfig}
         style={styles.chart}

@@ -13,9 +13,11 @@ import { canAccessScreen } from "../../config/permissions";
 import useFarmStore  from "../../store/useFarmStore";
 import useAuthStore  from "../../store/useAuthStore";
 import { useNavigation } from "../../context/NavigationContext";
+import { useResponsive } from "../../hooks/useResponsive";
 
 export default function DrawerContent() {
   const { activeScreen, navigate } = useNavigation();
+  const { isDesktop } = useResponsive();
   const simRunning     = useFarmStore((s) => s.simRunning);
   const toggleSim      = useFarmStore((s) => s.toggleSimulation);
   const user           = useAuthStore((s) => s.user);
@@ -42,20 +44,23 @@ export default function DrawerContent() {
     return bySection;
   }, [userRole, enabledModules]);
 
+  const iconSize   = isDesktop ? 18 : 16;
+  const headerPad  = isDesktop ? spacing.xl : spacing.lg;
+
   return (
     <View style={styles.container}>
       {/* Brand header */}
-      <View style={styles.header}>
-        <Text style={styles.brand}>🌿 SmartFarm OS</Text>
+      <View style={[styles.header, { padding: headerPad }]}>
+        <Text style={[styles.brand, isDesktop && styles.brandDesktop]}>🌿 SmartFarm OS</Text>
         <Text style={styles.location}>Nellore, AP</Text>
       </View>
 
       {/* Logged-in user */}
       {user && (
-        <View style={styles.userRow}>
-          <User size={14} color={colors.textDim} />
+        <View style={[styles.userRow, isDesktop && styles.userRowDesktop]}>
+          <User size={isDesktop ? 16 : 14} color={colors.textDim} />
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{user.full_name}</Text>
+            <Text style={[styles.userName, isDesktop && styles.userNameDesktop]}>{user.full_name}</Text>
             <Text style={styles.userRole}>{userRole}</Text>
           </View>
         </View>
@@ -73,7 +78,7 @@ export default function DrawerContent() {
               {/* Section header */}
               <TouchableOpacity
                 onPress={() => toggleSection(key)}
-                style={styles.sectionHeader}
+                style={[styles.sectionHeader, isDesktop && styles.sectionHeaderDesktop]}
                 activeOpacity={0.7}
               >
                 <Text style={styles.sectionLabel}>{label.toUpperCase()}</Text>
@@ -89,11 +94,19 @@ export default function DrawerContent() {
                   <TouchableOpacity
                     key={name}
                     onPress={() => navigate(name)}
-                    style={[styles.navItem, isActive && { backgroundColor: color + "20" }]}
+                    style={[
+                      styles.navItem,
+                      isDesktop && styles.navItemDesktop,
+                      isActive && { backgroundColor: color + "20" },
+                    ]}
                     activeOpacity={0.7}
                   >
-                    <Icon size={16} color={isActive ? color : colors.textDim} />
-                    <Text style={[styles.navLabel, { color: isActive ? color : colors.textDim }]}>
+                    <Icon size={iconSize} color={isActive ? color : colors.textDim} />
+                    <Text style={[
+                      styles.navLabel,
+                      isDesktop && styles.navLabelDesktop,
+                      { color: isActive ? color : colors.textDim },
+                    ]}>
                       {itemLabel}
                     </Text>
                   </TouchableOpacity>
@@ -145,6 +158,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.primary,
   },
+  brandDesktop: {
+    fontSize: fontSize.xl,
+  },
   location: {
     fontSize: fontSize.xs,
     color: colors.textMuted,
@@ -159,8 +175,13 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     backgroundColor: colors.bg,
   },
+  userRowDesktop: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
   userInfo:  { flex: 1 },
   userName:  { fontSize: fontSize.md, color: colors.text, fontWeight: "600" },
+  userNameDesktop: { fontSize: fontSize.base },
   userRole:  { fontSize: fontSize.xs, color: colors.textMuted },
   scrollView: {
     flex: 1,
@@ -173,6 +194,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
     marginTop: spacing.xs,
+  },
+  sectionHeaderDesktop: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 8,
   },
   sectionLabel: {
     fontSize: 10,
@@ -190,9 +215,17 @@ const styles = StyleSheet.create({
     marginVertical: 1,
     borderRadius: radius.md,
   },
+  navItemDesktop: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 11,
+    marginHorizontal: spacing.md,
+  },
   navLabel: {
     fontSize: fontSize.md,
     fontWeight: "400",
+  },
+  navLabelDesktop: {
+    fontSize: fontSize.base,
   },
   bottomSection: {
     borderTopWidth: 1,

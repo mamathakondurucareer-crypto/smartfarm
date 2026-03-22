@@ -1,9 +1,10 @@
 import React from "react";
-import { View, Text, useWindowDimensions, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { BarChart } from "react-native-chart-kit";
 import { colors, fontSize } from "../../config/theme";
 import Card from "../ui/Card";
 import SectionHeader from "../ui/SectionHeader";
+import { useResponsive } from "../../hooks/useResponsive";
 
 const CHART_CONFIG = {
   backgroundGradientFrom: colors.card,
@@ -26,7 +27,7 @@ const CHART_CONFIG = {
  * @param {number}  height  — chart height (default 200)
  */
 export default function BarChartCard({ Icon, title, color, labels, data, yLabel = "", height = 200 }) {
-  const { width } = useWindowDimensions();
+  const { chartWidth } = useResponsive();
 
   const chartData = {
     labels,
@@ -43,7 +44,7 @@ export default function BarChartCard({ Icon, title, color, labels, data, yLabel 
       <SectionHeader Icon={Icon} title={title} color={color} />
       <BarChart
         data={chartData}
-        width={width - 80}
+        width={chartWidth}
         height={height}
         chartConfig={barConfig}
         style={styles.chart}

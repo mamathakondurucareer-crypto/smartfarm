@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { colors, spacing, radius, fontSize } from "../../config/theme";
+import { useResponsive } from "../../hooks/useResponsive";
 
 /**
  * A compact metric card showing an icon, label, value, and optional sub-text.
@@ -15,9 +16,10 @@ import { colors, spacing, radius, fontSize } from "../../config/theme";
  */
 export default function StatCard({ Icon, icon, label, value, unit, color = colors.primary, sub, compact }) {
   if (!Icon && icon) Icon = icon;
-  const iconSize  = compact ? 32 : 38;
-  const iconInner = compact ? 16 : 18;
-  const valueSize = compact ? fontSize.xl : fontSize.h1;
+  const { isDesktop } = useResponsive();
+  const iconSize  = compact ? 32 : isDesktop ? 44 : 38;
+  const iconInner = compact ? 16 : isDesktop ? 20 : 18;
+  const valueSize = compact ? fontSize.xl : isDesktop ? fontSize.h1 + 2 : fontSize.h1;
 
   return (
     <View style={styles.card}>

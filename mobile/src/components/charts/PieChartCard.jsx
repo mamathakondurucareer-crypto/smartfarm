@@ -1,9 +1,10 @@
 import React from "react";
-import { View, Text, StyleSheet, useWindowDimensions } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { PieChart } from "react-native-chart-kit";
 import { colors, fontSize, spacing } from "../../config/theme";
 import Card from "../ui/Card";
 import SectionHeader from "../ui/SectionHeader";
+import { useResponsive } from "../../hooks/useResponsive";
 
 /**
  * A titled donut / pie chart card with a legend.
@@ -16,7 +17,7 @@ import SectionHeader from "../ui/SectionHeader";
  * @param {string} valueSuffix — appended (e.g. "L")
  */
 export default function PieChartCard({ Icon, title, color, segments, valuePrefix = "", valueSuffix = "" }) {
-  const { width } = useWindowDimensions();
+  const { chartWidth } = useResponsive();
 
   const chartData = segments.map((s) => ({
     name:            s.name,
@@ -37,7 +38,7 @@ export default function PieChartCard({ Icon, title, color, segments, valuePrefix
       <SectionHeader Icon={Icon} title={title} color={color} />
       <PieChart
         data={chartData}
-        width={width - 80}
+        width={chartWidth}
         height={180}
         chartConfig={chartConfig}
         accessor="population"
