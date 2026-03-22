@@ -54,6 +54,11 @@ jobs:
       - name: Configure Docker credential store
         run: |
           mkdir -p /tmp/docker-ci-config
+          # Copy CLI plugins so docker-compose plugin remains discoverable
+          if [ -d "$HOME/.docker/cli-plugins" ]; then
+            cp -r "$HOME/.docker/cli-plugins" /tmp/docker-ci-config/cli-plugins
+          fi
+          # Clean config with no credsStore — bypasses locked macOS keychain
           printf '{"auths":{}}' > /tmp/docker-ci-config/config.json
 
       # ── 4. Write .env.prod from GitHub environment secrets (test uses committed .env.test) ──
