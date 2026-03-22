@@ -48,6 +48,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     phone: Mapped[Optional[str]] = mapped_column(String(15))
     role_id: Mapped[int] = mapped_column(Integer, ForeignKey("roles.id"), nullable=False)
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     role: Mapped["Role"] = relationship("Role", back_populates="users")
     employee: Mapped[Optional["Employee"]] = relationship("Employee", back_populates="user", uselist=False)

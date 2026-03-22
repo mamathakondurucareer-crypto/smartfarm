@@ -14,10 +14,10 @@ connect_args = {}
 if settings.database_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 elif settings.database_url.startswith("postgresql"):
-    # Use SSL when available (prefer) unless already specified in the URL.
-    # For strict enforcement in production, add ?sslmode=require to DATABASE_URL.
+    # Require SSL in production; prefer it in debug/dev.
+    # Can be overridden by adding ?sslmode=... directly to DATABASE_URL.
     if "sslmode" not in settings.database_url:
-        connect_args["sslmode"] = "prefer"
+        connect_args["sslmode"] = "prefer" if settings.debug else "require"
 
 engine = create_engine(
     settings.database_url,

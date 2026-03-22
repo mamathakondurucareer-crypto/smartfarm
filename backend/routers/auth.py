@@ -69,6 +69,7 @@ class UserAdminOut(BaseModel):
     role_id: int
     role_name: Optional[str] = None
     is_active: bool
+    must_change_password: bool = False
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
@@ -96,6 +97,7 @@ class TokenPair(BaseModel):
     user_id: int
     username: str
     role: str
+    must_change_password: bool = False
 
 
 # ── Auth helpers ────────────────────────────────────────────────────────────
@@ -128,7 +130,8 @@ def _user_to_admin_out(u: User) -> dict:
         "id": u.id, "username": u.username, "email": u.email,
         "full_name": u.full_name, "phone": u.phone,
         "role_id": u.role_id, "role_name": u.role.name if u.role else None,
-        "is_active": u.is_active, "created_at": u.created_at,
+        "is_active": u.is_active, "must_change_password": u.must_change_password,
+        "created_at": u.created_at,
     }
 
 
@@ -189,6 +192,7 @@ def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Ses
         user_id=user.id,
         username=user.username,
         role=user.role.name,
+        must_change_password=user.must_change_password,
     )
 
 
@@ -213,6 +217,31 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserAdminOut)
 def me(user: User = Depends(get_current_user)):
     return _user_to_admin_out(user)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/change-password", status_code=204)
+def change_password(
+    body: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not verify_password(body.current_password, current_user.hashed_password):
+        raise HTTPException(400, "Current password is incorrect")
+    try:
+        validate_password_strength(body.new_password)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    current_user.hashed_password = hash_password(body.new_password)
+    current_user.must_change_password = False
+    log_activity(db, "CHANGE_PASSWORD", "auth", username=current_user.username,
+                 user_id=current_user.id,
+                 description=f"User '{current_user.username}' changed their password")
+    db.commit()
 
 
 @router.get("/roles", response_model=list[RoleOut])

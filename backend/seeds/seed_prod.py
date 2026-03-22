@@ -91,8 +91,9 @@ def _seed(db) -> None:
             hashed_password=hash_password(admin_password),
             full_name="Farm Administrator",
             role_id=admin_role.id,
+            must_change_password=True,
         ))
-        print(f"  Created admin user: {admin_username}")
+        print(f"  Created admin user: {admin_username} (must change password on first login)")
     else:
         print(f"  Admin user already exists: {admin_username} — skipping.")
 

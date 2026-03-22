@@ -21,8 +21,9 @@ class Settings(BaseSettings):
 
     # ── CORS ──
     # Comma-separated list of allowed origins.  Empty string = deny all cross-origin requests.
-    # Example: "http://localhost:8081,https://farm.example.com"
-    allowed_origins: str = "http://localhost:8081,http://localhost:3000"
+    # MUST be set explicitly in production via ALLOWED_ORIGINS environment variable.
+    # Example: "https://farm.example.com,https://app.example.com"
+    allowed_origins: str = ""
 
     # ── Brute-force protection ──
     login_max_attempts: int = 5       # failed attempts before lockout
