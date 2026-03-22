@@ -78,13 +78,11 @@ def sensors_due_for_calibration(
     due = []
     for s in sensors:
         last_cal = s.calibration_date
+        if last_cal is not None and last_cal.tzinfo is None:
+            last_cal = last_cal.replace(tzinfo=timezone.utc)
         if last_cal is None or last_cal < cutoff:
             days_since = None
             if last_cal:
-                # Ensure timezone-aware comparison
-                if last_cal.tzinfo is None:
-                    from datetime import timezone as tz
-                    last_cal = last_cal.replace(tzinfo=timezone.utc)
                 days_since = (datetime.now(tz=timezone.utc) - last_cal).days
             due.append({
                 "sensor_id": s.id,

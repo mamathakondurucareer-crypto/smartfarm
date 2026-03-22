@@ -12,7 +12,7 @@ from backend.models.automation import AutomationRule, AutomationLog
 from backend.models.drone import DroneFlightLog
 from backend.models.user import User
 from backend.routers.auth import get_current_user
-from backend.schemas import SensorReadingCreate, SensorReadingBulk, SensorDeviceOut, AlertOut
+from backend.schemas import SensorReadingCreate, SensorReadingBulk, SensorDeviceCreate, SensorDeviceOut, AlertOut
 from backend.services.alert_service import check_threshold
 
 _MGMT_ROLES = ("admin", "manager", "supervisor")
@@ -22,6 +22,37 @@ automation_router = APIRouter(prefix="/api/automation", tags=["Automation"])
 
 
 # ═══════ SENSORS ═══════
+@sensors_router.post("/devices", response_model=SensorDeviceOut, status_code=201)
+def create_device(
+    data: SensorDeviceCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _MGMT_ROLES:
+        raise HTTPException(403, "Insufficient permissions")
+    device = SensorDevice(**data.model_dump())
+    db.add(device)
+    try:
+        db.commit()
+        db.refresh(device)
+    except Exception:
+        db.rollback()
+        raise HTTPException(409, "device_id already exists")
+    return device
+
+
+@sensors_router.get("/devices/{device_id}", response_model=SensorDeviceOut)
+def get_device(
+    device_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    d = db.query(SensorDevice).filter(SensorDevice.id == device_id).first()
+    if not d:
+        raise HTTPException(404, "Sensor not found")
+    return d
+
+
 @sensors_router.get("/devices", response_model=list[SensorDeviceOut])
 def list_devices(zone: Optional[str] = None, status: Optional[str] = None, db: Session = Depends(get_db)):
     q = db.query(SensorDevice)

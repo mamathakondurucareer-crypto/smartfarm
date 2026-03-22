@@ -414,6 +414,20 @@ class SensorReadingCreate(BaseModel):
 class SensorReadingBulk(BaseModel):
     readings: List[SensorReadingCreate]
 
+class SensorDeviceCreate(BaseModel):
+    device_id: str
+    name: str
+    sensor_type: str
+    location: str
+    zone: str
+    protocol: str = "lorawan"
+    model: Optional[str] = None
+    manufacturer: Optional[str] = None
+    battery_level: Optional[float] = None
+    firmware_version: Optional[str] = None
+    status: str = "online"
+    notes: Optional[str] = None
+
 class SensorDeviceOut(OrmBase):
     id: int
     device_id: str
@@ -423,6 +437,8 @@ class SensorDeviceOut(OrmBase):
     zone: str
     status: str
     battery_level: Optional[float] = None
+    firmware_version: Optional[str] = None
+    calibration_date: Optional[datetime] = None
     last_reading_at: Optional[datetime] = None
 
 class AlertOut(OrmBase):
@@ -2297,8 +2313,8 @@ class ExpansionCapexOut(OrmBase):
 # ── Seasonal Calendar ─────────────────────────────────────────────────────────
 
 class SeasonalTaskCreate(BaseModel):
-    month: int
-    week: Optional[int] = None
+    month: int = Field(..., ge=1, le=12)
+    week: Optional[int] = Field(default=None, ge=1, le=4)
     category: str
     title: str
     description: Optional[str] = None
@@ -2340,8 +2356,8 @@ class CropRotationPlanCreate(BaseModel):
     year: int
     crop_name: str
     variety: Optional[str] = None
-    sowing_month: int
-    harvest_month: int
+    sowing_month: int = Field(..., ge=1, le=12)
+    harvest_month: int = Field(..., ge=1, le=12)
     area_sq_meters: Optional[float] = None
     expected_yield_kg: Optional[float] = None
     notes: Optional[str] = None
