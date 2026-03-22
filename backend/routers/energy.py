@@ -173,6 +173,7 @@ def create_consumption_log(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    _require_write(current_user)
     log = EnergyConsumptionLog(**data.model_dump(), recorded_by=current_user.id)
     db.add(log)
     db.commit()
@@ -311,6 +312,7 @@ def create_grid_event(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    _require_write(current_user)
     event = GridEvent(**data.model_dump(), reported_by=current_user.id)
     db.add(event)
     db.commit()

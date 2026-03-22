@@ -36,6 +36,8 @@ def create_farm(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if not _can_write(current_user):
+        raise HTTPException(403, "Insufficient permissions")
     farm = NeighbouringFarm(**data.model_dump())
     db.add(farm)
     db.commit()

@@ -3,6 +3,7 @@
 from datetime import date
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
@@ -51,8 +52,12 @@ def create_scheme(
         raise HTTPException(403, "Insufficient permissions")
     scheme = SubsidyScheme(**data.model_dump())
     db.add(scheme)
-    db.commit()
-    db.refresh(scheme)
+    try:
+        db.commit()
+        db.refresh(scheme)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "scheme_code already exists")
     return scheme
 
 
