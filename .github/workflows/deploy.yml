@@ -22,6 +22,9 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Point Docker to a clean config dir so it never touches the system
+  # keychain (macOS self-hosted runner has a locked keychain in CI sessions)
+  DOCKER_CONFIG: /tmp/docker-ci-config
 
 jobs:
   deploy:
@@ -50,16 +53,7 @@ jobs:
         with:
           ref: ${{ steps.branch.outputs.ref }}
 
-      # ── 3. Configure Docker to skip keychain (self-hosted Mac runner has locked keychain) ──
-      - name: Configure Docker credential store
-        run: |
-          mkdir -p ~/.docker
-          cfg=~/.docker/config.json
-          [ -f "$cfg" ] || printf '{}' > "$cfg"
-          tmp=$(mktemp)
-          jq 'del(.credsStore, .credStore)' "$cfg" > "$tmp" && mv "$tmp" "$cfg"
-
-      # ── 4. Write .env.prod from GitHub environment secrets (test uses committed .env.test) ──
+      # ── 3. Write .env.prod from GitHub environment secrets (test uses committed .env.test) ──
       - name: Write .env.prod (from secrets)
         if: github.event.inputs.environment == 'prod'
         run: |
