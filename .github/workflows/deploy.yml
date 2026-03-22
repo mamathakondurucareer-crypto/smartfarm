@@ -50,7 +50,16 @@ jobs:
         with:
           ref: ${{ steps.branch.outputs.ref }}
 
-      # ── 3. Write .env.prod from GitHub environment secrets (test uses committed .env.test) ──
+      # ── 3. Configure Docker to skip keychain (self-hosted Mac runner has locked keychain) ──
+      - name: Configure Docker credential store
+        run: |
+          mkdir -p ~/.docker
+          cfg=~/.docker/config.json
+          [ -f "$cfg" ] || printf '{}' > "$cfg"
+          tmp=$(mktemp)
+          jq 'del(.credsStore, .credStore)' "$cfg" > "$tmp" && mv "$tmp" "$cfg"
+
+      # ── 4. Write .env.prod from GitHub environment secrets (test uses committed .env.test) ──
       - name: Write .env.prod (from secrets)
         if: github.event.inputs.environment == 'prod'
         run: |
