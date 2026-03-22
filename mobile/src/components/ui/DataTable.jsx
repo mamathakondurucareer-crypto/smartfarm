@@ -15,7 +15,7 @@ export default function DataTable({ headers, rows }) {
         {/* Header row */}
         <View style={styles.headerRow}>
           {headers.map((h, i) => (
-            <Text key={i} style={[styles.headerCell, i === 0 ? styles.left : styles.right]}>
+            <Text key={i} style={[styles.headerCell, i === 0 ? styles.left : styles.right, i !== 0 && styles.headerCenterText]}>
               {h}
             </Text>
           ))}
@@ -27,7 +27,7 @@ export default function DataTable({ headers, rows }) {
             {row.map((cell, ci) => (
               <View key={ci} style={[styles.dataCell, ci === 0 ? styles.left : styles.right]}>
                 {typeof cell === "string" || typeof cell === "number"
-                  ? <Text style={styles.cellText}>{cell}</Text>
+                  ? <Text style={[styles.cellText, ci !== 0 && styles.headerCenterText]}>{cell}</Text>
                   : cell}
               </View>
             ))}
@@ -73,6 +73,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.text,
   },
-  left:  { alignItems: "flex-start" },
-  right: { alignItems: "flex-end" },
+  left:           { alignItems: "flex-start" },
+  right:          { alignItems: "center" },
+  headerCenterText: { textAlign: "center" },
 });
