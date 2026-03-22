@@ -223,14 +223,19 @@ export const styles = StyleSheet.create({
   // ── Modal ────────────────────────────────────────────────────────────────
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.xl,
   },
   modalContent: {
     backgroundColor: colors.card,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    maxHeight: "85%",
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    width: "100%",
+    maxWidth: 560,
+    maxHeight: "88%",
     paddingTop: spacing.lg,
   },
   modalTitle: {

@@ -42,21 +42,27 @@ export const commonStyles = StyleSheet.create({
   // Touch-target padding for icon-only edit buttons
   editIcon: { padding: spacing.xs },
 
-  // ── Bottom-sheet modal ───────────────────────────────────────────────────────
+  // ── Modal overlay — centers dialog on all screen sizes ──────────────────────
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.xl,
   },
+  // Full-height form sheet (many fields) — taller on large screens
   modalContent: {
     backgroundColor: colors.card,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
     padding: spacing.lg,
-    maxHeight: "85%",
+    width: "100%",
+    maxWidth: 560,
+    maxHeight: "88%",
   },
 
-  // Centered dialog modal (e.g. POS, Packing)
+  // Compact action dialog (fewer fields, e.g. POS, Packing)
   modalOverlayCentered: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.7)",
@@ -71,7 +77,7 @@ export const commonStyles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.xl,
     width: "100%",
-    maxWidth: 480,
+    maxWidth: 520,
     maxHeight: "90%",
   },
 
