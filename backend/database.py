@@ -19,11 +19,22 @@ elif settings.database_url.startswith("postgresql"):
     if "sslmode" not in settings.database_url:
         connect_args["sslmode"] = "prefer" if settings.debug else "require"
 
+_pool_kwargs = {}
+if not settings.database_url.startswith("sqlite"):
+    # SQLite doesn't support connection pooling settings
+    _pool_kwargs = {
+        "pool_size": 20,
+        "max_overflow": 40,
+        "pool_recycle": 3600,
+        "pool_timeout": 30,
+    }
+
 engine = create_engine(
     settings.database_url,
     connect_args=connect_args,
     echo=settings.debug,
     pool_pre_ping=True,
+    **_pool_kwargs,
 )
 
 # Enable WAL mode and foreign keys for SQLite

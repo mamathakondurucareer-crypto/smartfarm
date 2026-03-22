@@ -42,19 +42,33 @@ def sales_report(
 ):
     _require_report_role(current_user)
 
-    q = db.query(POSTransaction).filter(POSTransaction.status == "completed")
-    if start_date:
-        q = q.filter(POSTransaction.transaction_time >= start_date)
-    if end_date:
-        q = q.filter(POSTransaction.transaction_time <= end_date)
+    def _apply_filters(q, model):
+        if start_date:
+            q = q.filter(model.transaction_time >= start_date)
+        if end_date:
+            q = q.filter(model.transaction_time <= end_date)
+        return q
 
-    transactions = q.all()
+    # Totals via SQL aggregation — no full table scan in Python
+    agg = _apply_filters(
+        db.query(
+            func.coalesce(func.sum(POSTransaction.total_amount), 0).label("total_revenue"),
+            func.count(POSTransaction.id).label("total_transactions"),
+        ).filter(POSTransaction.status == "completed"),
+        POSTransaction,
+    ).one()
+    total_revenue = float(agg.total_revenue)
+    total_transactions = int(agg.total_transactions)
 
-    total_revenue = sum(t.total_amount for t in transactions)
-    total_transactions = len(transactions)
-    by_payment_mode: dict = {}
-    for txn in transactions:
-        by_payment_mode[txn.payment_mode] = by_payment_mode.get(txn.payment_mode, 0) + txn.total_amount
+    # Payment-mode breakdown via SQL GROUP BY
+    pm_rows = _apply_filters(
+        db.query(
+            POSTransaction.payment_mode,
+            func.sum(POSTransaction.total_amount).label("total"),
+        ).filter(POSTransaction.status == "completed"),
+        POSTransaction,
+    ).group_by(POSTransaction.payment_mode).all()
+    by_payment_mode = {row.payment_mode: round(float(row.total), 2) for row in pm_rows}
 
     # Top products by revenue from transaction items
     item_q = (
@@ -76,11 +90,15 @@ def sales_report(
         for row in top_products_raw
     ]
 
-    # Sales by date
-    by_date: dict = {}
-    for txn in transactions:
-        d = txn.transaction_time.date().isoformat() if txn.transaction_time else "unknown"
-        by_date[d] = by_date.get(d, 0) + txn.total_amount
+    # Sales by date via SQL GROUP BY
+    date_rows = _apply_filters(
+        db.query(
+            func.date(POSTransaction.transaction_time).label("txn_date"),
+            func.sum(POSTransaction.total_amount).label("total"),
+        ).filter(POSTransaction.status == "completed"),
+        POSTransaction,
+    ).group_by(func.date(POSTransaction.transaction_time)).order_by(func.date(POSTransaction.transaction_time)).all()
+    by_date = {str(row.txn_date): round(float(row.total), 2) for row in date_rows}
 
     return {
         "period": {
@@ -90,9 +108,9 @@ def sales_report(
         "total_revenue": round(total_revenue, 2),
         "total_transactions": total_transactions,
         "avg_transaction_value": round(total_revenue / total_transactions, 2) if total_transactions else 0,
-        "by_payment_mode": {k: round(v, 2) for k, v in by_payment_mode.items()},
+        "by_payment_mode": by_payment_mode,
         "top_products": top_products,
-        "by_date": {k: round(v, 2) for k, v in sorted(by_date.items())},
+        "by_date": by_date,
     }
 
 
@@ -352,12 +370,17 @@ def inventory_valuation(
     _require_report_role(current_user)
 
     stocks = db.query(StoreStock).all()
+    product_ids = [s.product_id for s in stocks]
+    product_map = {
+        p.id: p
+        for p in db.query(ProductCatalog).filter(ProductCatalog.id.in_(product_ids)).all()
+    }
     items = []
     total_value = 0.0
     total_qty = 0.0
 
     for s in stocks:
-        product = db.query(ProductCatalog).filter(ProductCatalog.id == s.product_id).first()
+        product = product_map.get(s.product_id)
         value = s.total_value
         total_value += value
         total_qty += s.current_qty

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text } from "react-native";
+import { View, Text, ActivityIndicator, RefreshControl, ScrollView } from "react-native";
 import { Droplets, Fish, Egg, RefreshCw, Thermometer, Wind } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import Card          from "../components/ui/Card";
@@ -51,24 +51,33 @@ export default function AutomationScreen() {
   const automation = useFarmStore((s) => s.farm.automation);
   const token      = useAuthStore((s) => s.token);
 
-  const [apiStatus, setApiStatus] = useState({});
+  const [apiStatus, setApiStatus]   = useState({});
+  const [loading, setLoading]       = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError]           = useState(null);
 
-  useEffect(() => {
+  const fetchStatus = async (isRefresh = false) => {
     if (!token) return;
-    api.automation.status(token)
-      .then((data) => {
-        // Remap backend keys to frontend keys
-        const mapped = {};
-        Object.entries(data).forEach(([backendKey, info]) => {
-          const frontendKey = BACKEND_KEY_MAP[backendKey];
-          if (frontendKey) {
-            mapped[frontendKey] = info.enabled > 0 ? "Active" : info.total > 0 ? "Disabled" : "Idle";
-          }
-        });
-        setApiStatus(mapped);
-      })
-      .catch(() => {});
-  }, [token]);
+    isRefresh ? setRefreshing(true) : setLoading(true);
+    setError(null);
+    try {
+      const data = await api.automation.status(token);
+      const mapped = {};
+      Object.entries(data).forEach(([backendKey, info]) => {
+        const frontendKey = BACKEND_KEY_MAP[backendKey];
+        if (frontendKey) {
+          mapped[frontendKey] = info.enabled > 0 ? "Active" : info.total > 0 ? "Disabled" : "Idle";
+        }
+      });
+      setApiStatus(mapped);
+    } catch (e) {
+      setError("Could not load automation status. Pull down to retry.");
+    } finally {
+      isRefresh ? setRefreshing(false) : setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchStatus(); }, [token]);
 
   // Merge API status into local automation data
   const mergedAutomation = Object.fromEntries(
@@ -79,7 +88,13 @@ export default function AutomationScreen() {
   );
 
   return (
-    <ScreenWrapper title="Automation">
+    <ScreenWrapper title="Automation" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchStatus(true)} />}>
+      {loading && <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 8 }} />}
+      {error && (
+        <View style={cs.warnBox}>
+          <Text style={cs.warnText}>{error}</Text>
+        </View>
+      )}
       {Object.entries(mergedAutomation).map(([key, data]) => {
         const meta = SYSTEM_META[key];
         if (!meta) return null;

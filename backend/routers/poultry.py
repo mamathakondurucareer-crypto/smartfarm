@@ -11,6 +11,8 @@ from backend.models.poultry import (
     PoultryFlock, EggCollection, DuckFlock, BeeHive, HoneyHarvest,
     PoultryFeedLog, PoultryHealthLog,
 )
+from backend.models.user import User
+from backend.routers.auth import get_current_user
 from backend.schemas import (
     EggCollectionCreate, PoultryFeedLogCreate, PoultryHealthLogCreate,
     PoultryFlockUpdate, DuckFlockUpdate, BeeHiveUpdate,
@@ -18,14 +20,19 @@ from backend.schemas import (
 
 router = APIRouter(prefix="/api/poultry", tags=["Poultry & Livestock"])
 
+_WRITE_ROLES = ("admin", "manager", "operator")
+
 
 @router.get("/flocks")
-def list_flocks(db: Session = Depends(get_db)):
-    return db.query(PoultryFlock).all()
+def list_flocks(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return db.query(PoultryFlock).order_by(PoultryFlock.id).limit(200).all()
 
 
 @router.get("/flocks/{flock_id}")
-def get_flock(flock_id: int, db: Session = Depends(get_db)):
+def get_flock(flock_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     flock = db.query(PoultryFlock).filter(PoultryFlock.id == flock_id).first()
     if not flock:
         raise HTTPException(404, "Flock not found")
@@ -40,7 +47,13 @@ def get_flock(flock_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/eggs", status_code=201)
-def log_egg_collection(data: EggCollectionCreate, db: Session = Depends(get_db)):
+def log_egg_collection(
+    data: EggCollectionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to log egg collections")
     flock = db.query(PoultryFlock).filter(PoultryFlock.id == data.flock_id).first()
     if not flock:
         raise HTTPException(404, "Flock not found")
@@ -56,7 +69,12 @@ def log_egg_collection(data: EggCollectionCreate, db: Session = Depends(get_db))
 
 
 @router.get("/eggs")
-def list_egg_collections(flock_id: Optional[int] = None, start_date: Optional[date] = None, db: Session = Depends(get_db)):
+def list_egg_collections(
+    flock_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     q = db.query(EggCollection)
     if flock_id:
         q = q.filter(EggCollection.flock_id == flock_id)
@@ -66,7 +84,13 @@ def list_egg_collections(flock_id: Optional[int] = None, start_date: Optional[da
 
 
 @router.post("/feed", status_code=201)
-def log_poultry_feed(data: PoultryFeedLogCreate, db: Session = Depends(get_db)):
+def log_poultry_feed(
+    data: PoultryFeedLogCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to log poultry feed")
     flock = db.query(PoultryFlock).filter(PoultryFlock.id == data.flock_id).first()
     if not flock:
         raise HTTPException(404, "Flock not found")
@@ -80,7 +104,13 @@ def log_poultry_feed(data: PoultryFeedLogCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/health", status_code=201)
-def log_health(data: PoultryHealthLogCreate, db: Session = Depends(get_db)):
+def log_health(
+    data: PoultryHealthLogCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to log poultry health")
     log = PoultryHealthLog(**data.model_dump())
     db.add(log)
     if data.mortality_count > 0:
@@ -93,7 +123,14 @@ def log_health(data: PoultryHealthLogCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/flocks/{flock_id}")
-def update_flock(flock_id: int, data: PoultryFlockUpdate, db: Session = Depends(get_db)):
+def update_flock(
+    flock_id: int,
+    data: PoultryFlockUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to update flocks")
     flock = db.query(PoultryFlock).filter(PoultryFlock.id == flock_id).first()
     if not flock:
         raise HTTPException(404, "Flock not found")
@@ -111,12 +148,22 @@ def update_flock(flock_id: int, data: PoultryFlockUpdate, db: Session = Depends(
 
 # ── Ducks ──
 @router.get("/ducks")
-def list_ducks(db: Session = Depends(get_db)):
-    return db.query(DuckFlock).all()
+def list_ducks(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return db.query(DuckFlock).order_by(DuckFlock.id).limit(200).all()
 
 
 @router.put("/ducks/{duck_id}")
-def update_duck_flock(duck_id: int, data: DuckFlockUpdate, db: Session = Depends(get_db)):
+def update_duck_flock(
+    duck_id: int,
+    data: DuckFlockUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to update duck flocks")
     duck = db.query(DuckFlock).filter(DuckFlock.id == duck_id).first()
     if not duck:
         raise HTTPException(404, "Duck flock not found")
@@ -132,12 +179,22 @@ def update_duck_flock(duck_id: int, data: DuckFlockUpdate, db: Session = Depends
 
 # ── Bees ──
 @router.get("/bees")
-def list_hives(db: Session = Depends(get_db)):
-    return db.query(BeeHive).all()
+def list_hives(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return db.query(BeeHive).order_by(BeeHive.id).limit(200).all()
 
 
 @router.put("/bees/{hive_id}")
-def update_hive(hive_id: int, data: BeeHiveUpdate, db: Session = Depends(get_db)):
+def update_hive(
+    hive_id: int,
+    data: BeeHiveUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to update hives")
     hive = db.query(BeeHive).filter(BeeHive.id == hive_id).first()
     if not hive:
         raise HTTPException(404, "Hive not found")
@@ -154,7 +211,11 @@ def update_hive(hive_id: int, data: BeeHiveUpdate, db: Session = Depends(get_db)
 
 
 @router.get("/bees/{hive_id}")
-def get_hive(hive_id: int, db: Session = Depends(get_db)):
+def get_hive(
+    hive_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     hive = db.query(BeeHive).filter(BeeHive.id == hive_id).first()
     if not hive:
         raise HTTPException(404, "Hive not found")

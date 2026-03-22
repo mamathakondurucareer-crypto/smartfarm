@@ -39,7 +39,11 @@ def _check_lockout(ip: str) -> None:
     window = settings.login_lockout_seconds
     with _failed_lock:
         attempts = [t for t in _failed[ip] if now - t < window]
-        _failed[ip] = attempts
+        # Prune expired entries to prevent unbounded dict growth
+        if attempts:
+            _failed[ip] = attempts
+        else:
+            _failed.pop(ip, None)
         if len(attempts) >= settings.login_max_attempts:
             wait = int(window - (now - attempts[0]))
             raise HTTPException(

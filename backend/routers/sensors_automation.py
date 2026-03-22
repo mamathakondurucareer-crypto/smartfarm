@@ -54,7 +54,12 @@ def get_device(
 
 
 @sensors_router.get("/devices", response_model=list[SensorDeviceOut])
-def list_devices(zone: Optional[str] = None, status: Optional[str] = None, db: Session = Depends(get_db)):
+def list_devices(
+    zone: Optional[str] = None,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     q = db.query(SensorDevice)
     if zone:
         q = q.filter(SensorDevice.zone == zone)
@@ -64,7 +69,11 @@ def list_devices(zone: Optional[str] = None, status: Optional[str] = None, db: S
 
 
 @sensors_router.post("/readings", status_code=201)
-def ingest_reading(data: SensorReadingCreate, db: Session = Depends(get_db)):
+def ingest_reading(
+    data: SensorReadingCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     reading = SensorReading(
         device_id=data.device_id, recorded_at=data.recorded_at,
         parameter=data.parameter, value=data.value, unit=data.unit,
@@ -82,12 +91,21 @@ def ingest_reading(data: SensorReadingCreate, db: Session = Depends(get_db)):
 
 
 @sensors_router.post("/readings/bulk", status_code=201)
-def ingest_bulk(data: SensorReadingBulk, db: Session = Depends(get_db)):
+def ingest_bulk(
+    data: SensorReadingBulk,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    # Pre-load all referenced devices in one query to avoid N+1
+    device_ids = list({r.device_id for r in data.readings})
+    devices = db.query(SensorDevice).filter(SensorDevice.id.in_(device_ids)).all()
+    device_map = {d.id: d for d in devices}
+
     alerts = []
     for r in data.readings:
         reading = SensorReading(device_id=r.device_id, recorded_at=r.recorded_at, parameter=r.parameter, value=r.value, unit=r.unit)
         db.add(reading)
-        device = db.query(SensorDevice).filter(SensorDevice.id == r.device_id).first()
+        device = device_map.get(r.device_id)
         if device:
             device.last_reading_at = r.recorded_at
         a = check_threshold(db, r.parameter, r.value, device.zone if device else "unknown", r.device_id)
@@ -103,6 +121,7 @@ def get_readings(
     parameter: Optional[str] = None,
     limit: int = Query(100, le=1000),
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     q = db.query(SensorReading).filter(SensorReading.device_id == device_id)
     if parameter:
@@ -111,19 +130,49 @@ def get_readings(
 
 
 @sensors_router.get("/latest-by-zone/{zone}")
-def latest_by_zone(zone: str, db: Session = Depends(get_db)):
+def latest_by_zone(
+    zone: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     devices = db.query(SensorDevice).filter(SensorDevice.zone == zone).all()
+    if not devices:
+        return {}
+    device_ids = [d.id for d in devices]
+    device_map = {d.id: d for d in devices}
+
+    # Single query: latest reading per device+parameter combination
+    subq = (
+        db.query(
+            SensorReading.device_id,
+            SensorReading.parameter,
+            func.max(SensorReading.recorded_at).label("max_at"),
+        )
+        .filter(SensorReading.device_id.in_(device_ids))
+        .group_by(SensorReading.device_id, SensorReading.parameter)
+        .subquery()
+    )
+    rows = (
+        db.query(SensorReading)
+        .join(
+            subq,
+            (SensorReading.device_id == subq.c.device_id)
+            & (SensorReading.parameter == subq.c.parameter)
+            & (SensorReading.recorded_at == subq.c.max_at),
+        )
+        .all()
+    )
     result = {}
-    for d in devices:
-        latest = db.query(SensorReading).filter(SensorReading.device_id == d.id).order_by(SensorReading.recorded_at.desc()).first()
-        if latest:
-            result[f"{d.name}_{latest.parameter}"] = {"value": latest.value, "unit": latest.unit, "at": str(latest.recorded_at)}
+    for r in rows:
+        d = device_map.get(r.device_id)
+        if d:
+            result[f"{d.name}_{r.parameter}"] = {"value": r.value, "unit": r.unit, "at": str(r.recorded_at)}
     return result
 
 
 # ═══════ SUMMARY ENDPOINTS ═══════
 @sensors_router.get("/latest-all")
-def latest_all(db: Session = Depends(get_db)):
+def latest_all(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """Return the latest reading for each parameter per zone."""
     subq = (
         db.query(
@@ -157,7 +206,7 @@ def latest_all(db: Session = Depends(get_db)):
 
 
 @sensors_router.get("/water-summary")
-def water_summary(db: Session = Depends(get_db)):
+def water_summary(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """Return latest reservoir and header-tank levels."""
     device = db.query(SensorDevice).filter(SensorDevice.device_id == "SFDEV-RESERVOIR").first()
     result = {"reservoirLevel": None, "headerTankLevel": None}
@@ -175,7 +224,7 @@ def water_summary(db: Session = Depends(get_db)):
 
 
 @sensors_router.get("/energy-summary")
-def energy_summary(db: Session = Depends(get_db)):
+def energy_summary(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """Return latest solar generation, consumption and grid export."""
     device = db.query(SensorDevice).filter(SensorDevice.device_id == "SFDEV-ENERGY").first()
     result = {"solarGeneration": None, "farmConsumption": None, "gridExport": None}
@@ -203,6 +252,7 @@ def list_alerts(
     alert_type: Optional[str] = None,
     limit: int = 50,
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     q = db.query(Alert)
     if resolved is not None:
@@ -238,7 +288,12 @@ def resolve_alert(alert_id: int, notes: str = None, db: Session = Depends(get_db
 
 # ═══════ AUTOMATION ═══════
 @automation_router.get("/rules")
-def list_rules(system: Optional[str] = None, enabled: Optional[bool] = None, db: Session = Depends(get_db)):
+def list_rules(
+    system: Optional[str] = None,
+    enabled: Optional[bool] = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     q = db.query(AutomationRule).filter(AutomationRule.is_active == True)
     if system:
         q = q.filter(AutomationRule.system == system)
@@ -260,7 +315,12 @@ def toggle_rule(rule_id: int, db: Session = Depends(get_db), current_user: User 
 
 
 @automation_router.get("/logs")
-def list_auto_logs(rule_id: Optional[int] = None, limit: int = 50, db: Session = Depends(get_db)):
+def list_auto_logs(
+    rule_id: Optional[int] = None,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     q = db.query(AutomationLog)
     if rule_id:
         q = q.filter(AutomationLog.rule_id == rule_id)
@@ -268,7 +328,7 @@ def list_auto_logs(rule_id: Optional[int] = None, limit: int = 50, db: Session =
 
 
 @automation_router.get("/status")
-def automation_status(db: Session = Depends(get_db)):
+def automation_status(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """Return automation system status summary grouped by system."""
     rules = db.query(AutomationRule).filter(AutomationRule.is_active == True).all()
     status: dict = {}
@@ -284,7 +344,12 @@ def automation_status(db: Session = Depends(get_db)):
 
 
 @automation_router.get("/drone-flights")
-def list_flights(drone_id: Optional[str] = None, limit: int = 20, db: Session = Depends(get_db)):
+def list_flights(
+    drone_id: Optional[str] = None,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     q = db.query(DroneFlightLog)
     if drone_id:
         q = q.filter(DroneFlightLog.drone_id == drone_id)

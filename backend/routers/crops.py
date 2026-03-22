@@ -11,6 +11,8 @@ from backend.models.crop import (
     GreenhouseCrop, VerticalFarmBatch, FieldCrop,
     CropActivity, CropHarvest, CropDisease,
 )
+from backend.models.user import User
+from backend.routers.auth import get_current_user
 from backend.schemas import (
     GreenhouseCropCreate, GreenhouseCropOut, VerticalFarmBatchCreate,
     CropActivityCreate, CropHarvestCreate, CropDiseaseCreate,
@@ -19,18 +21,30 @@ from backend.schemas import (
 
 router = APIRouter(prefix="/api/crops", tags=["Crop Management"])
 
+_WRITE_ROLES = ("admin", "manager", "supervisor")
+
 
 # ── Greenhouse ──
 @router.get("/greenhouse")
-def list_greenhouse_crops(status: Optional[str] = None, db: Session = Depends(get_db)):
+def list_greenhouse_crops(
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     q = db.query(GreenhouseCrop).filter(GreenhouseCrop.is_active == True)
     if status:
         q = q.filter(GreenhouseCrop.status == status)
-    return q.all()
+    return q.order_by(GreenhouseCrop.id).limit(500).all()
 
 
 @router.post("/greenhouse", status_code=201)
-def create_greenhouse_crop(data: GreenhouseCropCreate, db: Session = Depends(get_db)):
+def create_greenhouse_crop(
+    data: GreenhouseCropCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to create greenhouse crops")
     crop = GreenhouseCrop(**data.model_dump())
     db.add(crop)
     db.commit()
@@ -39,19 +53,51 @@ def create_greenhouse_crop(data: GreenhouseCropCreate, db: Session = Depends(get
 
 
 @router.put("/greenhouse/{crop_id}/stage")
-def update_growth_stage(crop_id: int, stage: str, health_score: float = None, db: Session = Depends(get_db)):
+def update_growth_stage(
+    crop_id: int,
+    stage: str,
+    health_score: Optional[float] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to update crop stage")
     crop = db.query(GreenhouseCrop).filter(GreenhouseCrop.id == crop_id).first()
     if not crop:
         raise HTTPException(404, "Crop not found")
     crop.growth_stage = stage
     if health_score is not None:
+        if not 0 <= health_score <= 100:
+            raise HTTPException(400, "health_score must be between 0 and 100")
         crop.health_score = health_score
     db.commit()
     return {"message": "Stage updated", "crop_code": crop.crop_code, "stage": stage}
 
 
+@router.delete("/greenhouse/{crop_id}", status_code=204)
+def delete_greenhouse_crop(
+    crop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to delete greenhouse crops")
+    crop = db.query(GreenhouseCrop).filter(GreenhouseCrop.id == crop_id).first()
+    if not crop:
+        raise HTTPException(404, "Crop not found")
+    crop.is_active = False  # Soft delete
+    db.commit()
+
+
 @router.put("/greenhouse/{crop_id}")
-def update_greenhouse_crop(crop_id: int, data: GreenhouseCropUpdate, db: Session = Depends(get_db)):
+def update_greenhouse_crop(
+    crop_id: int,
+    data: GreenhouseCropUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to update greenhouse crops")
     crop = db.query(GreenhouseCrop).filter(GreenhouseCrop.id == crop_id).first()
     if not crop:
         raise HTTPException(404, "Crop not found")
@@ -60,10 +106,16 @@ def update_greenhouse_crop(crop_id: int, data: GreenhouseCropUpdate, db: Session
     if data.growth_stage is not None:
         crop.growth_stage = data.growth_stage
     if data.health_score is not None:
+        if not 0 <= data.health_score <= 100:
+            raise HTTPException(400, "health_score must be between 0 and 100")
         crop.health_score = data.health_score
     if data.actual_yield_kg is not None:
+        if data.actual_yield_kg < 0:
+            raise HTTPException(400, "actual_yield_kg cannot be negative")
         crop.actual_yield_kg = data.actual_yield_kg
     if data.target_yield_kg is not None:
+        if data.target_yield_kg < 0:
+            raise HTTPException(400, "target_yield_kg cannot be negative")
         crop.target_yield_kg = data.target_yield_kg
     db.commit()
     return {"message": "Crop updated", "crop_id": crop_id}
@@ -71,15 +123,25 @@ def update_greenhouse_crop(crop_id: int, data: GreenhouseCropUpdate, db: Session
 
 # ── Vertical Farm ──
 @router.get("/vertical-farm")
-def list_vf_batches(status: Optional[str] = None, db: Session = Depends(get_db)):
+def list_vf_batches(
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     q = db.query(VerticalFarmBatch)
     if status:
         q = q.filter(VerticalFarmBatch.status == status)
-    return q.order_by(VerticalFarmBatch.seeding_date.desc()).all()
+    return q.order_by(VerticalFarmBatch.seeding_date.desc()).limit(200).all()
 
 
 @router.post("/vertical-farm", status_code=201)
-def create_vf_batch(data: VerticalFarmBatchCreate, db: Session = Depends(get_db)):
+def create_vf_batch(
+    data: VerticalFarmBatchCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to create vertical farm batches")
     batch = VerticalFarmBatch(**data.model_dump())
     db.add(batch)
     db.commit()
@@ -88,7 +150,14 @@ def create_vf_batch(data: VerticalFarmBatchCreate, db: Session = Depends(get_db)
 
 
 @router.put("/vertical-farm/{batch_id}")
-def update_vf_batch(batch_id: int, data: VerticalFarmBatchUpdate, db: Session = Depends(get_db)):
+def update_vf_batch(
+    batch_id: int,
+    data: VerticalFarmBatchUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to update vertical farm batches")
     batch = db.query(VerticalFarmBatch).filter(VerticalFarmBatch.id == batch_id).first()
     if not batch:
         raise HTTPException(404, "Batch not found")
@@ -99,8 +168,12 @@ def update_vf_batch(batch_id: int, data: VerticalFarmBatchUpdate, db: Session = 
     if data.current_day is not None:
         batch.current_day = data.current_day
     if data.health_score is not None:
+        if not 0 <= data.health_score <= 100:
+            raise HTTPException(400, "health_score must be between 0 and 100")
         batch.health_score = data.health_score
     if data.expected_yield_kg is not None:
+        if data.expected_yield_kg < 0:
+            raise HTTPException(400, "expected_yield_kg cannot be negative")
         batch.expected_yield_kg = data.expected_yield_kg
     if data.status is not None:
         batch.status = data.status
@@ -110,13 +183,22 @@ def update_vf_batch(batch_id: int, data: VerticalFarmBatchUpdate, db: Session = 
 
 # ── Field Crops ──
 @router.get("/field-crops")
-def list_field_crops(db: Session = Depends(get_db)):
-    return db.query(FieldCrop).filter(FieldCrop.is_active == True).all()
+def list_field_crops(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return db.query(FieldCrop).filter(FieldCrop.is_active == True).order_by(FieldCrop.id).limit(500).all()
 
 
 # ── Activities ──
 @router.post("/activities", status_code=201)
-def log_activity(data: CropActivityCreate, db: Session = Depends(get_db)):
+def log_activity(
+    data: CropActivityCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to log crop activities")
     activity = CropActivity(**data.model_dump())
     db.add(activity)
     db.commit()
@@ -130,6 +212,7 @@ def list_activities(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     q = db.query(CropActivity)
     if crop_id:
@@ -143,7 +226,13 @@ def list_activities(
 
 # ── Harvests ──
 @router.post("/harvests", status_code=201)
-def log_crop_harvest(data: CropHarvestCreate, db: Session = Depends(get_db)):
+def log_crop_harvest(
+    data: CropHarvestCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to log crop harvests")
     harvest = CropHarvest(
         **data.model_dump(),
         total_revenue=data.quantity_kg * data.sale_price_per_kg,
@@ -165,7 +254,13 @@ def log_crop_harvest(data: CropHarvestCreate, db: Session = Depends(get_db)):
 
 # ── Disease ──
 @router.post("/diseases", status_code=201)
-def report_disease(data: CropDiseaseCreate, db: Session = Depends(get_db)):
+def report_disease(
+    data: CropDiseaseCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role.name not in _WRITE_ROLES:
+        raise HTTPException(403, "Insufficient role to report diseases")
     disease = CropDisease(**data.model_dump())
     db.add(disease)
     # Reduce health score
@@ -180,7 +275,11 @@ def report_disease(data: CropDiseaseCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/diseases")
-def list_diseases(outcome: Optional[str] = None, db: Session = Depends(get_db)):
+def list_diseases(
+    outcome: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     q = db.query(CropDisease)
     if outcome:
         q = q.filter(CropDisease.outcome == outcome)

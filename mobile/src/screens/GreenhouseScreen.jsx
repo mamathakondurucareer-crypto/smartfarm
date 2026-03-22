@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback } from "react-native";
+import { View, Text, Modal, TextInput, TouchableOpacity, ScrollView, TouchableWithoutFeedback, ActivityIndicator, RefreshControl } from "react-native";
 import { Leaf, Thermometer, Droplets, Activity, Sun, Plus, Pencil, Trash2, WifiOff } from "lucide-react-native";
 import ScreenWrapper from "../components/layout/ScreenWrapper";
 import StatGrid      from "../components/ui/StatGrid";
@@ -35,26 +35,35 @@ export default function GreenhouseScreen() {
 
   const [apiCrops, setApiCrops]   = useState(null);
   const [staleData, setStaleData] = useState(false);
+  const [loading, setLoading]     = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
+  const fetchCrops = async (isRefresh = false) => {
     if (!token) return;
-    api.crops.greenhouse(token)
-      .then((rows) => {
-        if (rows && rows.length > 0) {
-          const mapped = rows.map((c) => ({
-            id:          c.id,
-            crop:        c.crop_name || c.crop_code,
-            stage:       c.growth_stage || "Vegetative",
-            daysPlanted: c.days_planted ?? 0,
-            health:      c.health_score ?? 0,
-            yieldKg:     c.actual_yield_kg ?? 0,
-            targetKg:    c.target_yield_kg ?? 0,
-          }));
-          setApiCrops(mapped);
-        }
-      })
-      .catch(() => setStaleData(true));
-  }, [token]);
+    isRefresh ? setRefreshing(true) : setLoading(true);
+    try {
+      const rows = await api.crops.greenhouse(token);
+      if (rows && rows.length > 0) {
+        const mapped = rows.map((c) => ({
+          id:          c.id,
+          crop:        c.crop_name || c.crop_code,
+          stage:       c.growth_stage || "Vegetative",
+          daysPlanted: c.days_planted ?? 0,
+          health:      c.health_score ?? 0,
+          yieldKg:     c.actual_yield_kg ?? 0,
+          targetKg:    c.target_yield_kg ?? 0,
+        }));
+        setApiCrops(mapped);
+        setStaleData(false);
+      }
+    } catch {
+      setStaleData(true);
+    } finally {
+      isRefresh ? setRefreshing(false) : setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchCrops(); }, [token]);
 
   const displayCrops = apiCrops ?? farm.greenhouse;
 
@@ -141,28 +150,63 @@ export default function GreenhouseScreen() {
       );
       updateGreenhouse(editingCrop.id, cropData);
     } else {
-      const newId = `GH-${formData.crop}-${Date.now()}`;
-      addGreenhouse({ id: newId, ...cropData });
+      // Create on backend if authenticated
+      if (token) {
+        try {
+          const created = await api.crops.createGreenhouse({
+            crop_name:       cropData.crop,
+            growth_stage:    cropData.stage,
+            health_score:    cropData.health,
+            actual_yield_kg: cropData.yieldKg,
+            target_yield_kg: cropData.targetKg,
+          }, token);
+          if (created?.id) {
+            setApiCrops((prev) => (prev ? [...prev, { id: created.id, ...cropData }] : [{ id: created.id, ...cropData }]));
+          }
+        } catch (e) {
+          console.warn("Greenhouse API create failed:", e.message);
+          // Fall back to local store
+          const newId = `GH-${formData.crop}-${Date.now()}`;
+          addGreenhouse({ id: newId, ...cropData });
+        }
+      } else {
+        const newId = `GH-${formData.crop}-${Date.now()}`;
+        addGreenhouse({ id: newId, ...cropData });
+      }
     }
 
     setModalVisible(false);
   };
 
-  const handleDelete = () => {
-    if (editingCrop) {
+  const handleDelete = async () => {
+    if (!editingCrop) return;
+    if (typeof editingCrop.id === "number" && token) {
+      try {
+        await api.crops.deleteGreenhouse(editingCrop.id, token);
+        setApiCrops((prev) => (prev ? prev.filter((c) => c.id !== editingCrop.id) : prev));
+      } catch (e) {
+        console.warn("Greenhouse API delete failed:", e.message);
+        removeGreenhouse(editingCrop.id);
+      }
+    } else {
       removeGreenhouse(editingCrop.id);
-      setModalVisible(false);
     }
+    setModalVisible(false);
   };
 
   return (
-    <ScreenWrapper title="Greenhouse">
+    <ScreenWrapper
+      title="Greenhouse"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchCrops(true)} />}
+    >
       {staleData && (
         <View style={cs.warnBox}>
           <WifiOff size={14} color={colors.warn} />
           <Text style={cs.warnText}>Live data unavailable — showing cached data</Text>
         </View>
       )}
+
+      {loading && <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 8 }} />}
 
       <StatGrid stats={envStats} />
 

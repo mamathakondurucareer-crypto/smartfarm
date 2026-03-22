@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api/inventory", tags=["Inventory"])
 # ── Categories ──
 @router.get("/categories")
 def list_categories(db: Session = Depends(get_db)):
-    return db.query(InventoryCategory).all()
+    return db.query(InventoryCategory).order_by(InventoryCategory.name).limit(200).all()
 
 
 # ── Items ──
@@ -44,7 +44,7 @@ def list_items(
         q = q.filter(InventoryItem.current_stock <= InventoryItem.reorder_point)
     if location:
         q = q.filter(InventoryItem.location == location)
-    return q.order_by(InventoryItem.name).all()
+    return q.order_by(InventoryItem.name).limit(500).all()
 
 
 @router.post("/items", response_model=InventoryItemOut, status_code=201)
@@ -136,7 +136,7 @@ def low_stock_report(db: Session = Depends(get_db)):
     items = db.query(InventoryItem).filter(
         InventoryItem.is_active == True,
         InventoryItem.current_stock <= InventoryItem.reorder_point,
-    ).all()
+    ).order_by(InventoryItem.name).limit(500).all()
     return [{
         "item_code": i.item_code, "name": i.name, "current_stock": i.current_stock,
         "reorder_point": i.reorder_point, "reorder_qty": i.reorder_quantity,
@@ -150,7 +150,7 @@ def list_suppliers(supplier_type: Optional[str] = None, db: Session = Depends(ge
     q = db.query(Supplier).filter(Supplier.is_active == True)
     if supplier_type:
         q = q.filter(Supplier.supplier_type == supplier_type)
-    return q.order_by(Supplier.name).all()
+    return q.order_by(Supplier.name).limit(200).all()
 
 
 @router.post("/suppliers", status_code=201)

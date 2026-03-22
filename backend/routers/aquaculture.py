@@ -4,7 +4,7 @@ from datetime import date
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, and_
 
 from backend.database import get_db
 from backend.models.aquaculture import Pond, FishBatch, FeedLog, WaterQualityLog, FishHarvest, CrabBatch
@@ -36,18 +36,41 @@ def list_ponds(
         q = q.filter(Pond.status == status)
     ponds = q.order_by(Pond.pond_code).all()
 
+    pond_ids = [p.id for p in ponds]
+
+    # Batch-fetch latest growing batch per pond (2 queries instead of 2N)
+    max_dates_sq = (
+        db.query(FishBatch.pond_id, func.max(FishBatch.stocking_date).label("max_date"))
+        .filter(FishBatch.pond_id.in_(pond_ids), FishBatch.status == "growing")
+        .group_by(FishBatch.pond_id)
+        .subquery()
+    )
+    batches = (
+        db.query(FishBatch)
+        .join(
+            max_dates_sq,
+            and_(
+                FishBatch.pond_id == max_dates_sq.c.pond_id,
+                FishBatch.stocking_date == max_dates_sq.c.max_date,
+            ),
+        )
+        .all()
+    )
+    batch_by_pond = {b.pond_id: b for b in batches}
+
+    # Batch-fetch today's feed totals per pond (1 query instead of N)
+    feed_rows = (
+        db.query(FeedLog.pond_id, func.coalesce(func.sum(FeedLog.quantity_kg), 0).label("total_kg"))
+        .filter(FeedLog.pond_id.in_(pond_ids), FeedLog.feed_date == date.today())
+        .group_by(FeedLog.pond_id)
+        .all()
+    )
+    feed_by_pond = {row.pond_id: float(row.total_kg) for row in feed_rows}
+
     result = []
     for pond in ponds:
-        # latest growing batch
-        batch = (
-            db.query(FishBatch)
-            .filter(FishBatch.pond_id == pond.id, FishBatch.status == "growing")
-            .order_by(FishBatch.stocking_date.desc())
-            .first()
-        )
-        today_feed = db.query(func.coalesce(func.sum(FeedLog.quantity_kg), 0)).filter(
-            FeedLog.pond_id == pond.id, FeedLog.feed_date == date.today()
-        ).scalar()
+        batch = batch_by_pond.get(pond.id)
+        today_feed = feed_by_pond.get(pond.id, 0.0)
         result.append({
             "id":            pond.id,
             "pond_code":     pond.pond_code,

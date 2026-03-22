@@ -228,10 +228,12 @@ export const api = {
 
   // ─── Crops (Greenhouse / Vertical Farm) ───────────────────────
   crops: {
-    greenhouse:        (token)              => request("GET", "/api/crops/greenhouse",              null, token),
-    verticalFarm:      (token)              => request("GET", "/api/crops/vertical-farm",           null, token),
-    updateGreenhouse:  (id, data, token)    => request("PUT", `/api/crops/greenhouse/${id}`,        data, token),
-    updateVerticalFarm:(id, data, token)    => request("PUT", `/api/crops/vertical-farm/${id}`,     data, token),
+    greenhouse:        (token)              => request("GET",    "/api/crops/greenhouse",              null, token),
+    verticalFarm:      (token)              => request("GET",    "/api/crops/vertical-farm",           null, token),
+    createGreenhouse:  (data, token)        => request("POST",   "/api/crops/greenhouse",              data, token),
+    updateGreenhouse:  (id, data, token)    => request("PUT",    `/api/crops/greenhouse/${id}`,        data, token),
+    deleteGreenhouse:  (id, token)          => request("DELETE", `/api/crops/greenhouse/${id}`,        null, token),
+    updateVerticalFarm:(id, data, token)    => request("PUT",    `/api/crops/vertical-farm/${id}`,     data, token),
   },
 
   // ─── Poultry ──────────────────────────────────────────────────
